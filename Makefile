@@ -2,12 +2,17 @@ GXX = $(CROSS_COMPILE)g++
 FLEX = flex
 BISON = bison
 
-OBJS = console.o mmap.o
+OBJS = main.o console.o mmap.o lexer.o parser.o
+GENERATED = lexer.cpp parser.cpp
 
-all: bin obj generated bin/mempeek
+all: prepare bin/mempeek
+
+prepare: bin obj generated $(addprefix generated/, $(GENERATED))
 
 vpath %.cpp src
 vpath %.cpp generated
+vpath %.l src
+vpath %.y src
 vpath %.o obj
 
 bin obj generated:
@@ -18,14 +23,14 @@ clean:
 	rm -rf obj
 	rm -rf generated
 
-bin/mempeek: $(OBJS)
-	$(GXX) -o $@ $^
+bin/mempeek: $(addprefix obj/, $(OBJS))
+	$(GXX) -o $@ $^ -ledit
 
-%.o: %.cpp
-	$(GXX) -std=c++11 -g -c -o obj/$@ $<
+obj/%.o: %.cpp
+	$(GXX) -std=c++11 -g -c -o $@ $<
 
-%.cpp: %.l
-	$(FLEX) -o generated/$@ $<
+generated/%.cpp: %.l
+	$(FLEX) -o $@ $<
 
-%.cpp: %.y
-	$(BISON) -d -o generated/$@ $<
+generated/%.cpp: %.y
+	$(BISON) -d -o $@ $<
