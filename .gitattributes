@@ -1,0 +1,8 @@
+*.h text
+*.c text
+*.cpp text
+*.l text
+*.y text
+*.xml eol=lf
+*.bin -text
+Makefile eol=lf
