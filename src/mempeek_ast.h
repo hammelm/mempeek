@@ -2,7 +2,7 @@
 #define __mempeek_ast_h__
 
 #include <string>
-#include <deque>
+#include <vector>
 
 #include <stdint.h>
 
@@ -20,7 +20,6 @@ public:
 	ASTNode() {}
 	virtual ~ASTNode();
 
-	void push_front( ASTNode* node );
 	void push_back( ASTNode* node );
 
 	virtual void execute() = 0;
@@ -31,7 +30,7 @@ public:
 	static int get_default_size();
 
 protected:
-	typedef std::deque< ASTNode* > nodelist_t;
+	typedef std::vector< ASTNode* > nodelist_t;
 
 	const nodelist_t& get_children();
 
@@ -55,6 +54,18 @@ private:
 class ASTNodeBlock : public ASTNode {
 public:
 	ASTNodeBlock();
+
+	void execute() override;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeWhile
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeWhile : public ASTNode {
+public:
+	ASTNodeWhile( ASTNode* condition, ASTNode* block );
 
 	void execute() override;
 };
@@ -132,15 +143,6 @@ public:
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNode inline functions
 //////////////////////////////////////////////////////////////////////////////
-
-inline void ASTNode::push_front( ASTNode* node )
-{
-#ifdef ASTDEBUG
-	std::cerr << "AST[" << this << "]: push front node=[" << node << "]" << std::endl;
-#endif
-
-	m_Children.push_front( node );
-}
 
 inline void ASTNode::push_back( ASTNode* node )
 {

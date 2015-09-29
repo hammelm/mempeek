@@ -82,6 +82,36 @@ void ASTNodeBlock::execute()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeWhile implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeWhile::ASTNodeWhile( ASTNode* condition, ASTNode* block )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeWhile condition=[" << condition << "] block=[" << block << "]" << endl;
+#endif
+
+	push_back( condition );
+	push_back( block );
+}
+
+void ASTNodeWhile::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeWhile" << endl;
+#endif
+
+	ASTNode* condition = get_children()[0];
+	ASTNode* block = get_children()[1];
+
+	for(;;) {
+		condition->execute();
+		if( condition->get_int_result() == 0 ) break;
+		block->execute();
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodePoke implementation
 //////////////////////////////////////////////////////////////////////////////
 

@@ -19,6 +19,9 @@
 "peek"                  TOKEN( T_PEEK )
 "poke"                  TOKEN( T_POKE )
 "mask"                  TOKEN( T_MASK )
+"while"                 TOKEN( T_WHILE )
+"do"                    TOKEN( T_DO )
+"endwhile"              TOKEN( T_ENDWHILE )
 "exit"                  TOKEN( T_EXIT )
 "halt"                  TOKEN( T_HALT )
 

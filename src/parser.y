@@ -35,6 +35,7 @@ extern ASTNode* yyroot;
 %token T_DEF T_FROM
 %token T_PEEK
 %token T_POKE T_MASK
+%token T_WHILE T_DO T_ENDWHILE
 %token T_EXIT
 %token T_HALT
 
@@ -57,7 +58,14 @@ block : statement                                       { $$.node = new ASTNodeB
 
 statement : def_stmt T_END_OF_STATEMENT                 { $$.node = $1.node; }
           | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
+          | while_block                                 { $$.node = $1.node; }
           ;
+
+while_block : T_WHILE expression T_DO statement             { $$.node = new ASTNodeWhile( $2.node, $4.node ); }
+            | T_WHILE expression T_DO T_END_OF_STATEMENT
+                  block
+              T_ENDWHILE T_END_OF_STATEMENT                 { $$.node = new ASTNodeWhile( $2.node, $5.node ); }
+            ;
 
 def_stmt : T_DEF plain_identifier expression                            { $$.node = new ASTNodeDef( $2.value, $3.node ); }
          | T_DEF struct_identifier expression                           { $$.node = new ASTNodeDef( $2.value, $3.node ); }
