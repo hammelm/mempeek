@@ -13,7 +13,6 @@ vpath %.cpp src
 vpath %.cpp generated
 vpath %.l src
 vpath %.y src
-vpath %.o obj
 
 bin obj generated:
 	mkdir $@
@@ -27,7 +26,7 @@ bin/mempeek: $(addprefix obj/, $(OBJS))
 	$(GXX) -o $@ $^ -ledit
 
 obj/%.o: %.cpp
-	$(GXX) -std=c++11 -I src -I generated -g -c -o $@ $<
+	$(GXX) -std=c++11 -Isrc -Igenerated -DYYDEBUG=1 -DASTDEBUG -g -c -o $@ $<
 
 generated/%.cpp: %.l
 	$(FLEX) -o $@ $<

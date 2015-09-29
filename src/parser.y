@@ -42,8 +42,6 @@ typedef struct {
 
 %start block
 
-%debug
-
 %%
 
 block : statement
@@ -58,12 +56,12 @@ def_stmt : T_DEF plain_identifier expression                            { $$.nod
          | T_DEF plain_identifier expression T_FROM plain_identifier    { $$.node = new ASTNodeDef( $2.value, $3.node, $5.value ); }
          ;
 
-poke_stmt : poke_token expression expression
-          | poke_token expression expression T_MASK expression
+poke_stmt : poke_token expression expression                        { $$.node = new ASTNodePoke( $2.node, $3.node, $1.token ); }
+          | poke_token expression expression T_MASK expression      { $$.node = new ASTNodePoke( $2.node, $3.node, $5.node, $1.token ); }
           ;
 
-poke_token : T_POKE
-           | T_POKE size_suffix
+poke_token : T_POKE                                     { $$.token = ASTNode::get_default_size(); }
+           | T_POKE size_suffix                         { $$.token = $2.token; }
            ;
 
 size_suffix : T_8BIT

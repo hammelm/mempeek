@@ -1,10 +1,10 @@
-extern int yyparse();
-
-extern int yydebug;
+#include "parser.hpp"
 
 int main()
 {
-	yydebug = 1;
+#if defined( YYDEBUG ) && YYDEBUG != 0
+    yydebug = 1;
+#endif
 
     yyparse();
     return 0;

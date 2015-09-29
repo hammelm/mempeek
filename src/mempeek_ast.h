@@ -24,6 +24,8 @@ public:
 	uint64_t get_int_result();
 	std::string get_string_result();
 
+	static int get_default_size();
+
 protected:
 	typedef std::deque< ASTNode* > nodelist_t;
 
@@ -39,6 +41,22 @@ private:
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodePoke
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodePoke : public ASTNode {
+public:
+	ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction );
+	ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction );
+
+	void execute() override;
+
+private:
+	int m_SizeRestriction;
 };
 
 
