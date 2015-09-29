@@ -4,10 +4,6 @@
 
 #include "parser.hpp"
 
-#ifdef ASTDEBUG
-#include <iostream>
-#endif
-
 using namespace std;
 
 
@@ -61,6 +57,30 @@ int ASTNode::get_default_size()
 	}
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBlock implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeBlock::ASTNodeBlock()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeBlock" << endl;
+#endif
+}
+
+void ASTNodeBlock::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeBlock" << endl;
+#endif
+
+	for( ASTNode* node: get_children() ) {
+		node->execute();
+	}
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodePoke implementation
 //////////////////////////////////////////////////////////////////////////////
@@ -68,9 +88,6 @@ int ASTNode::get_default_size()
 ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction )
  : m_SizeRestriction( size_restriction )
 {
-	push_back( address );
-	push_back( value );
-
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePoke address=[" << address << "] value=[" << value << "] restriction=";
 	switch( m_SizeRestriction ) {
@@ -81,15 +98,14 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction
 	default: cout << "ERR" << endl; break;
 	}
 #endif
+
+	push_back( address );
+	push_back( value );
 }
 
 ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction )
  : m_SizeRestriction( size_restriction )
 {
-	push_back( address );
-	push_back( value );
-	push_back( mask );
-
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePoke address=[" << address << "] value=[" << value
 		 << "] mask=[" << mask << "] restriction=";
@@ -101,10 +117,18 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int s
 	default: cout << "ERR" << endl; break;
 	}
 #endif
+
+	push_back( address );
+	push_back( value );
+	push_back( mask );
 }
 
 void ASTNodePoke::execute()
 {
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodePoke" << endl;
+#endif
+
 	// FIXME: to be implemented
 }
 
@@ -115,24 +139,28 @@ void ASTNodePoke::execute()
 
 ASTNodeDef::ASTNodeDef( std::string name, ASTNode* address )
 {
-	push_back( address );
-
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " address=[" << address << "]" << endl;
 #endif
+
+	push_back( address );
 }
 
 ASTNodeDef::ASTNodeDef( std::string name, ASTNode* address, std::string from )
 {
-	push_back( address );
-
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " address=[" << address << "] from=" << from << endl;
 #endif
+
+	push_back( address );
 }
 
 void ASTNodeDef::execute()
 {
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeDef" << endl;
+#endif
+
 	// FIXME: to be implemented
 }
 
@@ -144,8 +172,6 @@ void ASTNodeDef::execute()
 ASTNodeRestriction::ASTNodeRestriction( ASTNode* node, int size_restriction )
  : m_SizeRestriction( size_restriction )
 {
-	push_back( node );
-
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeRestriction node=[" << node << "] restriction=";
 	switch( m_SizeRestriction ) {
@@ -156,10 +182,16 @@ ASTNodeRestriction::ASTNodeRestriction( ASTNode* node, int size_restriction )
 	default: cout << "ERR" << endl; break;
 	}
 #endif
+
+	push_back( node );
 }
 
 void ASTNodeRestriction::execute()
 {
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeRestriction" << endl;
+#endif
+
 	ASTNode* node = get_children()[0];
 
 	node->execute();
@@ -186,15 +218,19 @@ ASTNodeVar::ASTNodeVar( std::string name )
 
 ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
 {
-	push_back( index );
-
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << " index=[" << index << "]" << endl;
 #endif
+
+	push_back( index );
 }
 
 void ASTNodeVar::execute()
 {
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeVar" << endl;
+#endif
+
 	// FIXME: to be implemented
 }
 
@@ -214,5 +250,9 @@ ASTNodeConstant::ASTNodeConstant( std::string str )
 
 void ASTNodeConstant::execute()
 {
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeConstant" << endl;
+#endif
+
 	// nothing to do
 };

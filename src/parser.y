@@ -10,6 +10,8 @@ using namespace std;
 extern int yylex();
 void yyerror( const char* s) { cerr << "ERROR: " << s << endl; }
 
+ASTNode* yyroot = nullptr;
+
 %}
 
 %code requires {
@@ -23,6 +25,8 @@ typedef struct {
     int token = 0;
     ASTNode* node = nullptr;
 } yyvalue_t;
+
+extern ASTNode* yyroot; 
 
 }
 
@@ -40,15 +44,19 @@ typedef struct {
 
 %token T_END_OF_STATEMENT
 
-%start block
+%start start
 
 %%
 
-block : statement
-      | block statement
+start : block                                           { yyroot = $1.node; }
+      ;
 
-statement : def_stmt T_END_OF_STATEMENT
-          | poke_stmt T_END_OF_STATEMENT
+block : statement                                       { $$.node = new ASTNodeBlock; $$.node->push_back( $1.node ); }
+      | block statement                                 { $$.node = $1.node; $$.node->push_back( $2.node ); }
+      ;
+
+statement : def_stmt T_END_OF_STATEMENT                 { $$.node = $1.node; }
+          | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
           ;
 
 def_stmt : T_DEF plain_identifier expression                            { $$.node = new ASTNodeDef( $2.value, $3.node ); }
@@ -64,10 +72,10 @@ poke_token : T_POKE                                     { $$.token = ASTNode::ge
            | T_POKE size_suffix                         { $$.token = $2.token; }
            ;
 
-size_suffix : T_8BIT
-            | T_16BIT
-            | T_32BIT
-            | T_64BIT
+size_suffix : T_8BIT                                    { $$.token = $1.token; }
+            | T_16BIT                                   { $$.token = $1.token; }
+            | T_32BIT                                   { $$.token = $1.token; }
+            | T_64BIT                                   { $$.token = $1.token; }
             ;
 
 expression : T_CONSTANT                                 { $$.node = new ASTNodeConstant( $1.value ); }
@@ -89,6 +97,6 @@ base_identifier : struct_identifier                     { $$.value = $1.value; }
 struct_identifier : T_IDENTIFIER '.' T_IDENTIFIER       { $$.value = $1.value + '.' + $3.value; }
                   ;
 
-plain_identifier : T_IDENTIFIER
+plain_identifier : T_IDENTIFIER                         { $$.value = $1.value; }
                  ;
 %%

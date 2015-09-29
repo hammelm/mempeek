@@ -9,6 +9,7 @@
 %%
 
 [ \t]                   ;
+\\[ \t]*\n              ;
 
 "\n"                    TOKEN( T_END_OF_STATEMENT )
 ";"                     TOKEN( T_END_OF_STATEMENT )

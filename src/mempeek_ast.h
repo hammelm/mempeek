@@ -6,6 +6,10 @@
 
 #include <stdint.h>
 
+#ifdef ASTDEBUG
+#include <iostream>
+#endif
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNode
@@ -41,6 +45,18 @@ private:
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBlock
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeBlock : public ASTNode {
+public:
+	ASTNodeBlock();
+
+	void execute() override;
 };
 
 
@@ -119,11 +135,19 @@ public:
 
 inline void ASTNode::push_front( ASTNode* node )
 {
+#ifdef ASTDEBUG
+	std::cerr << "AST[" << this << "]: push front node=[" << node << "]" << std::endl;
+#endif
+
 	m_Children.push_front( node );
 }
 
 inline void ASTNode::push_back( ASTNode* node )
 {
+#ifdef ASTDEBUG
+	std::cerr << "AST[" << this << "]: push back node=[" << node << "]" << std::endl;
+#endif
+
 	m_Children.push_back( node );
 }
 
