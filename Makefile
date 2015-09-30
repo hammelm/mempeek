@@ -5,6 +5,11 @@ BISON = bison
 OBJS = main.o console.o mmap.o lexer.o parser.o mempeek_ast.o
 GENERATED = lexer.cpp parser.cpp
 
+DEFINES = -DYYDEBUG=1 -DASTDEBUG
+INCLUDES = -Isrc -Igenerated
+CFLAGS = -std=c++11 -g
+LIBS = -ledit
+
 all: prepare bin/mempeek
 
 prepare: bin obj generated $(addprefix generated/, $(GENERATED))
@@ -23,13 +28,15 @@ clean:
 	rm -rf generated
 
 bin/mempeek: $(addprefix obj/, $(OBJS))
-	$(GXX) -o $@ $^ -ledit
+	$(GXX) -o $@ $^ $(LIBS)
 
 obj/%.o: %.cpp
-	$(GXX) -std=c++11 -Isrc -Igenerated -DYYDEBUG=1 -DASTDEBUG -g -c -o $@ $<
+	$(GXX) $(CFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c -o $@ $<
 
 generated/%.cpp: %.l
 	$(FLEX) -o $@ $<
 
 generated/%.cpp: %.y
 	$(BISON) -d -o $@ $<
+
+-include obj/*.d
