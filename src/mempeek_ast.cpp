@@ -164,6 +164,63 @@ void ASTNodePoke::execute()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodePrint implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodePrint::ASTNodePrint()
+ : m_Text( "\n" )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodePrint newline" << endl;
+#endif
+}
+
+ASTNodePrint::ASTNodePrint( std::string text )
+ : m_Text( text )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodePrint text=\"" << text << "\"" << endl;
+#endif
+}
+
+ASTNodePrint::ASTNodePrint( ASTNode* expression )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "]" << endl;
+#endif
+
+	push_back( expression );
+}
+
+void ASTNodePrint::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodePoke" << endl;
+
+	for( ASTNode* node: get_children() ) {
+		node->execute();
+		cout << "printing expression: " << node->get_int_result() << endl;
+	}
+
+	if( m_Text == "\n" ) cout << "printing newline" << endl;
+	else if( m_Text != "" ) cout << "printing text: \"" << m_Text << "\"" << endl;
+
+#else
+
+	for( ASTNode* node: get_children() ) {
+		node->execute();
+		cout << node->get_int_result();
+	}
+
+	cout << m_Text;
+
+	if( m_Text == "\n" ) cout << flush;
+
+#endif
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeDef implementation
 //////////////////////////////////////////////////////////////////////////////
 

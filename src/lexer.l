@@ -22,6 +22,8 @@
 "while"                 TOKEN( T_WHILE )
 "do"                    TOKEN( T_DO )
 "endwhile"              TOKEN( T_ENDWHILE )
+"print"                 TOKEN( T_PRINT )
+"noendl"                TOKEN( T_NOENDL )
 "exit"                  TOKEN( T_EXIT )
 "halt"                  TOKEN( T_HALT )
 
@@ -38,7 +40,7 @@
 "0x"[0-9a-fA-F]+        TOKEN( T_CONSTANT )
 "0b"[01]+               TOKEN( T_CONSTANT )
 [0-9]+                  TOKEN( T_CONSTANT )
-\".*\"                  TOKEN( T_STRING )
+\"[^"]*\"               TOKEN( T_STRING )
 
 .                       printf( "unknown token\n" ); yyterminate();
 

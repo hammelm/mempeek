@@ -36,6 +36,7 @@ extern ASTNode* yyroot;
 %token T_PEEK
 %token T_POKE T_MASK
 %token T_WHILE T_DO T_ENDWHILE
+%token T_PRINT T_NOENDL
 %token T_EXIT
 %token T_HALT
 
@@ -58,6 +59,7 @@ block : statement                                       { $$.node = new ASTNodeB
 
 statement : def_stmt T_END_OF_STATEMENT                 { $$.node = $1.node; }
           | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
+          | print_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
           | while_block                                 { $$.node = $1.node; }
           ;
 
@@ -85,6 +87,15 @@ size_suffix : T_8BIT                                    { $$.token = $1.token; }
             | T_32BIT                                   { $$.token = $1.token; }
             | T_64BIT                                   { $$.token = $1.token; }
             ;
+
+print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.node->push_back( new ASTNodePrint ); }
+           | T_PRINT print_args T_NOENDL                { $$.node = $2.node; }
+           ;
+
+print_args : %empty                                     { $$.node = new ASTNodeBlock; }
+           | print_args expression                      { $$.node = $1.node; $$.node->push_back( new ASTNodePrint( $2.node ) ); }
+           | print_args T_STRING                        { $$.node = $1.node; $$.node->push_back( new ASTNodePrint( $2.value ) ); }
+           ;
 
 expression : T_CONSTANT                                 { $$.node = new ASTNodeConstant( $1.value ); }
            | identifier                                 { $$.node = $1.node; }
