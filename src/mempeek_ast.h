@@ -1,6 +1,8 @@
 #ifndef __mempeek_ast_h__
 #define __mempeek_ast_h__
 
+#include "environment.h"
+
 #include <ostream>
 #include <string>
 #include <vector>
@@ -27,6 +29,8 @@ public:
 
 	static int get_default_size();
 
+	static Environment& get_environment();
+
 protected:
 	typedef std::vector< ASTNode* > nodelist_t;
 
@@ -36,6 +40,8 @@ protected:
 
 private:
 	nodelist_t m_Children;
+
+	static Environment s_Environment;
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
@@ -129,6 +135,9 @@ public:
 	ASTNodeDef( std::string name, ASTNode* address, std::string from );
 
 	uint64_t execute() override;
+
+private:
+	uint64_t* m_Def;
 };
 
 
@@ -157,6 +166,9 @@ public:
 	ASTNodeVar( std::string name, ASTNode* index );
 
 	uint64_t execute() override;
+
+private:
+	const uint64_t* m_Var;
 };
 
 
@@ -191,6 +203,11 @@ inline void ASTNode::push_back( ASTNode* node )
 inline const ASTNode::nodelist_t& ASTNode::get_children()
 {
 	return m_Children;
+}
+
+inline Environment& ASTNode::get_environment()
+{
+	return s_Environment;
 }
 
 

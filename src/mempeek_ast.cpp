@@ -13,6 +13,8 @@ using namespace std;
 // class ASTNode implementation
 //////////////////////////////////////////////////////////////////////////////
 
+Environment ASTNode::s_Environment;
+
 ASTNode::~ASTNode()
 {
 	for( ASTNode* child: m_Children ) {
@@ -310,6 +312,8 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* address )
 	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " address=[" << address << "]" << endl;
 #endif
 
+	m_Def = get_environment().set_def( name );
+
 	push_back( address );
 }
 
@@ -318,6 +322,8 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* address, std::string from )
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " address=[" << address << "] from=" << from << endl;
 #endif
+
+	m_Def = get_environment().set_def( name );
 
 	push_back( address );
 }
@@ -328,7 +334,10 @@ uint64_t ASTNodeDef::execute()
 	cerr << "AST[" << this << "]: executing ASTNodeDef" << endl;
 #endif
 
-	// FIXME: to be implemented
+	uint64_t address = get_children()[0]->execute();
+	if( m_Def ) *m_Def = address;
+
+	// FIXME: "from" not implemented
 
 	return 0;
 }
@@ -384,6 +393,8 @@ ASTNodeVar::ASTNodeVar( std::string name )
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << endl;
 #endif
+
+	m_Var = get_environment().get( name );
 }
 
 ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
@@ -391,6 +402,8 @@ ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << " index=[" << index << "]" << endl;
 #endif
+
+	m_Var = get_environment().get( name );
 
 	push_back( index );
 }
@@ -401,9 +414,11 @@ uint64_t ASTNodeVar::execute()
 	cerr << "AST[" << this << "]: executing ASTNodeVar" << endl;
 #endif
 
-	// FIXME: to be implemented
+	uint64_t offset = 0;
+	if( get_children().size() > 0 ) offset = get_children()[0]->execute();
 
-	return 0;
+	if( m_Var ) return *m_Var + offset;
+	else return 0;
 }
 
 

@@ -16,7 +16,9 @@ int main()
     yyparse();
 
     if( yyroot ) {
-    	cout << "executing AST[" << yyroot << "]" << endl;
+#ifdef ASTDEBUG
+    	cout << "executing ASTNode[" << yyroot << "]" << endl;
+#endif
     	yyroot->execute();
     }
 
