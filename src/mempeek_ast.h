@@ -1,6 +1,7 @@
 #ifndef __mempeek_ast_h__
 #define __mempeek_ast_h__
 
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -93,13 +94,33 @@ private:
 
 class ASTNodePrint : public ASTNode {
 public:
+	enum {
+		MOD_DEC = 0x01,
+		MOD_HEX = 0x02,
+		MOD_BIN = 0x03,
+		MOD_NEG = 0x04,
+
+		MOD_8BIT = 0x10,
+		MOD_16BIT = 0x20,
+		MOD_32BIT = 0x30,
+		MOD_64BIT = 0x40,
+
+		MOD_SIZEMASK = 0xf0,
+		MOD_TYPEMASK = 0x0f
+	};
+
 	ASTNodePrint();
 	ASTNodePrint( std::string text );
-	ASTNodePrint( ASTNode* expression );
+	ASTNodePrint( ASTNode* expression, int modifier );
 
 	void execute() override;
 
+	static int get_default_size();
+
 private:
+	void print_value( std::ostream& out, uint64_t value );
+
+	int m_Modifier = MOD_DEC | MOD_32BIT;
 	std::string m_Text = "";
 };
 

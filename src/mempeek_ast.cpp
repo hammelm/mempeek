@@ -1,6 +1,7 @@
 #include "mempeek_ast.h"
 
 #include <sstream>
+#include <iomanip>
 
 #include "parser.hpp"
 
@@ -49,7 +50,7 @@ uint64_t ASTNode::parse_int( string str )
 
 int ASTNode::get_default_size()
 {
-	switch( sizeof(int) ) {
+	switch( sizeof(long) ) {
 	case 2: return T_16BIT;
 	case 4: return T_32BIT;
 	case 8: return T_64BIT;
@@ -183,10 +184,12 @@ ASTNodePrint::ASTNodePrint( std::string text )
 #endif
 }
 
-ASTNodePrint::ASTNodePrint( ASTNode* expression )
+ASTNodePrint::ASTNodePrint( ASTNode* expression, int modifier )
+ : m_Modifier( modifier )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "]" << endl;
+	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
+		 << hex << setw(2) << setfill('0') << modifier << dec << endl;
 #endif
 
 	push_back( expression );
@@ -199,7 +202,9 @@ void ASTNodePrint::execute()
 
 	for( ASTNode* node: get_children() ) {
 		node->execute();
-		cout << "printing expression: " << node->get_int_result() << endl;
+		cout << "printing expression: ";
+		print_value( cout, node->get_int_result() );
+		cout << endl;
 	}
 
 	if( m_Text == "\n" ) cout << "printing newline" << endl;
@@ -209,7 +214,7 @@ void ASTNodePrint::execute()
 
 	for( ASTNode* node: get_children() ) {
 		node->execute();
-		cout << node->get_int_result();
+		print_value( cout, node->get_int_result() );
 	}
 
 	cout << m_Text;
@@ -217,6 +222,74 @@ void ASTNodePrint::execute()
 	if( m_Text == "\n" ) cout << flush;
 
 #endif
+}
+
+int ASTNodePrint::get_default_size()
+{
+	switch( ASTNode::get_default_size() ) {
+	case T_16BIT: return MOD_16BIT;
+	case T_32BIT: return MOD_32BIT;
+	case T_64BIT: return MOD_64BIT;
+	default: return 0;
+	}
+}
+
+void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
+{
+	int size = 0;
+	int64_t nvalue;
+
+	switch( m_Modifier & MOD_SIZEMASK ) {
+	case MOD_8BIT:
+		value &= 0xff;
+		nvalue = (int8_t)value;
+		size = 1;
+		break;
+
+	case MOD_16BIT:
+		value &= 0xffff;
+		nvalue = (int16_t)value;
+		size = 2;
+		break;
+
+	case MOD_32BIT:
+		value &= 0xffffffff;
+		nvalue = (int32_t)value;
+		size = 4;
+		break;
+
+	case MOD_64BIT:
+		nvalue = (int64_t)value;
+		size = 8;
+		break;
+	}
+
+	switch( m_Modifier & MOD_TYPEMASK ) {
+	case MOD_HEX: {
+		const ios_base::fmtflags oldflags = out.flags( ios::hex | ios::right | ios::fixed );
+		out << "0x" << setw(size) << setfill('0') << value;
+		out.flags( oldflags );
+		break;
+	}
+
+	case MOD_DEC:
+	case MOD_NEG: {
+		const ios_base::fmtflags oldflags = out.flags( ios::dec | ios::right | ios::fixed );
+		if( (m_Modifier & MOD_TYPEMASK) == MOD_DEC ) out << value;
+		else out << nvalue;
+		out.flags( oldflags );
+		break;
+	}
+
+	case MOD_BIN: {
+		for( int i = size * 8 - 1; i >= 0; i-- ) {
+			out << ((value & (1 << i)) ? '1' : '0');
+			if( i > 0 && i % 4 == 0 ) out << ' ';
+		}
+		break;
+	}
+
+	}
 }
 
 

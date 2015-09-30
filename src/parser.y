@@ -36,7 +36,7 @@ extern ASTNode* yyroot;
 %token T_PEEK
 %token T_POKE T_MASK
 %token T_WHILE T_DO T_ENDWHILE
-%token T_PRINT T_NOENDL
+%token T_PRINT T_DEC T_HEX T_BIN T_NEG T_NOENDL
 %token T_EXIT
 %token T_HALT
 
@@ -92,9 +92,23 @@ print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.
            | T_PRINT print_args T_NOENDL                { $$.node = $2.node; }
            ;
 
-print_args : %empty                                     { $$.node = new ASTNodeBlock; }
-           | print_args expression                      { $$.node = $1.node; $$.node->push_back( new ASTNodePrint( $2.node ) ); }
-           | print_args T_STRING                        { $$.node = $1.node; $$.node->push_back( new ASTNodePrint( $2.value ) ); }
+print_args : %empty                                     { $$.node = new ASTNodeBlock; $$.token = ASTNodePrint::MOD_HEX | ASTNodePrint::get_default_size(); }
+           | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::get_default_size(); }
+           | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
+           | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->push_back( new ASTNodePrint( $2.node, $$.token ) ); }
+           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->push_back( new ASTNodePrint( $2.value ) ); }
+           ;
+
+print_format : T_DEC                                    { $$.token = ASTNodePrint::MOD_DEC; }
+             | T_HEX                                    { $$.token = ASTNodePrint::MOD_HEX; }
+             | T_BIN                                    { $$.token = ASTNodePrint::MOD_BIN; }
+             | T_NEG                                    { $$.token = ASTNodePrint::MOD_NEG; }
+             ;
+
+print_size : T_8BIT                                     { $$.token = ASTNodePrint::MOD_8BIT; }
+           | T_16BIT                                    { $$.token = ASTNodePrint::MOD_16BIT; }
+           | T_32BIT                                    { $$.token = ASTNodePrint::MOD_32BIT; }
+           | T_64BIT                                    { $$.token = ASTNodePrint::MOD_64BIT; }
            ;
 
 expression : T_CONSTANT                                 { $$.node = new ASTNodeConstant( $1.value ); }
