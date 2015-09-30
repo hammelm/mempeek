@@ -23,10 +23,7 @@ public:
 
 	void push_back( ASTNode* node );
 
-	virtual void execute() = 0;
-
-	uint64_t get_int_result();
-	std::string get_string_result();
+	virtual uint64_t execute() = 0;
 
 	static int get_default_size();
 
@@ -36,9 +33,6 @@ protected:
 	const nodelist_t& get_children();
 
 	static uint64_t parse_int( std::string str );
-
-	uint64_t m_IntResult = 0;
-	std::string m_StringResult = "";
 
 private:
 	nodelist_t m_Children;
@@ -56,7 +50,7 @@ class ASTNodeBlock : public ASTNode {
 public:
 	ASTNodeBlock();
 
-	void execute() override;
+	uint64_t execute() override;
 };
 
 
@@ -68,7 +62,7 @@ class ASTNodeWhile : public ASTNode {
 public:
 	ASTNodeWhile( ASTNode* condition, ASTNode* block );
 
-	void execute() override;
+	uint64_t execute() override;
 };
 
 
@@ -81,7 +75,7 @@ public:
 	ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction );
 	ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction );
 
-	void execute() override;
+	uint64_t execute() override;
 
 private:
 	int m_SizeRestriction;
@@ -113,7 +107,7 @@ public:
 	ASTNodePrint( std::string text );
 	ASTNodePrint( ASTNode* expression, int modifier );
 
-	void execute() override;
+	uint64_t execute() override;
 
 	static int get_default_size();
 
@@ -134,7 +128,7 @@ public:
 	ASTNodeDef( std::string name, ASTNode* address );
 	ASTNodeDef( std::string name, ASTNode* address, std::string from );
 
-	void execute() override;
+	uint64_t execute() override;
 };
 
 
@@ -146,7 +140,7 @@ class ASTNodeRestriction : public ASTNode {
 public:
 	ASTNodeRestriction( ASTNode* node, int size_restriction );
 
-	void execute() override;
+	uint64_t execute() override;
 
 private:
 	int m_SizeRestriction;
@@ -162,7 +156,7 @@ public:
 	ASTNodeVar( std::string name );
 	ASTNodeVar( std::string name, ASTNode* index );
 
-	void execute() override;
+	uint64_t execute() override;
 };
 
 
@@ -174,7 +168,10 @@ class ASTNodeConstant : public ASTNode {
 public:
 	ASTNodeConstant( std::string str );
 
-	void execute() override;
+	uint64_t execute() override;
+
+private:
+	uint64_t m_Value;
 };
 
 
@@ -189,16 +186,6 @@ inline void ASTNode::push_back( ASTNode* node )
 #endif
 
 	m_Children.push_back( node );
-}
-
-inline uint64_t ASTNode::get_int_result()
-{
-	return m_IntResult;
-}
-
-inline std::string ASTNode::get_string_result()
-{
-	return m_StringResult;
 }
 
 inline const ASTNode::nodelist_t& ASTNode::get_children()

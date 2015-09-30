@@ -1,5 +1,6 @@
 #include "mempeek_ast.h"
 
+#include <iostream>
 #include <sstream>
 #include <iomanip>
 
@@ -70,7 +71,7 @@ ASTNodeBlock::ASTNodeBlock()
 #endif
 }
 
-void ASTNodeBlock::execute()
+uint64_t ASTNodeBlock::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeBlock" << endl;
@@ -79,6 +80,8 @@ void ASTNodeBlock::execute()
 	for( ASTNode* node: get_children() ) {
 		node->execute();
 	}
+
+	return 0;
 }
 
 
@@ -96,7 +99,7 @@ ASTNodeWhile::ASTNodeWhile( ASTNode* condition, ASTNode* block )
 	push_back( block );
 }
 
-void ASTNodeWhile::execute()
+uint64_t ASTNodeWhile::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeWhile" << endl;
@@ -105,11 +108,11 @@ void ASTNodeWhile::execute()
 	ASTNode* condition = get_children()[0];
 	ASTNode* block = get_children()[1];
 
-	for(;;) {
-		condition->execute();
-		if( condition->get_int_result() == 0 ) break;
+	while( condition->execute() ) {
 		block->execute();
 	}
+
+	return 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -154,13 +157,15 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int s
 	push_back( mask );
 }
 
-void ASTNodePoke::execute()
+uint64_t ASTNodePoke::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodePoke" << endl;
 #endif
 
 	// FIXME: to be implemented
+
+	return 0;
 }
 
 
@@ -195,15 +200,16 @@ ASTNodePrint::ASTNodePrint( ASTNode* expression, int modifier )
 	push_back( expression );
 }
 
-void ASTNodePrint::execute()
+uint64_t ASTNodePrint::execute()
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: executing ASTNodePoke" << endl;
+
+	cerr << "AST[" << this << "]: executing ASTNodePrint" << endl;
 
 	for( ASTNode* node: get_children() ) {
-		node->execute();
+		uint64_t result = node->execute();
 		cout << "printing expression: ";
-		print_value( cout, node->get_int_result() );
+		print_value( cout, result );
 		cout << endl;
 	}
 
@@ -213,8 +219,7 @@ void ASTNodePrint::execute()
 #else
 
 	for( ASTNode* node: get_children() ) {
-		node->execute();
-		print_value( cout, node->get_int_result() );
+		print_value( cout, node->execute() );
 	}
 
 	cout << m_Text;
@@ -222,6 +227,8 @@ void ASTNodePrint::execute()
 	if( m_Text == "\n" ) cout << flush;
 
 #endif
+
+	return 0;
 }
 
 int ASTNodePrint::get_default_size()
@@ -315,13 +322,15 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* address, std::string from )
 	push_back( address );
 }
 
-void ASTNodeDef::execute()
+uint64_t ASTNodeDef::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeDef" << endl;
 #endif
 
 	// FIXME: to be implemented
+
+	return 0;
 }
 
 
@@ -346,7 +355,7 @@ ASTNodeRestriction::ASTNodeRestriction( ASTNode* node, int size_restriction )
 	push_back( node );
 }
 
-void ASTNodeRestriction::execute()
+uint64_t ASTNodeRestriction::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeRestriction" << endl;
@@ -354,14 +363,15 @@ void ASTNodeRestriction::execute()
 
 	ASTNode* node = get_children()[0];
 
-	node->execute();
-	m_IntResult = node->get_int_result();
+	uint64_t result = node->execute();
 
 	switch( m_SizeRestriction ) {
-	case T_8BIT: m_IntResult &= 0xff; break;
-	case T_16BIT: m_IntResult &= 0xffff; break;
-	case T_32BIT: m_IntResult &= 0xffffffff; break;
+	case T_8BIT: result &= 0xff; break;
+	case T_16BIT: result &= 0xffff; break;
+	case T_32BIT: result &= 0xffffffff; break;
 	}
+
+	return result;
 }
 
 
@@ -385,13 +395,15 @@ ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
 	push_back( index );
 }
 
-void ASTNodeVar::execute()
+uint64_t ASTNodeVar::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeVar" << endl;
 #endif
 
 	// FIXME: to be implemented
+
+	return 0;
 }
 
 
@@ -401,18 +413,18 @@ void ASTNodeVar::execute()
 
 ASTNodeConstant::ASTNodeConstant( std::string str )
 {
-	m_IntResult = parse_int( str );
+	m_Value = parse_int( str );
 
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodeConstant value=" << m_IntResult << endl;
+	cerr << "AST[" << this << "]: creating ASTNodeConstant value=" << m_Value << endl;
 #endif
 }
 
-void ASTNodeConstant::execute()
+uint64_t ASTNodeConstant::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeConstant" << endl;
 #endif
 
-	// nothing to do
+	return m_Value;
 };

@@ -96,7 +96,7 @@ print_args : %empty                                     { $$.node = new ASTNodeB
            | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::get_default_size(); }
            | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
            | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->push_back( new ASTNodePrint( $2.node, $$.token ) ); }
-           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->push_back( new ASTNodePrint( $2.value ) ); }
+           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->push_back( new ASTNodePrint( $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
            ;
 
 print_format : T_DEC                                    { $$.token = ASTNodePrint::MOD_DEC; }
