@@ -205,30 +205,12 @@ ASTNodePrint::ASTNodePrint( ASTNode* expression, int modifier )
 uint64_t ASTNodePrint::execute()
 {
 #ifdef ASTDEBUG
-
 	cerr << "AST[" << this << "]: executing ASTNodePrint" << endl;
-
-	for( ASTNode* node: get_children() ) {
-		uint64_t result = node->execute();
-		cout << "printing expression: ";
-		print_value( cout, result );
-		cout << endl;
-	}
-
-	if( m_Text == "\n" ) cout << "printing newline" << endl;
-	else if( m_Text != "" ) cout << "printing text: \"" << m_Text << "\"" << endl;
-
-#else
-
-	for( ASTNode* node: get_children() ) {
-		print_value( cout, node->execute() );
-	}
-
-	cout << m_Text;
-
-	if( m_Text == "\n" ) cout << flush;
-
 #endif
+
+	for( ASTNode* node: get_children() ) print_value( cout, node->execute() );
+	cout << m_Text;
+	if( m_Text == "\n" ) cout << flush;
 
 	return 0;
 }
@@ -303,6 +285,34 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeAssign implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeAssign::ASTNodeAssign( std::string name, ASTNode* expression )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeAssign name=" << name << " expression=[" << expression << "]" << endl;
+#endif
+
+	m_Var = get_environment().set_var( name );
+
+	push_back( expression );
+}
+
+uint64_t ASTNodeAssign::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeAssign" << endl;
+#endif
+
+	uint64_t address = get_children()[0]->execute();
+	if( m_Var ) *m_Var = address;
+
+	return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeDef implementation
 //////////////////////////////////////////////////////////////////////////////
 
@@ -340,6 +350,88 @@ uint64_t ASTNodeDef::execute()
 	// FIXME: "from" not implemented
 
 	return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeUnaryOperator implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeUnaryOperator::ASTNodeUnaryOperator( ASTNode* expression, int op )
+ : m_Operator( op )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeUnaryOperator expression=[" << expression << "] operator=" << op << endl;
+#endif
+
+	push_back( expression );
+}
+
+uint64_t ASTNodeUnaryOperator::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeUnaryOperator" << endl;
+#endif
+
+	uint64_t r = get_children()[0]->execute();
+
+	switch( m_Operator ) {
+	case T_MINUS: return -r;
+	case T_BIT_NOT: return ~r;
+	case T_LOG_NOT: return r ? 0 : 0xffffffffffffffff;
+
+	default: return 0;
+	}
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBinaryOperator implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeBinaryOperator::ASTNodeBinaryOperator( ASTNode* expression1, ASTNode* expression2, int op )
+ : m_Operator( op )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeBinaryOperator expression1=[" << expression1
+	     << "] expression2=[" << expression2 << "] operator=" << op << endl;
+#endif
+
+	push_back( expression1 );
+	push_back( expression2 );
+}
+
+uint64_t ASTNodeBinaryOperator::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeBinaryOperator" << endl;
+#endif
+
+	uint64_t r0 = get_children()[0]->execute();
+	uint64_t r1 = get_children()[1]->execute();
+
+	switch( m_Operator ) {
+	case T_PLUS: return r0 + r1;
+	case T_MINUS: return r0 - r1;
+	case T_MUL: return r0 * r1;
+	case T_DIV: return r0 / r1;
+	case T_LSHIFT: return r0 << r1;
+	case T_RSHIFT: return r0 >> r1;
+	case T_LT: return (r0 < r1) ? 0xffffffffffffffff : 0;
+	case T_GT: return (r0 > r1) ? 0xffffffffffffffff : 0;
+	case T_LE: return (r0 <= r1) ? 0xffffffffffffffff : 0;
+	case T_GE: return (r0 >= r1) ? 0xffffffffffffffff : 0;
+	case T_EQ: return (r0 == r1) ? 0xffffffffffffffff : 0;
+	case T_NE: return (r0 != r1) ? 0xffffffffffffffff : 0;
+	case T_BIT_AND: return r0 & r1;
+	case T_BIT_XOR: return r0 ^ r1;
+	case T_BIT_OR: return r0 | r1;
+	case T_LOG_AND: return ((r0 != 0) && (r1 != 0)) ? 0xffffffffffffffff : 0;
+	case T_LOG_XOR: return ((r0 != 0) && (r1 == 0) || (r0 == 0) && (r1 != 0)) ? 0xffffffffffffffff : 0;
+	case T_LOG_OR: return ((r0 != 0) || (r1 != 0)) ? 0xffffffffffffffff : 0;
+
+	default: return 0;
+	}
 }
 
 

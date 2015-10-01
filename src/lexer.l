@@ -38,9 +38,37 @@
 ":32"                   TOKEN( T_32BIT )
 ":64"                   TOKEN( T_64BIT )
 
+":="                    TOKEN( T_ASSIGN );
+
+"+"                     TOKEN( T_PLUS )
+"-"                     TOKEN( T_MINUS )
+"*"                     TOKEN( T_MUL )
+"/"                     TOKEN( T_DIV )
+"<<"                    TOKEN( T_LSHIFT )
+">>"                    TOKEN( T_RSHIFT )
+
+"&"                     TOKEN( T_BIT_AND )
+"|"                     TOKEN( T_BIT_OR )
+"^"                     TOKEN( T_BIT_XOR )
+"~"                     TOKEN( T_BIT_NOT )
+
+"&&"                    TOKEN( T_LOG_AND )
+"||"                    TOKEN( T_LOG_OR )
+"^^"                    TOKEN( T_LOG_XOR )
+"!"                     TOKEN( T_LOG_NOT )
+
+"<"                     TOKEN( T_LT )
+">"                     TOKEN( T_GT )
+"<="                    TOKEN( T_LE )
+">="                    TOKEN( T_GE )
+"=="                    TOKEN( T_EQ )
+"!="                    TOKEN( T_NE )
+
 "."                     TOKEN( '.' )
 "["                     TOKEN( '[' )
 "]"                     TOKEN( ']' )
+"("                     TOKEN( '(' )
+")"                     TOKEN( ')' )
 
 [a-zA-Z][a-zA-Z0-9_]*   TOKEN( T_IDENTIFIER )
 "0x"[0-9a-fA-F]+        TOKEN( T_CONSTANT )

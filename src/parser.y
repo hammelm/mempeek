@@ -40,11 +40,22 @@ extern ASTNode* yyroot;
 %token T_EXIT
 %token T_HALT
 
+%token T_ASSIGN
+
 %token T_8BIT T_16BIT T_32BIT T_64BIT
 
 %token T_IDENTIFIER T_CONSTANT T_STRING
 
 %token T_END_OF_STATEMENT
+
+%token T_BIT_NOT T_LOG_NOT
+%left T_BIT_AND T_LOG_AND
+%left T_BIT_XOR T_LOG_XOR
+%left T_BIT_OR T_LOG_OR 
+%left T_LSHIFT T_RSHIFT
+%left T_MUL T_DIV
+%left T_PLUS T_MINUS
+%left T_LT T_GT T_LE T_GE T_EQ T_NE
 
 %start start
 
@@ -57,7 +68,8 @@ block : statement                                       { $$.node = new ASTNodeB
       | block statement                                 { $$.node = $1.node; $$.node->push_back( $2.node ); }
       ;
 
-statement : def_stmt T_END_OF_STATEMENT                 { $$.node = $1.node; }
+statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
+          | def_stmt T_END_OF_STATEMENT                 { $$.node = $1.node; }
           | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
           | while_block                                 { $$.node = $1.node; }
@@ -68,6 +80,8 @@ while_block : T_WHILE expression T_DO statement             { $$.node = new ASTN
                   block
               T_ENDWHILE T_END_OF_STATEMENT                 { $$.node = new ASTNodeWhile( $2.node, $5.node ); }
             ;
+
+assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = new ASTNodeAssign( $1.value, $3.node ); }
 
 def_stmt : T_DEF plain_identifier expression                            { $$.node = new ASTNodeDef( $2.value, $3.node ); }
          | T_DEF struct_identifier expression                           { $$.node = new ASTNodeDef( $2.value, $3.node ); }
@@ -113,6 +127,9 @@ print_size : T_8BIT                                     { $$.token = ASTNodePrin
 
 expression : T_CONSTANT                                 { $$.node = new ASTNodeConstant( $1.value ); }
            | identifier                                 { $$.node = $1.node; }
+           | expression binary_operator expression      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); }
+           | unary_operator expression                  { $$.node = new ASTNodeUnaryOperator( $2.node, $1.token ); }
+           | '(' expression ')'                         { $$.node = $2.node; }
            ;
 
 identifier : index_identifier                           { $$.node = $1.node; }
@@ -130,6 +147,15 @@ base_identifier : struct_identifier                     { $$.value = $1.value; }
 struct_identifier : T_IDENTIFIER '.' T_IDENTIFIER       { $$.value = $1.value + '.' + $3.value; }
                   ;
 
-plain_identifier : T_IDENTIFIER                         { $$.value = $1.value; }
+plain_identifier : T_IDENTIFIER
                  ;
+
+unary_operator : T_MINUS | T_BIT_NOT | T_LOG_NOT
+               ;
+
+binary_operator : T_PLUS | T_MINUS | T_MUL | T_DIV | T_LSHIFT | T_RSHIFT
+                | T_BIT_AND | T_BIT_OR | T_BIT_XOR | T_BIT_NOT
+                | T_LOG_AND | T_LOG_OR | T_LOG_XOR | T_LOG_NOT
+                | T_LT | T_GT | T_LE | T_GE | T_EQ | T_NE
+                ;
 %%
