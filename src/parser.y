@@ -64,8 +64,8 @@ extern ASTNode* yyroot;
 start : block                                           { yyroot = $1.node; }
       ;
 
-block : statement                                       { $$.node = new ASTNodeBlock; $$.node->push_back( $1.node ); }
-      | block statement                                 { $$.node = $1.node; $$.node->push_back( $2.node ); }
+block : statement                                       { $$.node = new ASTNodeBlock; $$.node->add_child( $1.node ); }
+      | block statement                                 { $$.node = $1.node; $$.node->add_child( $2.node ); }
       ;
 
 statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
@@ -102,15 +102,15 @@ size_suffix : T_8BIT                                    { $$.token = $1.token; }
             | T_64BIT                                   { $$.token = $1.token; }
             ;
 
-print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.node->push_back( new ASTNodePrint ); }
+print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.node->add_child( new ASTNodePrint ); }
            | T_PRINT print_args T_NOENDL                { $$.node = $2.node; }
            ;
 
 print_args : %empty                                     { $$.node = new ASTNodeBlock; $$.token = ASTNodePrint::MOD_HEX | ASTNodePrint::get_default_size(); }
            | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::get_default_size(); }
            | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
-           | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->push_back( new ASTNodePrint( $2.node, $$.token ) ); }
-           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->push_back( new ASTNodePrint( $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
+           | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( new ASTNodePrint( $2.node, $$.token ) ); }
+           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( new ASTNodePrint( $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
            ;
 
 print_format : T_DEC                                    { $$.token = ASTNodePrint::MOD_DEC; }
