@@ -23,7 +23,7 @@ public:
 	ASTNode() {}
 	virtual ~ASTNode();
 
-	void push_back( ASTNode* node );
+	void add_child( ASTNode* node );
 
 	virtual uint64_t execute() = 0;
 
@@ -136,7 +136,7 @@ public:
 	uint64_t execute() override;
 
 private:
-	uint64_t* m_Var;
+	Environment::var* m_Var;
 };
 
 
@@ -152,7 +152,7 @@ public:
 	uint64_t execute() override;
 
 private:
-	uint64_t* m_Def;
+	Environment::var* m_Def;
 };
 
 
@@ -213,7 +213,7 @@ public:
 	uint64_t execute() override;
 
 private:
-	const uint64_t* m_Var;
+	const Environment::var* m_Var;
 };
 
 
@@ -236,7 +236,7 @@ private:
 // class ASTNode inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline void ASTNode::push_back( ASTNode* node )
+inline void ASTNode::add_child( ASTNode* node )
 {
 #ifdef ASTDEBUG
 	std::cerr << "AST[" << this << "]: push back node=[" << node << "]" << std::endl;

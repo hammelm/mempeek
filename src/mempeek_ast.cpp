@@ -97,8 +97,8 @@ ASTNodeWhile::ASTNodeWhile( ASTNode* condition, ASTNode* block )
 	cerr << "AST[" << this << "]: creating ASTNodeWhile condition=[" << condition << "] block=[" << block << "]" << endl;
 #endif
 
-	push_back( condition );
-	push_back( block );
+	add_child( condition );
+	add_child( block );
 }
 
 uint64_t ASTNodeWhile::execute()
@@ -135,8 +135,8 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction
 	}
 #endif
 
-	push_back( address );
-	push_back( value );
+	add_child( address );
+	add_child( value );
 }
 
 ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction )
@@ -154,9 +154,9 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int s
 	}
 #endif
 
-	push_back( address );
-	push_back( value );
-	push_back( mask );
+	add_child( address );
+	add_child( value );
+	add_child( mask );
 }
 
 uint64_t ASTNodePoke::execute()
@@ -199,7 +199,7 @@ ASTNodePrint::ASTNodePrint( ASTNode* expression, int modifier )
 		 << hex << setw(2) << setfill('0') << modifier << dec << endl;
 #endif
 
-	push_back( expression );
+	add_child( expression );
 }
 
 uint64_t ASTNodePrint::execute()
@@ -294,9 +294,9 @@ ASTNodeAssign::ASTNodeAssign( std::string name, ASTNode* expression )
 	cerr << "AST[" << this << "]: creating ASTNodeAssign name=" << name << " expression=[" << expression << "]" << endl;
 #endif
 
-	m_Var = get_environment().set_var( name );
+	m_Var = get_environment().alloc_var( name );
 
-	push_back( expression );
+	add_child( expression );
 }
 
 uint64_t ASTNodeAssign::execute()
@@ -305,8 +305,8 @@ uint64_t ASTNodeAssign::execute()
 	cerr << "AST[" << this << "]: executing ASTNodeAssign" << endl;
 #endif
 
-	uint64_t address = get_children()[0]->execute();
-	if( m_Var ) *m_Var = address;
+	uint64_t value = get_children()[0]->execute();
+	if( m_Var ) m_Var->set( value );
 
 	return 0;
 }
@@ -316,26 +316,26 @@ uint64_t ASTNodeAssign::execute()
 // class ASTNodeDef implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeDef::ASTNodeDef( std::string name, ASTNode* address )
+ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " address=[" << address << "]" << endl;
+	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "]" << endl;
 #endif
 
-	m_Def = get_environment().set_def( name );
+	m_Def = get_environment().alloc_def( name );
 
-	push_back( address );
+	add_child( expression );
 }
 
-ASTNodeDef::ASTNodeDef( std::string name, ASTNode* address, std::string from )
+ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression, std::string from )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " address=[" << address << "] from=" << from << endl;
+	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "] from=" << from << endl;
 #endif
 
-	m_Def = get_environment().set_def( name );
+	m_Def = get_environment().alloc_def( name );
 
-	push_back( address );
+	add_child( expression );
 }
 
 uint64_t ASTNodeDef::execute()
@@ -344,8 +344,8 @@ uint64_t ASTNodeDef::execute()
 	cerr << "AST[" << this << "]: executing ASTNodeDef" << endl;
 #endif
 
-	uint64_t address = get_children()[0]->execute();
-	if( m_Def ) *m_Def = address;
+	uint64_t value = get_children()[0]->execute();
+	if( m_Def ) m_Def->set( value );
 
 	// FIXME: "from" not implemented
 
@@ -364,7 +364,7 @@ ASTNodeUnaryOperator::ASTNodeUnaryOperator( ASTNode* expression, int op )
 	cerr << "AST[" << this << "]: creating ASTNodeUnaryOperator expression=[" << expression << "] operator=" << op << endl;
 #endif
 
-	push_back( expression );
+	add_child( expression );
 }
 
 uint64_t ASTNodeUnaryOperator::execute()
@@ -397,8 +397,8 @@ ASTNodeBinaryOperator::ASTNodeBinaryOperator( ASTNode* expression1, ASTNode* exp
 	     << "] expression2=[" << expression2 << "] operator=" << op << endl;
 #endif
 
-	push_back( expression1 );
-	push_back( expression2 );
+	add_child( expression1 );
+	add_child( expression2 );
 }
 
 uint64_t ASTNodeBinaryOperator::execute()
@@ -453,7 +453,7 @@ ASTNodeRestriction::ASTNodeRestriction( ASTNode* node, int size_restriction )
 	}
 #endif
 
-	push_back( node );
+	add_child( node );
 }
 
 uint64_t ASTNodeRestriction::execute()
@@ -497,7 +497,7 @@ ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
 
 	m_Var = get_environment().get( name );
 
-	push_back( index );
+	add_child( index );
 }
 
 uint64_t ASTNodeVar::execute()
@@ -509,7 +509,7 @@ uint64_t ASTNodeVar::execute()
 	uint64_t offset = 0;
 	if( get_children().size() > 0 ) offset = get_children()[0]->execute();
 
-	if( m_Var ) return *m_Var + offset;
+	if( m_Var ) return m_Var->get() + offset;
 	else return 0;
 }
 

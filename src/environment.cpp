@@ -12,56 +12,49 @@ Environment::Environment()
 
 Environment::~Environment()
 {
-	for( auto value: m_Vars ) {
-		delete value.second.first;
-	}
+	for( auto value: m_Vars ) delete value.second;
 }
 
-uint64_t* Environment::set_def( std::string name )
+Environment::var* Environment::alloc_def( std::string name )
 {
-	uint64_t* var = nullptr;
-
 	auto iter = m_Vars.find( name );
+
 	if( iter == m_Vars.end() ) {
-		var = new uint64_t;
-		m_Vars[ name ] = make_pair( var, false );
+	    size_t dot = name.find( '.' );
+
+	    if( dot == string::npos ) {
+			Environment::var* var = new Environment::var( 0, true );
+			iter = m_Vars.insert( make_pair( name, var ) ).first;
+	    }
+	    else {
+	        auto base = m_Vars.find( name.substr( 0, dot ) );
+	        if( base == m_Vars.end() ) return nullptr;
+
+			Environment::var* var = new Environment::var( 0, base->second );
+			iter = m_Vars.insert( make_pair( name, var ) ).first;
+		}
 	}
-	else if( iter->second.second == false ) var = iter->second.first;
+	else if( !iter->second->is_def() ) return nullptr;
 
-	return var;
+	return iter->second;
 }
 
-const uint64_t* Environment::get_def( std::string name )
+Environment::var* Environment::alloc_var( std::string name )
 {
 	auto iter = m_Vars.find( name );
-	if( iter != m_Vars.end() && iter->second.second == false ) return iter->second.first;
-	else return nullptr;
-}
 
-uint64_t* Environment::set_var( std::string name )
-{
-	uint64_t* var = nullptr;
-
-	auto iter = m_Vars.find( name );
 	if( iter == m_Vars.end() ) {
-		var = new uint64_t;
-		m_Vars[ name ] = make_pair( var, true );
+		Environment::var* var = new Environment::var( 0, true );
+		iter = m_Vars.insert( make_pair( name, var ) ).first;
 	}
-	else if( iter->second.second == true ) var = iter->second.first;
+	else if( iter->second->is_def() ) return nullptr;
 
-	return var;
+	return iter->second;
 }
 
-const uint64_t* Environment::get_var( std::string name )
-{
-	auto iter = m_Vars.find( name );
-	if( iter != m_Vars.end() && iter->second.second == true ) return iter->second.first;
-	else return nullptr;
-}
-
-const uint64_t* Environment::get( std::string name )
+const Environment::var* Environment::get( std::string name )
 {
 	auto iter = m_Vars.find( name );
 	if( iter == m_Vars.end() ) return nullptr;
-	else return iter->second.first;
+	else return iter->second;
 }
