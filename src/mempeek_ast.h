@@ -6,6 +6,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include <stdint.h>
 
@@ -146,6 +147,8 @@ private:
 
 class ASTNodeDef : public ASTNode {
 public:
+	// TODO: "def from" only allowed in top block
+
 	ASTNodeDef( std::string name, ASTNode* address );
 	ASTNodeDef( std::string name, ASTNode* address, std::string from );
 
@@ -153,6 +156,9 @@ public:
 
 private:
 	Environment::var* m_Def;
+
+	const Environment::var* m_FromBase;
+	std::vector< std::pair< Environment::var*, const Environment::var* > > m_FromMembers;
 };
 
 
@@ -239,7 +245,7 @@ private:
 inline void ASTNode::add_child( ASTNode* node )
 {
 #ifdef ASTDEBUG
-	std::cerr << "AST[" << this << "]: push back node=[" << node << "]" << std::endl;
+	std::cerr << "AST[" << this << "]: add child node=[" << node << "]" << std::endl;
 #endif
 
 	m_Children.push_back( node );

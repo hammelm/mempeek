@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 #include <map>
+#include <set>
 
 #include <stdint.h>
 
@@ -23,6 +24,8 @@ public:
 	var* alloc_var( std::string name );
 
 	const var* get( std::string name );
+
+	std::set< std::string > get_struct_members( std::string name );
 
 private:
 	std::map< std::string, var* > m_Vars;

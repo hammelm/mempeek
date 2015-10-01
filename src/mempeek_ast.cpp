@@ -323,6 +323,7 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression )
 #endif
 
 	m_Def = get_environment().alloc_def( name );
+	m_FromBase = nullptr;
 
 	add_child( expression );
 }
@@ -334,6 +335,13 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression, std::string from 
 #endif
 
 	m_Def = get_environment().alloc_def( name );
+	m_FromBase = get_environment().get( from );
+
+	for( string member: get_environment().get_struct_members( from ) ) {
+		Environment::var* dst = get_environment().alloc_def( name + '.' + member );
+		const Environment::var* src = get_environment().get( from + '.' + member );
+		m_FromMembers.push_back( make_pair( dst, src ) );
+	}
 
 	add_child( expression );
 }
@@ -347,7 +355,12 @@ uint64_t ASTNodeDef::execute()
 	uint64_t value = get_children()[0]->execute();
 	if( m_Def ) m_Def->set( value );
 
-	// FIXME: "from" not implemented
+	if( m_FromBase ) {
+		uint64_t base = m_FromBase->get();
+		for( auto member: m_FromMembers ) {
+			member.first->set( member.second->get() - base );
+		}
+	}
 
 	return 0;
 }

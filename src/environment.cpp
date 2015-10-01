@@ -58,3 +58,15 @@ const Environment::var* Environment::get( std::string name )
 	if( iter == m_Vars.end() ) return nullptr;
 	else return iter->second;
 }
+
+std::set< std::string > Environment::get_struct_members( std::string name )
+{
+	set< string > members;
+
+	for( auto iter = m_Vars.lower_bound( name + '.' ); iter != m_Vars.end(); iter++  ) {
+		if( iter->first.substr( 0, name.length() + 1 ) != name + '.' ) break;
+		members.insert( iter->first.substr( name.length() + 1, string::npos ) );
+	}
+
+	return members;
+}
