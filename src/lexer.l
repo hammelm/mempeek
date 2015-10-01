@@ -8,8 +8,10 @@
 
 %%
 
-[ \t]                   ;
-\\[ \t]*\n              ;
+^[ \t]*("#".*)?\n       ; /* ignore empty lines */
+"#".*$                  ; /* ignore comments */
+[ \t]                   ; /* skip witespace */
+\\[ \t]*\n              ; /* wrap lines with backslash */
 
 "\n"                    TOKEN( T_END_OF_STATEMENT )
 ";"                     TOKEN( T_END_OF_STATEMENT )
