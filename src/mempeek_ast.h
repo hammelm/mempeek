@@ -62,6 +62,23 @@ public:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeAssign
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeAssign : public ASTNode {
+public:
+    ASTNodeAssign( std::string name, ASTNode* expression );
+
+    uint64_t execute() override;
+
+    Environment::var* get_var();
+
+private:
+    Environment::var* m_Var;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeWhile
 //////////////////////////////////////////////////////////////////////////////
 
@@ -70,6 +87,22 @@ public:
 	ASTNodeWhile( ASTNode* condition, ASTNode* block );
 
 	uint64_t execute() override;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeFor
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeFor : public ASTNode {
+public:
+    ASTNodeFor( ASTNodeAssign* var, ASTNode* to );
+    ASTNodeFor( ASTNodeAssign* var, ASTNode* to, ASTNode* step );
+
+    uint64_t execute() override;
+
+private:
+    Environment::var* m_Var;
 };
 
 
@@ -123,21 +156,6 @@ private:
 
 	int m_Modifier = MOD_DEC | MOD_32BIT;
 	std::string m_Text = "";
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class ASTNodeAssign
-//////////////////////////////////////////////////////////////////////////////
-
-class ASTNodeAssign : public ASTNode {
-public:
-	ASTNodeAssign( std::string name, ASTNode* expression );
-
-	uint64_t execute() override;
-
-private:
-	Environment::var* m_Var;
 };
 
 
@@ -259,6 +277,16 @@ inline const ASTNode::nodelist_t& ASTNode::get_children()
 inline Environment& ASTNode::get_environment()
 {
 	return s_Environment;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeAssign inline functions
+//////////////////////////////////////////////////////////////////////////////
+
+inline Environment::var* ASTNodeAssign::get_var()
+{
+    return m_Var;
 }
 
 

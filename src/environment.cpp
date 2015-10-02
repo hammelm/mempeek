@@ -44,7 +44,7 @@ Environment::var* Environment::alloc_var( std::string name )
 	auto iter = m_Vars.find( name );
 
 	if( iter == m_Vars.end() ) {
-		Environment::var* var = new Environment::var( 0, true );
+		Environment::var* var = new Environment::var( 0, false );
 		iter = m_Vars.insert( make_pair( name, var ) ).first;
 	}
 	else if( iter->second->is_def() ) return nullptr;

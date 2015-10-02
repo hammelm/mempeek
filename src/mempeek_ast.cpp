@@ -117,6 +117,51 @@ uint64_t ASTNodeWhile::execute()
 	return 0;
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeFor
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeFor::ASTNodeFor( ASTNodeAssign* var, ASTNode* to )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeFor var=[" << var << "] to=[" << to << "]" << endl;
+#endif
+
+    m_Var = var->get_var();
+
+    add_child( var );
+    add_child( to );
+}
+
+ASTNodeFor::ASTNodeFor( ASTNodeAssign* var, ASTNode* to, ASTNode* step )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeFor var=[" << var << "] to=[" << to << "] step=[" << step << "]" << endl;
+#endif
+
+    m_Var = var->get_var();
+
+    add_child( var );
+    add_child( to );
+    add_child( step );
+}
+
+uint64_t ASTNodeFor::execute()
+{
+    int child = 0;
+
+    get_children()[child++]->execute(); // execute assignment of loop variable
+
+    const int64_t to = get_children()[child++]->execute();
+    const int64_t step = (get_children().size() > 3) ? get_children()[child++]->execute() : 1;
+
+    ASTNode* block = get_children()[child];
+    for( int64_t i = m_Var->get(); step > 0 && i <= to || step < 0 && i >= to; m_Var->set( i += step ) ) {
+        block->execute();
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodePoke implementation
 //////////////////////////////////////////////////////////////////////////////
