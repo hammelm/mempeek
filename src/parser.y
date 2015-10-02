@@ -77,33 +77,21 @@ statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; }
           | for_block                                   { $$.node = $1.node; }
           ;
 
-while_block : T_WHILE expression T_DO statement             { $$.node = new ASTNodeWhile( $2.node, $4.node ); }
+while_block : T_WHILE expression T_DO statement         { $$.node = new ASTNodeWhile( $2.node, $4.node ); }
             | T_WHILE expression T_DO T_END_OF_STATEMENT
                   block
-              T_ENDWHILE T_END_OF_STATEMENT                 { $$.node = new ASTNodeWhile( $2.node, $5.node ); }
+              T_ENDWHILE T_END_OF_STATEMENT             { $$.node = new ASTNodeWhile( $2.node, $5.node ); }
             ;
 
-for_block : T_FOR plain_identifier T_FROM expression
-                                   T_TO expression
-                                   T_DO                     { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node ); }
-                statement                                   { $$.node = $8.node; $$.node->add_child( $9.node ); }
-          | T_FOR plain_identifier T_FROM expression
-                                   T_TO expression
-                                   T_DO T_END_OF_STATEMENT  { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node ); }
+for_block : for_def statement                           { $$.node = $1.node; $$.node->add_child( $2.node ); }
+          | for_def T_END_OF_STATEMENT
                 block
-            T_ENDFOR T_END_OF_STATEMENT                     { $$.node = $9.node; $$.node->add_child( $10.node ); }
-          | T_FOR plain_identifier T_FROM expression
-                                   T_TO expression
-                                   T_STEP expression
-                                   T_DO                     { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node, $8.node ); }
-                statement                                   { $$.node = $10.node; $$.node->add_child( $11.node ); }
-          | T_FOR plain_identifier T_FROM expression
-                                   T_TO expression
-                                   T_STEP expression
-                                   T_DO T_END_OF_STATEMENT  { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node, $8.node ); }
-                block
-            T_ENDFOR T_END_OF_STATEMENT                     { $$.node = $11.node; $$.node->add_child( $12.node ); }
+            T_ENDFOR T_END_OF_STATEMENT                 { $$.node = $1.node; $$.node->add_child( $3.node ); }
           ;
+
+for_def : T_FOR identifier T_FROM expression T_TO expression T_DO                   { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node ); }
+        | T_FOR identifier T_FROM expression T_TO expression T_STEP expression T_DO { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node, $8.node ); }
+        ;
 
 assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = new ASTNodeAssign( $1.value, $3.node ); }
 

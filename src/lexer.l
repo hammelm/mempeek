@@ -10,7 +10,7 @@
 
 ^[ \t]*("#".*)?\n       ; /* ignore empty lines */
 "#".*$                  ; /* ignore comments */
-[ \t]                   ; /* skip witespace */
+[ \t]                   ; /* skip whitespace */
 \\[ \t]*\n              ; /* wrap lines with backslash */
 
 "\n"                    TOKEN( T_END_OF_STATEMENT )
