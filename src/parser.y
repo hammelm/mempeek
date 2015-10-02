@@ -35,6 +35,7 @@ extern ASTNode* yyroot;
 %token T_DEF T_FROM
 %token T_PEEK
 %token T_POKE T_MASK
+%token T_IF T_THEN T_ELSE T_ENDIF
 %token T_WHILE T_DO T_ENDWHILE
 %token T_FOR T_TO T_STEP T_ENDFOR
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_NOENDL
@@ -73,9 +74,23 @@ statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; }
           | def_stmt T_END_OF_STATEMENT                 { $$.node = $1.node; }
           | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
+          | if_block                                    { $$.node = $1.node; }
           | while_block                                 { $$.node = $1.node; }
           | for_block                                   { $$.node = $1.node; }
           ;
+
+if_block : if_def statement                                             { $$.node = new ASTNodeIf( $1.node, $2.node ); }
+         | if_def statement else_def                                    { $$.node = new ASTNodeIf( $1.node, $2.node, $3.node ); }
+         | if_def T_END_OF_STATEMENT block T_ENDIF T_END_OF_STATEMENT   { $$.node = new ASTNodeIf( $1.node, $3.node ); }
+         | if_def T_END_OF_STATEMENT block else_def                     { $$.node = new ASTNodeIf( $1.node, $3.node, $4.node ); }
+         ;
+
+if_def : T_IF expression T_THEN                         { $$.node = $2.node; }
+       ;
+
+else_def : T_ELSE statement                                             { $$.node = $2.node; }
+         | T_ELSE T_END_OF_STATEMENT block T_ENDIF T_END_OF_STATEMENT   { $$.node = $3.node; }
+         ; 
 
 while_block : T_WHILE expression T_DO statement         { $$.node = new ASTNodeWhile( $2.node, $4.node ); }
             | T_WHILE expression T_DO T_END_OF_STATEMENT

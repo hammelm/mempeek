@@ -88,6 +88,50 @@ uint64_t ASTNodeBlock::execute()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeIf implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeIf::ASTNodeIf( ASTNode* condition, ASTNode* then_block )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeIf condition=[" << condition
+		 << "] then_block=[" << then_block << "]" << endl;
+#endif
+
+	add_child( condition );
+	add_child( then_block );
+}
+
+ASTNodeIf::ASTNodeIf( ASTNode* condition, ASTNode* then_block, ASTNode* else_block )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeIf condition=[" << condition
+		 << "] then_block=[" << then_block << "] else_block=[" << else_block << "]" << endl;
+#endif
+
+	add_child( condition );
+	add_child( then_block );
+	add_child( else_block );
+}
+
+uint64_t ASTNodeIf::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeIf" << endl;
+#endif
+
+	if( get_children()[0]->execute() ) {
+		get_children()[1]->execute();
+	}
+	else {
+		if( get_children().size() > 2 ) get_children()[2]->execute();
+	}
+
+	return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeWhile implementation
 //////////////////////////////////////////////////////////////////////////////
 
