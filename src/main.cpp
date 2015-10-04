@@ -20,6 +20,8 @@ int main()
     	cout << "executing ASTNode[" << yyroot << "]" << endl;
 #endif
     	yyroot->execute();
+
+    	delete yyroot;
     }
 
     return 0;

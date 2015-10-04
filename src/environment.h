@@ -1,6 +1,8 @@
 #ifndef __environment_h__
 #define __environment_h__
 
+#include "mmap.h"
+
 #include <string>
 #include <utility>
 #include <map>
@@ -27,8 +29,13 @@ public:
 
 	std::set< std::string > get_struct_members( std::string name );
 
+	void map_memory( void* phys_addr, size_t size );
+
+	MMap* get_mapping( void* phys_addr, size_t size );
+
 private:
 	std::map< std::string, var* > m_Vars;
+	std::map< void*, MMap* > m_Mappings;
 };
 
 

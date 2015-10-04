@@ -206,6 +206,54 @@ uint64_t ASTNodeFor::execute()
     }
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodePeek implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodePeek::ASTNodePeek( ASTNode* address, int size_restriction )
+ : m_SizeRestriction( size_restriction )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodePeek address=[" << address << "] restriction=";
+	switch( m_SizeRestriction ) {
+	case T_8BIT: cerr << "8" << endl; break;
+	case T_16BIT: cerr << "16" << endl; break;
+	case T_32BIT: cerr << "32" << endl; break;
+	case T_64BIT: cerr << "64" << endl; break;
+	default: cerr << "ERR" << endl; break;
+	}
+#endif
+
+	add_child( address );
+}
+
+uint64_t ASTNodePeek::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodePeek" << endl;
+#endif
+
+	switch( m_SizeRestriction ) {
+	case T_8BIT: return peek<uint8_t>();
+	case T_16BIT: return peek<uint16_t>();
+	case T_32BIT: return peek<uint32_t>();
+	case T_64BIT: return peek<uint64_t>();
+	};
+
+	return 0;
+}
+
+template< typename T >
+uint64_t ASTNodePeek::peek()
+{
+	void* address = (void*)get_children()[0]->execute();
+
+	MMap* mmap = get_environment().get_mapping( (void*)address, sizeof(T) );
+	return mmap->peek<T>( address );
+}
+
+
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodePoke implementation
 //////////////////////////////////////////////////////////////////////////////
@@ -216,11 +264,11 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePoke address=[" << address << "] value=[" << value << "] restriction=";
 	switch( m_SizeRestriction ) {
-	case T_8BIT: cout << "8" << endl; break;
-	case T_16BIT: cout << "16" << endl; break;
-	case T_32BIT: cout << "32" << endl; break;
-	case T_64BIT: cout << "64" << endl; break;
-	default: cout << "ERR" << endl; break;
+	case T_8BIT: cerr << "8" << endl; break;
+	case T_16BIT: cerr << "16" << endl; break;
+	case T_32BIT: cerr << "32" << endl; break;
+	case T_64BIT: cerr << "64" << endl; break;
+	default: cerr << "ERR" << endl; break;
 	}
 #endif
 
@@ -235,11 +283,11 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int s
 	cerr << "AST[" << this << "]: creating ASTNodePoke address=[" << address << "] value=[" << value
 		 << "] mask=[" << mask << "] restriction=";
 	switch( m_SizeRestriction ) {
-	case T_8BIT: cout << "8" << endl; break;
-	case T_16BIT: cout << "16" << endl; break;
-	case T_32BIT: cout << "32" << endl; break;
-	case T_64BIT: cout << "64" << endl; break;
-	default: cout << "ERR" << endl; break;
+	case T_8BIT: cerr << "8" << endl; break;
+	case T_16BIT: cerr << "16" << endl; break;
+	case T_32BIT: cerr << "32" << endl; break;
+	case T_64BIT: cerr << "64" << endl; break;
+	default: cerr << "ERR" << endl; break;
 	}
 #endif
 
@@ -254,9 +302,30 @@ uint64_t ASTNodePoke::execute()
 	cerr << "AST[" << this << "]: executing ASTNodePoke" << endl;
 #endif
 
-	// FIXME: to be implemented
+	switch( m_SizeRestriction ) {
+	case T_8BIT: poke<uint8_t>(); break;
+	case T_16BIT: poke<uint16_t>(); break;
+	case T_32BIT: poke<uint32_t>(); break;
+	case T_64BIT: poke<uint64_t>(); break;
+	};
 
 	return 0;
+}
+
+template< typename T >
+void ASTNodePoke::poke()
+{
+	void* address = (void*)get_children()[0]->execute();
+	T value = get_children()[1]->execute();
+
+	MMap* mmap = get_environment().get_mapping( (void*)address, sizeof(T) );
+
+	if( get_children().size() == 2 ) mmap->poke<T>( address, value );
+	else {
+		T mask = get_children()[2]->execute();
+		mmap->clear<T>( address, mask );
+		mmap->set<T>( address, value & mask);
+	}
 }
 
 
@@ -456,6 +525,34 @@ uint64_t ASTNodeDef::execute()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeMap implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeMap::ASTNodeMap( std::string address, std::string size )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeMap address=" << address << " size=" << size << endl;
+#endif
+
+	uint64_t phys_addr = parse_int( address );
+	uint64_t mapping_size = parse_int( size );
+
+	get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size );
+}
+
+uint64_t ASTNodeMap::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeMap" << endl;
+#endif
+
+	// nothing to do
+
+	return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeUnaryOperator implementation
 //////////////////////////////////////////////////////////////////////////////
 
@@ -547,11 +644,11 @@ ASTNodeRestriction::ASTNodeRestriction( ASTNode* node, int size_restriction )
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeRestriction node=[" << node << "] restriction=";
 	switch( m_SizeRestriction ) {
-	case T_8BIT: cout << "8" << endl; break;
-	case T_16BIT: cout << "16" << endl; break;
-	case T_32BIT: cout << "32" << endl; break;
-	case T_64BIT: cout << "64" << endl; break;
-	default: cout << "ERR" << endl; break;
+	case T_8BIT: cerr << "8" << endl; break;
+	case T_16BIT: cerr << "16" << endl; break;
+	case T_32BIT: cerr << "32" << endl; break;
+	case T_64BIT: cerr << "64" << endl; break;
+	default: cerr << "ERR" << endl; break;
 	}
 #endif
 

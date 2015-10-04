@@ -17,6 +17,7 @@
 ";"                     TOKEN( T_END_OF_STATEMENT )
 
 "def"                   TOKEN( T_DEF )
+"map"                   TOKEN( T_MAP )
 "from"                  TOKEN( T_FROM )
 "peek"                  TOKEN( T_PEEK )
 "poke"                  TOKEN( T_POKE )

@@ -33,6 +33,7 @@ extern ASTNode* yyroot;
 %define api.value.type { yyvalue_t }
 
 %token T_DEF T_FROM
+%token T_MAP T_SIZE
 %token T_PEEK
 %token T_POKE T_MASK
 %token T_IF T_THEN T_ELSE T_ENDIF
@@ -63,15 +64,23 @@ extern ASTNode* yyroot;
 
 %%
 
-start : block                                           { yyroot = $1.node; }
+start : toplevel_block                                  { yyroot = $1.node; }
       ;
+
+toplevel_block : toplevel_statement                     { $$.node = new ASTNodeBlock; $$.node->add_child( $1.node ); }
+               | toplevel_block toplevel_statement      { $$.node = $1.node; $$.node->add_child( $2.node ); }
+               ;
 
 block : statement                                       { $$.node = new ASTNodeBlock; $$.node->add_child( $1.node ); }
       | block statement                                 { $$.node = $1.node; $$.node->add_child( $2.node ); }
       ;
 
+toplevel_statement : statement                          { $$.node = $1.node; }
+                   | map_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
+                   | def_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
+                   ;
+
 statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
-          | def_stmt T_END_OF_STATEMENT                 { $$.node = $1.node; }
           | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
           | if_block                                    { $$.node = $1.node; }
@@ -113,6 +122,9 @@ assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = new ASTNodeA
 def_stmt : T_DEF plain_identifier expression                            { $$.node = new ASTNodeDef( $2.value, $3.node ); }
          | T_DEF struct_identifier expression                           { $$.node = new ASTNodeDef( $2.value, $3.node ); }
          | T_DEF plain_identifier expression T_FROM plain_identifier    { $$.node = new ASTNodeDef( $2.value, $3.node, $5.value ); }
+         ;
+
+map_stmt : T_MAP T_CONSTANT T_CONSTANT                  { $$.node = new ASTNodeMap( $2.value, $3.value ); }
          ;
 
 poke_stmt : poke_token expression expression                        { $$.node = new ASTNodePoke( $2.node, $3.node, $1.token ); }
@@ -157,6 +169,11 @@ expression : T_CONSTANT                                 { $$.node = new ASTNodeC
            | expression binary_operator expression      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); }
            | unary_operator expression                  { $$.node = new ASTNodeUnaryOperator( $2.node, $1.token ); }
            | '(' expression ')'                         { $$.node = $2.node; }
+           | peek_token '(' expression ')'              { $$.node = new ASTNodePeek( $3.node, $1.token ); }
+           ;
+           
+peek_token : T_PEEK                                     { $$.token = ASTNode::get_default_size(); }
+           | T_PEEK size_suffix                         { $$.token = $2.token; }
            ;
 
 identifier : index_identifier                           { $$.node = $1.node; }

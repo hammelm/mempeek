@@ -14,6 +14,9 @@ public:
 	MMap( void* phys_addr, size_t size );
 	~MMap();
 
+	void* get_base_address();
+	size_t get_size();
+
 	template< typename T > T peek( void* phys_addr );
 	template< typename T > void poke( void* phys_addr, T value );
 
@@ -23,11 +26,27 @@ public:
 
 private:
 	uintptr_t m_PhysAddr;
+	size_t m_Size;
 	size_t m_PageOffset;
 
 	void* m_VirtAddr;
 	size_t m_MappingSize;
 };
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class MMap inline functions
+//////////////////////////////////////////////////////////////////////////////
+
+inline void* MMap::get_base_address()
+{
+	return (void*)m_PhysAddr;
+}
+
+inline size_t MMap::get_size()
+{
+	return m_Size;
+}
 
 
 //////////////////////////////////////////////////////////////////////////////

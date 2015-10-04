@@ -120,6 +120,23 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodePeek
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodePeek : public ASTNode {
+public:
+	ASTNodePeek( ASTNode* address, int size_restriction );
+
+	uint64_t execute() override;
+
+private:
+	template< typename T> uint64_t peek();
+
+	int m_SizeRestriction;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodePoke
 //////////////////////////////////////////////////////////////////////////////
 
@@ -131,6 +148,8 @@ public:
 	uint64_t execute() override;
 
 private:
+	template< typename T> void poke();
+
 	int m_SizeRestriction;
 };
 
@@ -178,8 +197,6 @@ private:
 
 class ASTNodeDef : public ASTNode {
 public:
-	// TODO: "def from" only allowed in top block
-
 	ASTNodeDef( std::string name, ASTNode* address );
 	ASTNodeDef( std::string name, ASTNode* address, std::string from );
 
@@ -190,6 +207,20 @@ private:
 
 	const Environment::var* m_FromBase;
 	std::vector< std::pair< Environment::var*, const Environment::var* > > m_FromMembers;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeMap
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeMap : public ASTNode {
+public:
+	ASTNodeMap( std::string address, std::string size );
+
+	uint64_t execute() override;
+
+private:
 };
 
 

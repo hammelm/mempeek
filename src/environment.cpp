@@ -13,6 +13,7 @@ Environment::Environment()
 Environment::~Environment()
 {
 	for( auto value: m_Vars ) delete value.second;
+	for( auto value: m_Mappings ) delete value.second;
 }
 
 Environment::var* Environment::alloc_def( std::string name )
@@ -69,4 +70,28 @@ std::set< std::string > Environment::get_struct_members( std::string name )
 	}
 
 	return members;
+}
+
+void Environment::map_memory( void* phys_addr, size_t size )
+{
+	if( get_mapping( phys_addr, size ) ) return;
+
+	m_Mappings[ phys_addr ] = new MMap( phys_addr, size );
+}
+
+MMap* Environment::get_mapping( void* phys_addr, size_t size )
+{
+	if( m_Mappings.empty() ) return nullptr;
+
+	auto iter = m_Mappings.upper_bound( phys_addr );
+
+	MMap* mmap;
+	if( iter == m_Mappings.end() ) mmap = m_Mappings.rbegin()->second;
+	else {
+		if( --iter == m_Mappings.end() ) return nullptr;
+		mmap = iter->second;
+	}
+
+	if( (uint8_t*)mmap->get_base_address() + mmap->get_size() < (uint8_t*)phys_addr + size ) return nullptr;
+	else return mmap;
 }

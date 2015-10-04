@@ -25,6 +25,7 @@ MMap::MMap( void* phys_addr, size_t size )
     const int pagesize = getpagesize();
 
     m_PhysAddr = (uintptr_t)phys_addr;
+    m_Size = size;
     m_PageOffset = m_PhysAddr % pagesize;
 
     const uintptr_t page_addr = m_PhysAddr - m_PageOffset;
