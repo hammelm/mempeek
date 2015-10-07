@@ -6,11 +6,36 @@
 
 #include <iostream>
 
+#include <stdio.h>
+#include <stdlib.h>
 
 using namespace std;
 
 
-int main()
+static void parse()
+{
+    yyparse();
+
+    if( yyroot ) {
+#ifdef ASTDEBUG
+        cout << "executing ASTNode[" << yyroot << "]" << endl;
+#endif
+        try {
+            yyroot->execute();
+        }
+        catch( ASTExceptionBreak& ) {
+            // nothing to do
+        }
+        catch( ASTExceptionQuit& ex ) {
+            exit(0);
+        }
+
+        delete yyroot;
+        yyroot = nullptr;
+    }
+}
+
+int main( int argc, char** argv )
 {
 #if defined( YYDEBUG ) && YYDEBUG != 0
     yydebug = 1;
@@ -18,37 +43,44 @@ int main()
 
     Console console( "mempeek", "~/.mempeek_history" );
 
-    yyroot = nullptr;
+    bool is_interactive = true;
+    for( int i = 1; i < argc; i++ )
+    {
+        if( string(argv[i]) == "-c" ) {
+            is_interactive = false;
 
-    for(;;) {
-        string line = console.get_line();
-
-        YY_BUFFER_STATE lex_buffer = yy_scan_string( line.c_str() );
-        yy_switch_to_buffer( lex_buffer );
-
-        yyparse();
-
-        if( yyroot ) {
-#ifdef ASTDEBUG
-    	    cout << "executing ASTNode[" << yyroot << "]" << endl;
-#endif
-            try {
-                yyroot->execute();
-            }
-            catch( ASTExceptionBreak& ) {
-                // ignored in interactive mode
-            }
-            catch( ASTExceptionQuit& ex ) {
-                return 0;
+            if( ++i >= argc ) {
+                cout << "missing command" << endl;
+                break;
             }
 
-
-            delete yyroot;
-            yyroot = nullptr;
+            // TODO: parser should treat EOF as end of statement
+            string cmd = string( argv[i] ) + '\n';
+            YY_BUFFER_STATE lex_buffer = yy_scan_string( cmd.c_str() );
+            yy_switch_to_buffer( lex_buffer );
+            parse();
+            yy_delete_buffer( lex_buffer );
         }
+        else {
+            FILE* file = fopen( argv[i], "r" );
 
-        yy_delete_buffer( lex_buffer );
+            YY_BUFFER_STATE lex_buffer = yy_create_buffer( file, YY_BUF_SIZE );
+            yy_switch_to_buffer( lex_buffer );
+            parse();
+            yy_delete_buffer( lex_buffer );
+
+            fclose( file );
+        }
     }
 
-    return 0;
+    if( is_interactive ) {
+        for(;;) {
+            string line = console.get_line();
+
+            YY_BUFFER_STATE lex_buffer = yy_scan_string( line.c_str() );
+            yy_switch_to_buffer( lex_buffer );
+            parse();
+            yy_delete_buffer( lex_buffer );
+        }
+    }
 }
