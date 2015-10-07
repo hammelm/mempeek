@@ -3,11 +3,12 @@
 #include <iostream>
 #include <stdio.h>
 
+#include "lexer.h"
+
 #include "mempeek_ast.h"
 
 using namespace std;
 
-extern int yylex();
 void yyerror( const char* s) { cerr << "ERROR: " << s << endl; }
 
 ASTNode* yyroot = nullptr;

@@ -1,5 +1,5 @@
 %{
-#include "parser.hpp"
+#include "parser.h"
 
 #define TOKEN( t ) yylval.value = yytext; yylval.token = t; return t;
 %}

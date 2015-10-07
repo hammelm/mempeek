@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iomanip>
 
-#include "parser.hpp"
+#include "parser.h"
 
 using namespace std;
 

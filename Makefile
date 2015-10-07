@@ -5,7 +5,7 @@ BISON = bison
 OBJS = main.o console.o mmap.o lexer.o parser.o environment.o mempeek_ast.o
 GENERATED = lexer.cpp parser.cpp
 
-DEFINES = -DYYDEBUG=1 -DASTDEBUG
+DEFINES = 
 INCLUDES = -Isrc -Igenerated
 CFLAGS = -std=c++11 -g
 LIBS = -ledit
@@ -34,9 +34,9 @@ obj/%.o: %.cpp
 	$(GXX) $(CFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c -o $@ $<
 
 generated/%.cpp: %.l
-	$(FLEX) -o $@ $<
+	$(FLEX) --header-file=$(basename $@).h -o $@ $<
 
 generated/%.cpp: %.y
-	$(BISON) -d -o $@ $<
+	$(BISON) --defines=$(basename $@).h -o $@ $<
 
 -include obj/*.d
