@@ -41,8 +41,7 @@ extern ASTNode* yyroot;
 %token T_WHILE T_DO T_ENDWHILE
 %token T_FOR T_TO T_STEP T_ENDFOR
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_NOENDL
-%token T_EXIT
-%token T_HALT
+%token T_BREAK T_QUIT
 
 %token T_ASSIGN
 
@@ -84,6 +83,8 @@ toplevel_statement : statement                          { $$.node = $1.node; }
 statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
           | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
+          | T_BREAK T_END_OF_STATEMENT                  { $$.node = new ASTNodeBreak( T_BREAK ); }
+          | T_QUIT T_END_OF_STATEMENT                   { $$.node = new ASTNodeBreak( T_QUIT ); }
           | if_block                                    { $$.node = $1.node; }
           | while_block                                 { $$.node = $1.node; }
           | for_block                                   { $$.node = $1.node; }

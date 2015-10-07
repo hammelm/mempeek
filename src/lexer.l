@@ -39,8 +39,8 @@
 "bin"                   TOKEN( T_BIN )
 "neg"                   TOKEN( T_NEG )
 "noendl"                TOKEN( T_NOENDL )
-"exit"                  TOKEN( T_EXIT )
-"halt"                  TOKEN( T_HALT )
+"break"                 TOKEN( T_BREAK )
+"quit"                  TOKEN( T_QUIT )
 
 ":8"                    TOKEN( T_8BIT )
 ":16"                   TOKEN( T_16BIT )

@@ -22,7 +22,6 @@ int main()
 
     for(;;) {
         string line = console.get_line();
-        if( line == "quit\n" ) break;
 
         YY_BUFFER_STATE lex_buffer = yy_scan_string( line.c_str() );
         yy_switch_to_buffer( lex_buffer );
@@ -33,7 +32,17 @@ int main()
 #ifdef ASTDEBUG
     	    cout << "executing ASTNode[" << yyroot << "]" << endl;
 #endif
-            yyroot->execute();
+            try {
+                yyroot->execute();
+            }
+            catch( ASTExceptionBreak& ) {
+                // ignored in interactive mode
+            }
+            catch( ASTExceptionQuit& ex ) {
+                return 0;
+            }
+
+
             delete yyroot;
             yyroot = nullptr;
         }

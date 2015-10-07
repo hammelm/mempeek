@@ -63,6 +63,32 @@ int ASTNode::get_default_size()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBreak
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeBreak::ASTNodeBreak( int token )
+ : m_Token( token )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeBreak token=" << token << endl;
+#endif
+}
+
+uint64_t ASTNodeBreak::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeBreak" << endl;
+#endif
+
+    switch( m_Token ) {
+    case T_BREAK: throw ASTExceptionBreak();
+    case T_QUIT: throw ASTExceptionQuit();
+    }
+
+    return 0;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeBlock implementation
 //////////////////////////////////////////////////////////////////////////////
 
@@ -80,7 +106,7 @@ uint64_t ASTNodeBlock::execute()
 #endif
 
 	for( ASTNode* node: get_children() ) {
-		node->execute();
+	    node->execute();
 	}
 
 	return 0;
@@ -155,7 +181,12 @@ uint64_t ASTNodeWhile::execute()
 	ASTNode* block = get_children()[1];
 
 	while( condition->execute() ) {
-		block->execute();
+	    try {
+	        block->execute();
+	    }
+	    catch( ASTNodeBreak& ) {
+	        break;
+	    }
 	}
 
 	return 0;
@@ -202,7 +233,12 @@ uint64_t ASTNodeFor::execute()
 
     ASTNode* block = get_children()[child];
     for( int64_t i = m_Var->get(); step > 0 && i <= to || step < 0 && i >= to; m_Var->set( i += step ) ) {
-        block->execute();
+        try {
+            block->execute();
+        }
+        catch( ASTNodeBreak& ) {
+            break;
+        }
     }
 }
 
