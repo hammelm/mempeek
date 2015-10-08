@@ -423,8 +423,7 @@ uint64_t ASTNodePrint::execute()
 #endif
 
 	for( ASTNode* node: get_children() ) print_value( cout, node->execute() );
-	cout << m_Text;
-	if( m_Text == "\n" ) cout << flush;
+	cout << m_Text << flush;
 
 	return 0;
 }
