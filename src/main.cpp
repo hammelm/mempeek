@@ -14,22 +14,27 @@ using namespace std;
 
 static void parse()
 {
-    yyparse();
+    try {
+        yyparse();
 
-    if( yyroot ) {
+        if( yyroot ) {
 #ifdef ASTDEBUG
-        cout << "executing ASTNode[" << yyroot << "]" << endl;
+            cout << "executing ASTNode[" << yyroot << "]" << endl;
 #endif
-        try {
             yyroot->execute();
         }
-        catch( ASTExceptionBreak& ) {
-            // nothing to do
-        }
-        catch( ASTExceptionQuit& ex ) {
-            exit(0);
-        }
+    }
+    catch( ASTExceptionBreak& ) {
+        // nothing to do
+    }
+    catch( const ASTCompileException& ex ) {
+        cerr << "compile error: " << ex.what() << endl;
+    }
+    catch( const ASTRuntimeException& ex ) {
+        cerr << "runtime error: " << ex.what() << endl;
+    }
 
+    if( yyroot ) {
         delete yyroot;
         yyroot = nullptr;
     }
@@ -43,44 +48,51 @@ int main( int argc, char** argv )
 
     Console console( "mempeek", "~/.mempeek_history" );
 
-    bool is_interactive = true;
-    for( int i = 1; i < argc; i++ )
-    {
-        if( string(argv[i]) == "-c" ) {
-            is_interactive = false;
+    try {
+        bool is_interactive = true;
+        for( int i = 1; i < argc; i++ )
+        {
+            if( string(argv[i]) == "-c" ) {
+                is_interactive = false;
 
-            if( ++i >= argc ) {
-                cout << "missing command" << endl;
-                break;
+                if( ++i >= argc ) {
+                    cout << "missing command" << endl;
+                    break;
+                }
+
+                // TODO: parser should treat EOF as end of statement
+                string cmd = string( argv[i] ) + '\n';
+                YY_BUFFER_STATE lex_buffer = yy_scan_string( cmd.c_str() );
+                yy_switch_to_buffer( lex_buffer );
+                parse();
+                yy_delete_buffer( lex_buffer );
             }
+            else {
+                FILE* file = fopen( argv[i], "r" );
 
-            // TODO: parser should treat EOF as end of statement
-            string cmd = string( argv[i] ) + '\n';
-            YY_BUFFER_STATE lex_buffer = yy_scan_string( cmd.c_str() );
-            yy_switch_to_buffer( lex_buffer );
-            parse();
-            yy_delete_buffer( lex_buffer );
+                YY_BUFFER_STATE lex_buffer = yy_create_buffer( file, YY_BUF_SIZE );
+                yy_switch_to_buffer( lex_buffer );
+                parse();
+                yy_delete_buffer( lex_buffer );
+
+                fclose( file );
+            }
         }
-        else {
-            FILE* file = fopen( argv[i], "r" );
 
-            YY_BUFFER_STATE lex_buffer = yy_create_buffer( file, YY_BUF_SIZE );
-            yy_switch_to_buffer( lex_buffer );
-            parse();
-            yy_delete_buffer( lex_buffer );
+        if( is_interactive ) {
+            for(;;) {
+                string line = console.get_line();
 
-            fclose( file );
-        }
-    }
-
-    if( is_interactive ) {
-        for(;;) {
-            string line = console.get_line();
-
-            YY_BUFFER_STATE lex_buffer = yy_scan_string( line.c_str() );
-            yy_switch_to_buffer( lex_buffer );
-            parse();
-            yy_delete_buffer( lex_buffer );
+                YY_BUFFER_STATE lex_buffer = yy_scan_string( line.c_str() );
+                yy_switch_to_buffer( lex_buffer );
+                parse();
+                yy_delete_buffer( lex_buffer );
+            }
         }
     }
+    catch( ASTExceptionQuit ) {
+        // nothing to do
+    }
+
+    return 0;
 }

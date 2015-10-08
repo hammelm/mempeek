@@ -17,27 +17,40 @@ using namespace std;
 // class MMap implementation
 //////////////////////////////////////////////////////////////////////////////
 
-MMap::MMap( void* phys_addr, size_t size )
+MMap* MMap::create( void* phys_addr, size_t size )
 {
-    int fd = open( "/dev/mem", O_RDWR );
-    if( fd < 0 ) abort();
+    return create( phys_addr, size, "/dev/mem" );
+}
+
+
+MMap* MMap::create( void* phys_addr, size_t size, const char* device )
+{
+    int fd = open( device, O_RDWR );
+    if( fd < 0 ) return nullptr;
+
+    MMap* mmap = new MMap;
 
     const int pagesize = getpagesize();
 
-    m_PhysAddr = (uintptr_t)phys_addr;
-    m_Size = size;
-    m_PageOffset = m_PhysAddr % pagesize;
+    mmap->m_PhysAddr = (uintptr_t)phys_addr;
+    mmap->m_Size = size;
+    mmap->m_PageOffset = mmap->m_PhysAddr % pagesize;
 
-    const uintptr_t page_addr = m_PhysAddr - m_PageOffset;
+    const uintptr_t page_addr = mmap->m_PhysAddr - mmap->m_PageOffset;
 
-    m_MappingSize = size + m_PageOffset;
-    m_MappingSize -= m_MappingSize % pagesize;
-    if( m_MappingSize < size + m_PageOffset ) m_MappingSize += pagesize;
+    mmap->m_MappingSize = size + mmap->m_PageOffset;
+    mmap->m_MappingSize -= mmap->m_MappingSize % pagesize;
+    if( mmap->m_MappingSize < size + mmap->m_PageOffset ) mmap->m_MappingSize += pagesize;
 
-    m_VirtAddr = mmap( 0, m_MappingSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, page_addr );
-    if( m_VirtAddr == MAP_FAILED ) abort();
+    mmap->m_VirtAddr = ::mmap( 0, mmap->m_MappingSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, page_addr );
 
     close(fd);
+
+    if( mmap->m_VirtAddr == MAP_FAILED ) {
+        delete mmap;
+        return nullptr;
+    }
+    else return mmap;
 }
 
 

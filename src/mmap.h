@@ -11,7 +11,9 @@
 
 class MMap {
 public:
-	MMap( void* phys_addr, size_t size );
+    static MMap* create( void* phys_addr, size_t size );
+    static MMap* create( void* phys_addr, size_t size, const char* device );
+
 	~MMap();
 
 	void* get_base_address();
@@ -25,12 +27,17 @@ public:
 	template< typename T > void toggle( void* phys_addr, T value );
 
 private:
+	MMap() {}
+
 	uintptr_t m_PhysAddr;
 	size_t m_Size;
 	size_t m_PageOffset;
 
 	void* m_VirtAddr;
 	size_t m_MappingSize;
+
+	MMap( const MMap& ) = delete;
+	MMap& operator=( const MMap& ) = delete;
 };
 
 

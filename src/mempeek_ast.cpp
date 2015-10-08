@@ -3,10 +3,21 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <typeinfo>
 
 #include "parser.h"
 
 using namespace std;
+
+
+//////////////////////////////////////////////////////////////////////////////
+// ASTNode exceptions
+//////////////////////////////////////////////////////////////////////////////
+
+const char* ASTException::what() const noexcept
+{
+    return typeid( *this ).name();
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -284,9 +295,10 @@ template< typename T >
 uint64_t ASTNodePeek::peek()
 {
 	void* address = (void*)get_children()[0]->execute();
+	MMap* mmap = get_environment().get_mapping( address, sizeof(T) );
 
-	MMap* mmap = get_environment().get_mapping( (void*)address, sizeof(T) );
-	return mmap->peek<T>( address );
+    if( mmap ) return mmap->peek<T>( address );
+    else throw ASTExceptionNoMapping();
 }
 
 
@@ -354,7 +366,9 @@ void ASTNodePoke::poke()
 	void* address = (void*)get_children()[0]->execute();
 	T value = get_children()[1]->execute();
 
-	MMap* mmap = get_environment().get_mapping( (void*)address, sizeof(T) );
+	MMap* mmap = get_environment().get_mapping( address, sizeof(T) );
+
+	if( !mmap ) throw ASTExceptionNoMapping();
 
 	if( get_children().size() == 2 ) mmap->poke<T>( address, value );
 	else {
@@ -491,6 +505,8 @@ ASTNodeAssign::ASTNodeAssign( std::string name, ASTNode* expression )
 	m_Var = get_environment().alloc_var( name );
 
 	add_child( expression );
+
+	if( !m_Var ) throw ASTExceptionNamingConflict();
 }
 
 uint64_t ASTNodeAssign::execute()
@@ -520,6 +536,8 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression )
 	m_FromBase = nullptr;
 
 	add_child( expression );
+
+	if( !m_Def ) throw ASTExceptionNamingConflict();
 }
 
 ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression, std::string from )
@@ -529,15 +547,20 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression, std::string from 
 #endif
 
 	m_Def = get_environment().alloc_def( name );
-	m_FromBase = get_environment().get( from );
 
-	for( string member: get_environment().get_struct_members( from ) ) {
-		Environment::var* dst = get_environment().alloc_def( name + '.' + member );
-		const Environment::var* src = get_environment().get( from + '.' + member );
-		m_FromMembers.push_back( make_pair( dst, src ) );
-	}
+	m_FromBase = get_environment().get( from );
+	if( m_FromBase && !m_FromBase->is_def() ) m_FromBase = nullptr;
 
 	add_child( expression );
+
+	if( !m_Def ) throw ASTExceptionNamingConflict();
+    if( !m_FromBase ) throw ASTExceptionUndefinedVar();
+
+    for( string member: get_environment().get_struct_members( from ) ) {
+        Environment::var* dst = get_environment().alloc_def( name + '.' + member );
+        const Environment::var* src = get_environment().get( from + '.' + member );
+        m_FromMembers.push_back( make_pair( dst, src ) );
+    }
 }
 
 uint64_t ASTNodeDef::execute()
@@ -573,7 +596,7 @@ ASTNodeMap::ASTNodeMap( std::string address, std::string size )
 	uint64_t phys_addr = parse_int( address );
 	uint64_t mapping_size = parse_int( size );
 
-	get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size );
+	if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size ) ) throw ASTExceptionMappingFailure();
 }
 
 uint64_t ASTNodeMap::execute()
@@ -649,7 +672,7 @@ uint64_t ASTNodeBinaryOperator::execute()
 	case T_PLUS: return r0 + r1;
 	case T_MINUS: return r0 - r1;
 	case T_MUL: return r0 * r1;
-	case T_DIV: return r0 / r1;
+	case T_DIV: if( r1 != 0 ) return r0 / r1; else throw ASTExceptionDivisionByZero();
 	case T_LSHIFT: return r0 << r1;
 	case T_RSHIFT: return r0 >> r1;
 	case T_LT: return (r0 < r1) ? 0xffffffffffffffff : 0;
@@ -722,6 +745,8 @@ ASTNodeVar::ASTNodeVar( std::string name )
 #endif
 
 	m_Var = get_environment().get( name );
+
+    if( !m_Var ) throw ASTExceptionUndefinedVar();
 }
 
 ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
@@ -733,6 +758,8 @@ ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
 	m_Var = get_environment().get( name );
 
 	add_child( index );
+
+    if( !m_Var ) throw ASTExceptionUndefinedVar();
 }
 
 uint64_t ASTNodeVar::execute()

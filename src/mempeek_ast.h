@@ -19,9 +19,26 @@
 // ASTNode exceptions
 //////////////////////////////////////////////////////////////////////////////
 
-class ASTException : public std::exception {};
-class ASTExceptionBreak : public ASTException {};
-class ASTExceptionQuit : public ASTException {};
+// TODO: add more exact information about failure to exception classes
+
+class ASTException : public std::exception {
+public:
+    const char* what() const noexcept override;
+};
+
+class ASTControlflowException : public ASTException {};
+class ASTCompileException : public ASTException {};
+class ASTRuntimeException : public ASTException {};
+
+class ASTExceptionBreak : public ASTControlflowException {};
+class ASTExceptionQuit : public ASTControlflowException {};
+
+class ASTExceptionNamingConflict : public ASTCompileException {};
+class ASTExceptionUndefinedVar : public ASTCompileException {};
+class ASTExceptionMappingFailure : public ASTCompileException {};
+
+class ASTExceptionDivisionByZero : public ASTRuntimeException {};
+class ASTExceptionNoMapping : public ASTRuntimeException {};
 
 
 //////////////////////////////////////////////////////////////////////////////

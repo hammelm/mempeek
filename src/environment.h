@@ -29,7 +29,7 @@ public:
 
 	std::set< std::string > get_struct_members( std::string name );
 
-	void map_memory( void* phys_addr, size_t size );
+	bool map_memory( void* phys_addr, size_t size );
 
 	MMap* get_mapping( void* phys_addr, size_t size );
 
