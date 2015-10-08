@@ -20,6 +20,7 @@ static void signal_handler( int )
 
 static void parse()
 {
+    ASTNode::clear_terminate();
     signal( SIGABRT, signal_handler );
     signal( SIGINT, signal_handler );
     signal( SIGTERM, signal_handler );

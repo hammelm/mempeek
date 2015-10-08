@@ -60,6 +60,7 @@ public:
 	static Environment& get_environment();
 
 	static void set_terminate();
+    static void clear_terminate();
 	static bool is_terminated();
 
 protected:
@@ -385,6 +386,11 @@ inline Environment& ASTNode::get_environment()
 inline void ASTNode::set_terminate()
 {
     s_IsTerminated = true;
+}
+
+inline void ASTNode::clear_terminate()
+{
+    s_IsTerminated = false;
 }
 
 inline bool ASTNode::is_terminated()
