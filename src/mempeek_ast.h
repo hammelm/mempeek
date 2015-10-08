@@ -275,6 +275,7 @@ private:
 class ASTNodeMap : public ASTNode {
 public:
 	ASTNodeMap( std::string address, std::string size );
+    ASTNodeMap( std::string address, std::string size, std::string device );
 
 	uint64_t execute() override;
 

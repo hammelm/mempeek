@@ -644,7 +644,19 @@ ASTNodeMap::ASTNodeMap( std::string address, std::string size )
 	uint64_t phys_addr = parse_int( address );
 	uint64_t mapping_size = parse_int( size );
 
-	if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size ) ) throw ASTExceptionMappingFailure();
+	if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) throw ASTExceptionMappingFailure();
+}
+
+ASTNodeMap::ASTNodeMap( std::string address, std::string size, std::string device )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeMap address=" << address << " size=" << size << " device=" << device << endl;
+#endif
+
+    uint64_t phys_addr = parse_int( address );
+    uint64_t mapping_size = parse_int( size );
+
+    if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) throw ASTExceptionMappingFailure();
 }
 
 uint64_t ASTNodeMap::execute()

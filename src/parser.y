@@ -129,6 +129,7 @@ def_stmt : T_DEF plain_identifier expression                            { $$.nod
          ;
 
 map_stmt : T_MAP T_CONSTANT T_CONSTANT                  { $$.node = new ASTNodeMap( $2.value, $3.value ); }
+         | T_MAP T_CONSTANT T_CONSTANT T_STRING         { $$.node = new ASTNodeMap( $2.value, $3.value, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
 
 poke_stmt : poke_token expression expression                        { $$.node = new ASTNodePoke( $2.node, $3.node, $1.token ); }

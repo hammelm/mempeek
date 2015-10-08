@@ -72,11 +72,11 @@ std::set< std::string > Environment::get_struct_members( std::string name )
 	return members;
 }
 
-bool Environment::map_memory( void* phys_addr, size_t size )
+bool Environment::map_memory( void* phys_addr, size_t size, std::string device )
 {
 	if( get_mapping( phys_addr, size ) ) return true;
 
-	MMap* mmap = MMap::create( phys_addr, size );
+	MMap* mmap = MMap::create( phys_addr, size, device.c_str() );
 	if( !mmap ) return false;
 
 	m_Mappings[ phys_addr ] = mmap;
