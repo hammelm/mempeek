@@ -117,8 +117,8 @@ for_block : for_def statement                           { $$.node = $1.node; $$.
             T_ENDFOR T_END_OF_STATEMENT                 { $$.node = $1.node; $$.node->add_child( $3.node ); }
           ;
 
-for_def : T_FOR identifier T_FROM expression T_TO expression T_DO                   { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node ); }
-        | T_FOR identifier T_FROM expression T_TO expression T_STEP expression T_DO { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node, $8.node ); }
+for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO                     { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node ); }
+        | T_FOR plain_identifier T_FROM expression T_TO expression T_STEP expression T_DO   { $$.node = new ASTNodeFor( new ASTNodeAssign( $2.value, $4.node ), $6.node, $8.node ); }
         ;
 
 assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = new ASTNodeAssign( $1.value, $3.node ); }
