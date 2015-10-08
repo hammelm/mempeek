@@ -41,9 +41,8 @@ extern ASTNode* yyroot;
 %token T_WHILE T_DO T_ENDWHILE
 %token T_FOR T_TO T_STEP T_ENDFOR
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_NOENDL
+%token T_SLEEP
 %token T_BREAK T_QUIT
-
-%token T_ASSIGN
 
 %token T_8BIT T_16BIT T_32BIT T_64BIT
 
@@ -59,6 +58,8 @@ extern ASTNode* yyroot;
 %left T_MUL T_DIV
 %left T_PLUS T_MINUS
 %left T_LT T_GT T_LE T_GE T_EQ T_NE
+
+%right T_ASSIGN
 
 %start start
 
@@ -83,6 +84,7 @@ toplevel_statement : statement                          { $$.node = $1.node; }
 statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
           | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
+          | sleep_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
           | T_BREAK T_END_OF_STATEMENT                  { $$.node = new ASTNodeBreak( T_BREAK ); }
           | T_QUIT T_END_OF_STATEMENT                   { $$.node = new ASTNodeBreak( T_QUIT ); }
           | if_block                                    { $$.node = $1.node; }
@@ -164,6 +166,9 @@ print_size : T_8BIT                                     { $$.token = ASTNodePrin
            | T_16BIT                                    { $$.token = ASTNodePrint::MOD_16BIT; }
            | T_32BIT                                    { $$.token = ASTNodePrint::MOD_32BIT; }
            | T_64BIT                                    { $$.token = ASTNodePrint::MOD_64BIT; }
+           ;
+
+sleep_stmt : T_SLEEP expression                         { $$.node = new ASTNodeSleep( $2.node ); }
            ;
 
 expression : T_CONSTANT                                 { $$.node = new ASTNodeConstant( $1.value ); }

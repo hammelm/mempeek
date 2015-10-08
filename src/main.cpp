@@ -8,12 +8,22 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 
 using namespace std;
 
 
+static void signal_handler( int )
+{
+    ASTNode::set_terminate();
+}
+
 static void parse()
 {
+    signal( SIGABRT, signal_handler );
+    signal( SIGINT, signal_handler );
+    signal( SIGTERM, signal_handler );
+
     try {
         yyparse();
 
@@ -27,12 +37,19 @@ static void parse()
     catch( ASTExceptionBreak& ) {
         // nothing to do
     }
+    catch( ASTExceptionTerminate& ) {
+        cout << endl << "terminated execution" << endl;
+    }
     catch( const ASTCompileException& ex ) {
         cerr << "compile error: " << ex.what() << endl;
     }
     catch( const ASTRuntimeException& ex ) {
         cerr << "runtime error: " << ex.what() << endl;
     }
+
+    signal( SIGABRT, SIG_DFL );
+    signal( SIGINT, SIG_DFL );
+    signal( SIGTERM, SIG_DFL );
 
     if( yyroot ) {
         delete yyroot;

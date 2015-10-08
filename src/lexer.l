@@ -39,6 +39,7 @@
 "bin"                   TOKEN( T_BIN )
 "neg"                   TOKEN( T_NEG )
 "noendl"                TOKEN( T_NOENDL )
+"sleep"                 TOKEN( T_SLEEP )
 "break"                 TOKEN( T_BREAK )
 "quit"                  TOKEN( T_QUIT )
 

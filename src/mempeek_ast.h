@@ -32,6 +32,7 @@ class ASTRuntimeException : public ASTException {};
 
 class ASTExceptionBreak : public ASTControlflowException {};
 class ASTExceptionQuit : public ASTControlflowException {};
+class ASTExceptionTerminate : public ASTControlflowException {};
 
 class ASTExceptionNamingConflict : public ASTCompileException {};
 class ASTExceptionUndefinedVar : public ASTCompileException {};
@@ -58,6 +59,9 @@ public:
 
 	static Environment& get_environment();
 
+	static void set_terminate();
+	static bool is_terminated();
+
 protected:
 	typedef std::vector< ASTNode* > nodelist_t;
 
@@ -69,6 +73,7 @@ private:
 	nodelist_t m_Children;
 
 	static Environment s_Environment;
+	static volatile bool s_IsTerminated;
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
@@ -233,6 +238,18 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeSleep
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeSleep : public ASTNode {
+public:
+    ASTNodeSleep( ASTNode* expression );
+
+    uint64_t execute() override;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeDef
 //////////////////////////////////////////////////////////////////////////////
 
@@ -362,6 +379,16 @@ inline const ASTNode::nodelist_t& ASTNode::get_children()
 inline Environment& ASTNode::get_environment()
 {
 	return s_Environment;
+}
+
+inline void ASTNode::set_terminate()
+{
+    s_IsTerminated = true;
+}
+
+inline bool ASTNode::is_terminated()
+{
+    return s_IsTerminated;
 }
 
 

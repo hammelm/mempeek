@@ -5,6 +5,9 @@
 #include <iomanip>
 #include <typeinfo>
 
+#include <time.h>
+#include <errno.h>
+
 #include "parser.h"
 
 using namespace std;
@@ -25,6 +28,8 @@ const char* ASTException::what() const noexcept
 //////////////////////////////////////////////////////////////////////////////
 
 Environment ASTNode::s_Environment;
+volatile bool ASTNode::s_IsTerminated = false;
+
 
 ASTNode::~ASTNode()
 {
@@ -118,6 +123,7 @@ uint64_t ASTNodeBlock::execute()
 
 	for( ASTNode* node: get_children() ) {
 	    node->execute();
+        if( is_terminated() ) throw ASTExceptionTerminate();
 	}
 
 	return 0;
@@ -491,6 +497,49 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	}
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeSleep implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeSleep::ASTNodeSleep( ASTNode* expression )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeSleep expression=[" << expression << "]" << endl;
+#endif
+
+    add_child( expression );
+}
+
+uint64_t ASTNodeSleep::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeSleep" << endl;
+#endif
+
+    uint64_t time = get_children()[0]->execute() * 1000;
+
+    struct timespec ts;
+    ts.tv_sec = time / 1000000000;
+    ts.tv_nsec = time % 1000000000;
+
+    for(;;) {
+        struct timespec remaining;
+        int ret = nanosleep( &ts, &remaining );
+        if( ret == 0 ) break;
+        if( errno == EINTR ) {
+            if( is_terminated() ) break;
+            ts = remaining;
+            continue;
+        }
+        else {
+            cerr << "nanosleep failed with errno " << errno << endl;
+            break;
+        }
+    }
+
+    return 0;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodeAssign implementation
