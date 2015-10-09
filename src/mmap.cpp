@@ -17,6 +17,10 @@ using namespace std;
 // class MMap implementation
 //////////////////////////////////////////////////////////////////////////////
 
+sig_atomic_t MMap::s_SignalEnable = 0;
+sigjmp_buf MMap::s_SignalRecovery;
+
+
 MMap* MMap::create( void* phys_addr, size_t size )
 {
     return create( phys_addr, size, "/dev/mem" );
@@ -57,4 +61,33 @@ MMap* MMap::create( void* phys_addr, size_t size, const char* device )
 MMap::~MMap()
 {
 	munmap( m_VirtAddr, m_MappingSize );
+}
+
+void MMap::enable_signal_handler()
+{
+    s_SignalEnable = 0;
+
+    struct sigaction sa;
+
+    sigemptyset( &sa.sa_mask );
+    sa.sa_flags = 0;
+    sa.sa_handler = signal_handler;
+
+    sigaction( SIGBUS, &sa, nullptr );
+}
+
+void MMap::disable_signal_handler()
+{
+    struct sigaction sa;
+
+    sigemptyset( &sa.sa_mask );
+    sa.sa_flags = 0;
+    sa.sa_handler = SIG_DFL;
+
+    sigaction( SIGBUS, &sa, nullptr );
+}
+
+void MMap::signal_handler( int )
+{
+    if( s_SignalEnable ) siglongjmp( s_SignalRecovery, 1);
 }

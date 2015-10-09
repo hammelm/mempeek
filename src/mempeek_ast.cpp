@@ -303,8 +303,12 @@ uint64_t ASTNodePeek::peek()
 	void* address = (void*)get_children()[0]->execute();
 	MMap* mmap = get_environment().get_mapping( address, sizeof(T) );
 
-    if( mmap ) return mmap->peek<T>( address );
-    else throw ASTExceptionNoMapping();
+    if( !mmap ) throw ASTExceptionNoMapping();
+
+    uint64_t ret = mmap->peek<T>( address );
+    if( mmap->has_failed() ) throw ASTExceptionBusError();
+
+    return ret;
 }
 
 
@@ -382,6 +386,8 @@ void ASTNodePoke::poke()
 		mmap->clear<T>( address, mask );
 		mmap->set<T>( address, value & mask);
 	}
+
+    if( mmap->has_failed() ) throw ASTExceptionBusError();
 }
 
 

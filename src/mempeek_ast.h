@@ -40,6 +40,7 @@ class ASTExceptionMappingFailure : public ASTCompileException {};
 
 class ASTExceptionDivisionByZero : public ASTRuntimeException {};
 class ASTExceptionNoMapping : public ASTRuntimeException {};
+class ASTExceptionBusError : public ASTRuntimeException {};
 
 
 //////////////////////////////////////////////////////////////////////////////

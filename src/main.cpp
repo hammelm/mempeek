@@ -66,6 +66,8 @@ int main( int argc, char** argv )
 
     Console console( "mempeek", "~/.mempeek_history" );
 
+    MMap::enable_signal_handler();
+
     try {
         bool is_interactive = true;
         for( int i = 1; i < argc; i++ )
