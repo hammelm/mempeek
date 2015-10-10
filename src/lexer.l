@@ -21,6 +21,7 @@
 "def"                   TOKEN( T_DEF )
 "map"                   TOKEN( T_MAP )
 "from"                  TOKEN( T_FROM )
+"import"                TOKEN( T_IMPORT )
 "peek"                  TOKEN( T_PEEK )
 "poke"                  TOKEN( T_POKE )
 "mask"                  TOKEN( T_MASK )

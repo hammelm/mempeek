@@ -20,6 +20,7 @@ void yyerror( yyscan_t, ASTNode**, const char* ) { throw ASTExceptionSyntaxError
 
 %token T_DEF T_FROM
 %token T_MAP
+%token T_IMPORT
 %token T_PEEK
 %token T_POKE T_MASK
 %token T_IF T_THEN T_ELSE T_ENDIF
@@ -58,6 +59,7 @@ block : statement                                       { $$.node = new ASTNodeB
 toplevel_statement : statement                          { $$.node = $1.node; }
                    | map_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
                    | def_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
+                   | import_stmt T_END_OF_STATEMENT     { $$.node = $1.node; }
                    ;
 
 statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
@@ -110,6 +112,9 @@ def_stmt : T_DEF plain_identifier expression                            { $$.nod
 map_stmt : T_MAP T_CONSTANT T_CONSTANT                  { $$.node = new ASTNodeMap( $2.value, $3.value ); }
          | T_MAP T_CONSTANT T_CONSTANT T_STRING         { $$.node = new ASTNodeMap( $2.value, $3.value, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
+
+import_stmt : T_IMPORT T_STRING                         { $$.node = new ASTNodeImport( $2.value.substr( 1, $2.value.length() - 2 ) ); }
+            ;
 
 poke_stmt : poke_token expression expression                        { $$.node = new ASTNodePoke( $2.node, $3.node, $1.token ); }
           | poke_token expression expression T_MASK expression      { $$.node = new ASTNodePoke( $2.node, $3.node, $5.node, $1.token ); }

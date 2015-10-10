@@ -38,6 +38,7 @@ class ASTExceptionSyntaxError : public ASTCompileException {};
 class ASTExceptionNamingConflict : public ASTCompileException {};
 class ASTExceptionUndefinedVar : public ASTCompileException {};
 class ASTExceptionMappingFailure : public ASTCompileException {};
+class ASTExceptionFileNotFound : public ASTCompileException {};
 
 class ASTExceptionDivisionByZero : public ASTRuntimeException {};
 class ASTExceptionNoMapping : public ASTRuntimeException {};
@@ -56,6 +57,8 @@ public:
 	void add_child( ASTNode* node );
 
 	virtual uint64_t execute() = 0;
+
+	static ASTNode* parse( const char* str, bool is_file );
 
 	static int get_default_size();
 
@@ -281,8 +284,18 @@ public:
     ASTNodeMap( std::string address, std::string size, std::string device );
 
 	uint64_t execute() override;
+};
 
-private:
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeImport
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeImport : public ASTNode {
+public:
+	ASTNodeImport( std::string file );
+
+	uint64_t execute() override;
 };
 
 

@@ -12,7 +12,8 @@ assigning values to definition variables:
 
         Clone all derived definition variables name.x to base.x and assign them
         to the new base value <expression>
-        This operation is not allowed within for loops, while loops, and if statements
+        
+    These operations are not allowed within for loops, while loops, and if statements
 
 
 assigning values to variables:
@@ -146,6 +147,7 @@ while loops:
         When a newline is found, all commands until the next "endwhile" keyword are executed.
         When a "break" keyword is encountered within the loop, the loop is left immediately.
 
+
 output:
 
     print [<modifier>] (<expression> | "string") ... [noendl]
@@ -189,13 +191,19 @@ memory access:
 
 other commands:
 
-     sleep <time>
+    import "file"
+    
+        Execute the content of "file". All mappings, variable definitions, and assignments are
+        imported in the current scope. A break command in the imported file file stop execution
+        and return to the current scope.
 
-         Suspend execution for <time> microseconds
+    sleep <time>
 
-     quit
+        Suspend execution for <time> microseconds
 
-         Terminate a program
+    quit
+
+        Terminate a program
 
 
 comments, whitespace, newline:

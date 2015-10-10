@@ -1,11 +1,13 @@
 #include "mempeek_parser.h"
 #include "parser.h"
+#include "lexer.h"
 
 #include <iostream>
 #include <sstream>
 #include <iomanip>
 #include <typeinfo>
 
+#include <stdio.h>
 #include <time.h>
 #include <errno.h>
 
@@ -32,6 +34,9 @@ volatile bool ASTNode::s_IsTerminated = false;
 
 ASTNode::~ASTNode()
 {
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: destructing" << endl;
+#endif
 	for( ASTNode* child: m_Children ) {
 		delete child;
 	}
@@ -70,10 +75,48 @@ int ASTNode::get_default_size()
 {
 	switch( sizeof(long) ) {
 	case 2: return T_16BIT;
-	case 4: return T_32BIT;
 	case 8: return T_64BIT;
-	default: return 0;
+	default: return T_32BIT;
 	}
+}
+
+ASTNode* ASTNode::parse( const char* str, bool is_file )
+{
+    ASTNode* yyroot = nullptr;
+
+    FILE* file;
+    if( is_file ) {
+        file = fopen( str, "r" );
+        if( !file ) throw ASTExceptionFileNotFound();
+    }
+
+    yyscan_t scanner;
+    yylex_init( &scanner );
+
+    YY_BUFFER_STATE lex_buffer;
+    if( is_file ) lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
+    else lex_buffer = yy_scan_string( str, scanner );
+
+    yy_switch_to_buffer( lex_buffer, scanner );
+
+    try {
+        yyparse( scanner, &yyroot );
+    }
+    catch( ... ) {
+        yy_delete_buffer( lex_buffer, scanner );
+        yylex_destroy( scanner );
+
+        if( is_file  ) fclose( file );
+
+        throw;
+    }
+
+    yy_delete_buffer( lex_buffer, scanner );
+    yylex_destroy( scanner );
+
+    if( is_file  ) fclose( file );
+
+    return yyroot;
 }
 
 
@@ -671,6 +714,38 @@ uint64_t ASTNodeMap::execute()
 #endif
 
 	// nothing to do
+
+	return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeImport implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeImport::ASTNodeImport( std::string file )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeImport file=" << file << endl;
+#endif
+
+	ASTNode* yyroot = ASTNode::parse( file.c_str(), true );
+
+	add_child( yyroot );
+}
+
+uint64_t ASTNodeImport::execute()
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: executing ASTNodeImport" << endl;
+#endif
+
+	try {
+		get_children()[0]->execute();
+	}
+	catch( ASTExceptionBreak& ) {
+		// nothing to do
+	}
 
 	return 0;
 }

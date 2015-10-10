@@ -1,15 +1,8 @@
-#include "mempeek_parser.h"
-
-#include "parser.h"
-#include "lexer.h"
-
 #include "mempeek_ast.h"
 #include "console.h"
 
 #include <iostream>
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <signal.h>
 
 using namespace std;
@@ -22,34 +15,19 @@ static void signal_handler( int )
 
 static void parse( const char* str, bool is_file )
 {
-	yyscan_t scanner;
-    yylex_init( &scanner );
-
-    YY_BUFFER_STATE lex_buffer;
-    FILE* file;
-    if( is_file ) {
-        file = fopen( str, "r" );
-    	lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
-    }
-    else lex_buffer = yy_scan_string( str, scanner );
-    yy_switch_to_buffer( lex_buffer, scanner );
-
-    ASTNode* yyroot = nullptr;
-
     ASTNode::clear_terminate();
     signal( SIGABRT, signal_handler );
     signal( SIGINT, signal_handler );
     signal( SIGTERM, signal_handler );
 
     try {
-        yyparse( scanner, &yyroot );
+        ASTNode* yyroot = ASTNode::parse( str, is_file );
 
-        if( yyroot ) {
 #ifdef ASTDEBUG
-            cout << "executing ASTNode[" << yyroot << "]" << endl;
+		cout << "executing ASTNode[" << yyroot << "]" << endl;
 #endif
-            yyroot->execute();
-        }
+		yyroot->execute();
+		delete yyroot;
     }
     catch( ASTExceptionBreak& ) {
         // nothing to do
@@ -63,17 +41,17 @@ static void parse( const char* str, bool is_file )
     catch( const ASTRuntimeException& ex ) {
         cerr << "runtime error: " << ex.what() << endl;
     }
+    catch( ... ) {
+        signal( SIGABRT, SIG_DFL );
+        signal( SIGINT, SIG_DFL );
+        signal( SIGTERM, SIG_DFL );
+
+        throw;
+    }
 
     signal( SIGABRT, SIG_DFL );
     signal( SIGINT, SIG_DFL );
     signal( SIGTERM, SIG_DFL );
-
-    if( yyroot ) delete yyroot;
-
-    yy_delete_buffer( lex_buffer, scanner );
-    yylex_destroy( scanner );
-
-    if( is_file  ) fclose( file );
 }
 
 int main( int argc, char** argv )
