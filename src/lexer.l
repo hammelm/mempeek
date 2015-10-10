@@ -54,6 +54,7 @@
 "-"                     TOKEN( T_MINUS )
 "*"                     TOKEN( T_MUL )
 "/"                     TOKEN( T_DIV )
+"%"                     TOKEN( T_MOD )
 "<<"                    TOKEN( T_LSHIFT )
 ">>"                    TOKEN( T_RSHIFT )
 

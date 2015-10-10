@@ -34,7 +34,7 @@ extern ASTNode* yyroot;
 %define api.value.type { yyvalue_t }
 
 %token T_DEF T_FROM
-%token T_MAP T_SIZE
+%token T_MAP
 %token T_PEEK
 %token T_POKE T_MASK
 %token T_IF T_THEN T_ELSE T_ENDIF
@@ -44,22 +44,16 @@ extern ASTNode* yyroot;
 %token T_SLEEP
 %token T_BREAK T_QUIT
 
+%token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR 
+%token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
+%token T_LT T_GT T_LE T_GE T_EQ T_NE
+%token T_ASSIGN
+
 %token T_8BIT T_16BIT T_32BIT T_64BIT
 
 %token T_IDENTIFIER T_CONSTANT T_STRING
 
 %token T_END_OF_STATEMENT
-
-%token T_BIT_NOT T_LOG_NOT
-%left T_BIT_AND T_LOG_AND
-%left T_BIT_XOR T_LOG_XOR
-%left T_BIT_OR T_LOG_OR 
-%left T_LSHIFT T_RSHIFT
-%left T_MUL T_DIV
-%left T_PLUS T_MINUS
-%left T_LT T_GT T_LE T_GE T_EQ T_NE
-
-%right T_ASSIGN
 
 %start start
 
@@ -172,14 +166,55 @@ print_size : T_8BIT                                     { $$.token = ASTNodePrin
 sleep_stmt : T_SLEEP expression                         { $$.node = new ASTNodeSleep( $2.node ); }
            ;
 
-expression : T_CONSTANT                                 { $$.node = new ASTNodeConstant( $1.value ); }
-           | identifier                                 { $$.node = $1.node; }
-           | expression binary_operator expression      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); }
-           | unary_operator expression                  { $$.node = new ASTNodeUnaryOperator( $2.node, $1.token ); }
-           | '(' expression ')'                         { $$.node = $2.node; }
-           | peek_token '(' expression ')'              { $$.node = new ASTNodePeek( $3.node, $1.token ); }
+expression : expression T_LOG_OR and_expr               { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+           | expression T_LOG_XOR and_expr              { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+           | and_expr                                   { $$.node = $1.node; }
            ;
-           
+
+and_expr : and_expr T_LOG_AND comp_expr                 { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+         | comp_expr                                    { $$.node = $1.node; }
+         ;
+
+comp_expr : add_expr T_LT add_expr                      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+          | add_expr T_GT add_expr                      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+          | add_expr T_LE add_expr                      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+          | add_expr T_GE add_expr                      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+          | add_expr T_EQ add_expr                      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+          | add_expr T_NE add_expr                      { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+          | add_expr                                    { $$.node = $1.node; }
+          ;
+
+add_expr : add_expr T_PLUS mul_expr                     { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+         | add_expr T_MINUS mul_expr                    { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+         | add_expr T_BIT_OR mul_expr                   { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+         | add_expr T_BIT_XOR mul_expr                  { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+         | mul_expr                                     { $$.node = $1.node; }
+         ;
+
+mul_expr : mul_expr T_MUL shift_expr                    { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+         | mul_expr T_DIV shift_expr                    { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); }
+         | mul_expr T_MOD shift_expr                    { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); }
+         | mul_expr T_BIT_AND shift_expr                { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); }
+         | shift_expr                                   { $$.node = $1.node; }
+         ; 
+
+shift_expr : shift_expr T_LSHIFT unary_expr             { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+           | shift_expr T_RSHIFT unary_expr             { $$.node = new ASTNodeBinaryOperator( $1.node, $3.node, $2.token ); } 
+           | unary_expr                                 { $$.node = $1.node; }
+           ;
+
+unary_expr : T_MINUS atomic_expr                        { $$.node = new ASTNodeUnaryOperator( $2.node, $1.token ); }
+           | T_BIT_NOT atomic_expr                      { $$.node = new ASTNodeUnaryOperator( $2.node, $1.token ); }
+           | T_LOG_NOT atomic_expr                      { $$.node = new ASTNodeUnaryOperator( $2.node, $1.token ); }
+           | atomic_expr                                { $$.node = $1.node; }
+           ;
+
+atomic_expr : T_CONSTANT                                { $$.node = new ASTNodeConstant( $1.value ); }
+            | identifier                                { $$.node = $1.node; }
+            | '(' expression ')'                        { $$.node = $2.node; }
+            | peek_token '(' expression ')'             { $$.node = new ASTNodePeek( $3.node, $1.token ); }
+            ;
+
 peek_token : T_PEEK                                     { $$.token = ASTNode::get_default_size(); }
            | T_PEEK size_suffix                         { $$.token = $2.token; }
            ;
@@ -201,13 +236,4 @@ struct_identifier : T_IDENTIFIER '.' T_IDENTIFIER       { $$.value = $1.value + 
 
 plain_identifier : T_IDENTIFIER
                  ;
-
-unary_operator : T_MINUS | T_BIT_NOT | T_LOG_NOT
-               ;
-
-binary_operator : T_PLUS | T_MINUS | T_MUL | T_DIV | T_LSHIFT | T_RSHIFT
-                | T_BIT_AND | T_BIT_OR | T_BIT_XOR | T_BIT_NOT
-                | T_LOG_AND | T_LOG_OR | T_LOG_XOR | T_LOG_NOT
-                | T_LT | T_GT | T_LE | T_GE | T_EQ | T_NE
-                ;
 %%

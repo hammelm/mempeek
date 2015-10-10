@@ -477,7 +477,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	switch( m_Modifier & MOD_TYPEMASK ) {
 	case MOD_HEX: {
 		const ios_base::fmtflags oldflags = out.flags( ios::hex | ios::right | ios::fixed );
-		out << "0x" << setw(size) << setfill('0') << value;
+		out << "0x" << setw( 2 * size ) << setfill('0') << value;
 		out.flags( oldflags );
 		break;
 	}
@@ -739,6 +739,7 @@ uint64_t ASTNodeBinaryOperator::execute()
 	case T_MINUS: return r0 - r1;
 	case T_MUL: return r0 * r1;
 	case T_DIV: if( r1 != 0 ) return r0 / r1; else throw ASTExceptionDivisionByZero();
+	case T_MOD: if( r1 != 0 ) return r0 % r1; else throw ASTExceptionDivisionByZero();
 	case T_LSHIFT: return r0 << r1;
 	case T_RSHIFT: return r0 >> r1;
 	case T_LT: return (r0 < r1) ? 0xffffffffffffffff : 0;
