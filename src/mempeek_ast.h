@@ -34,6 +34,7 @@ class ASTExceptionBreak : public ASTControlflowException {};
 class ASTExceptionQuit : public ASTControlflowException {};
 class ASTExceptionTerminate : public ASTControlflowException {};
 
+class ASTExceptionSyntaxError : public ASTCompileException {};
 class ASTExceptionNamingConflict : public ASTCompileException {};
 class ASTExceptionUndefinedVar : public ASTCompileException {};
 class ASTExceptionMappingFailure : public ASTCompileException {};

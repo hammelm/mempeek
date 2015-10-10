@@ -1,5 +1,7 @@
-#include "lexer.h"
+#include "mempeek_parser.h"
+
 #include "parser.h"
+#include "lexer.h"
 
 #include "mempeek_ast.h"
 #include "console.h"
@@ -18,15 +20,29 @@ static void signal_handler( int )
     ASTNode::set_terminate();
 }
 
-static void parse()
+static void parse( const char* str, bool is_file )
 {
+	yyscan_t scanner;
+    yylex_init( &scanner );
+
+    YY_BUFFER_STATE lex_buffer;
+    FILE* file;
+    if( is_file ) {
+        file = fopen( str, "r" );
+    	lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
+    }
+    else lex_buffer = yy_scan_string( str, scanner );
+    yy_switch_to_buffer( lex_buffer, scanner );
+
+    ASTNode* yyroot = nullptr;
+
     ASTNode::clear_terminate();
     signal( SIGABRT, signal_handler );
     signal( SIGINT, signal_handler );
     signal( SIGTERM, signal_handler );
 
     try {
-        yyparse();
+        yyparse( scanner, &yyroot );
 
         if( yyroot ) {
 #ifdef ASTDEBUG
@@ -52,10 +68,12 @@ static void parse()
     signal( SIGINT, SIG_DFL );
     signal( SIGTERM, SIG_DFL );
 
-    if( yyroot ) {
-        delete yyroot;
-        yyroot = nullptr;
-    }
+    if( yyroot ) delete yyroot;
+
+    yy_delete_buffer( lex_buffer, scanner );
+    yylex_destroy( scanner );
+
+    if( is_file  ) fclose( file );
 }
 
 int main( int argc, char** argv )
@@ -82,31 +100,16 @@ int main( int argc, char** argv )
 
                 // TODO: parser should treat EOF as end of statement
                 string cmd = string( argv[i] ) + '\n';
-                YY_BUFFER_STATE lex_buffer = yy_scan_string( cmd.c_str() );
-                yy_switch_to_buffer( lex_buffer );
-                parse();
-                yy_delete_buffer( lex_buffer );
-            }
-            else {
-                FILE* file = fopen( argv[i], "r" );
 
-                YY_BUFFER_STATE lex_buffer = yy_create_buffer( file, YY_BUF_SIZE );
-                yy_switch_to_buffer( lex_buffer );
-                parse();
-                yy_delete_buffer( lex_buffer );
-
-                fclose( file );
+                parse( cmd.c_str(), false );
             }
+            else parse( argv[i], true );
         }
 
         if( is_interactive ) {
             for(;;) {
                 string line = console.get_line();
-
-                YY_BUFFER_STATE lex_buffer = yy_scan_string( line.c_str() );
-                yy_switch_to_buffer( lex_buffer );
-                parse();
-                yy_delete_buffer( lex_buffer );
+                parse( line.c_str(), false );
             }
         }
     }

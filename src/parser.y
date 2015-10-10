@@ -3,35 +3,20 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "lexer.h"
-
-#include "mempeek_ast.h"
+#include "mempeek_parser.h"
 
 using namespace std;
 
-void yyerror( const char* s) { cerr << "ERROR: " << s << endl; }
+int yylex( yyvalue_t*, yyscan_t );
 
-ASTNode* yyroot = nullptr;
+void yyerror( yyscan_t, ASTNode**, const char* ) { throw ASTExceptionSyntaxError(); }
 
 %}
 
-%code requires {
-
-#include <string>
-
-class ASTNode;
-
-typedef struct {
-    std::string value = "";
-    int token = 0;
-    ASTNode* node = nullptr;
-} yyvalue_t;
-
-extern ASTNode* yyroot; 
-
-}
-
 %define api.value.type { yyvalue_t }
+%define api.pure full
+%parse-param { yyscan_t scanner } { ASTNode** yyroot }
+%lex-param { yyscan_t scanner }
 
 %token T_DEF T_FROM
 %token T_MAP
@@ -59,7 +44,7 @@ extern ASTNode* yyroot;
 
 %%
 
-start : toplevel_block                                  { yyroot = $1.node; }
+start : toplevel_block                                  { *yyroot = $1.node; }
       ;
 
 toplevel_block : toplevel_statement                     { $$.node = new ASTNodeBlock; $$.node->add_child( $1.node ); }

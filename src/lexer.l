@@ -1,10 +1,12 @@
 %{
+#include "mempeek_parser.h"
 #include "parser.h"
 
-#define TOKEN( t ) yylval.value = yytext; yylval.token = t; return t;
+#define TOKEN( t ) yylval_param->value = yytext; yylval_param->token = t; return t;
 %}
 
 %option noyywrap
+%option reentrant bison-bridge
 
 %%
 

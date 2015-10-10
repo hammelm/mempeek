@@ -1,4 +1,5 @@
-#include "mempeek_ast.h"
+#include "mempeek_parser.h"
+#include "parser.h"
 
 #include <iostream>
 #include <sstream>
@@ -7,8 +8,6 @@
 
 #include <time.h>
 #include <errno.h>
-
-#include "parser.h"
 
 using namespace std;
 
