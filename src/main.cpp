@@ -1,8 +1,14 @@
 #include "mempeek_ast.h"
 #include "console.h"
 
+#if defined( YYDEBUG ) && YYDEBUG != 0
+#include "mempeek_parser.h"
+#include "parser.h"
+#endif
+
 #include <iostream>
 
+#include <string.h>
 #include <signal.h>
 
 using namespace std;
@@ -65,26 +71,37 @@ int main( int argc, char** argv )
     MMap::enable_signal_handler();
 
     try {
-        bool is_interactive = true;
+        bool is_interactive = false;
+        bool has_commands = false;
+
         for( int i = 1; i < argc; i++ )
         {
-            if( string(argv[i]) == "-c" ) {
-                is_interactive = false;
-
+            if( strcmp( argv[i], "-i" ) == 0 ) is_interactive = true;
+            else if( strcmp( argv[i], "-I" ) == 0 ) {
                 if( ++i >= argc ) {
-                    cout << "missing command" << endl;
+                    cerr << "missing include path" << endl;
                     break;
                 }
 
+                ASTNode::add_include_path( argv[i] );
+            }
+            else if( strcmp( argv[i], "-c" ) == 0 ) {
+                if( ++i >= argc ) {
+                    cerr << "missing command" << endl;
+                    break;
+                }
                 // TODO: parser should treat EOF as end of statement
                 string cmd = string( argv[i] ) + '\n';
 
                 parse( cmd.c_str(), false );
+                has_commands = true;
             }
-            else parse( argv[i], true );
+            else {
+                parse( argv[i], true );
+            }
         }
 
-        if( is_interactive ) {
+        if( is_interactive || !has_commands ) {
             for(;;) {
                 string line = console.get_line();
                 parse( line.c_str(), false );

@@ -64,6 +64,8 @@ public:
 
 	static Environment& get_environment();
 
+	static void add_include_path( std::string path );
+
 	static void set_terminate();
     static void clear_terminate();
 	static bool is_terminated();
@@ -80,6 +82,8 @@ private:
 
 	static Environment s_Environment;
 	static volatile bool s_IsTerminated;
+
+	static std::vector< std::string > s_IncludePaths;
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
@@ -396,6 +400,11 @@ inline const ASTNode::nodelist_t& ASTNode::get_children()
 inline Environment& ASTNode::get_environment()
 {
 	return s_Environment;
+}
+
+inline void ASTNode::add_include_path( std::string path )
+{
+    s_IncludePaths.push_back( path );
 }
 
 inline void ASTNode::set_terminate()

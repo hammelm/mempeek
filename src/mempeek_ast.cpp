@@ -31,6 +31,8 @@ const char* ASTException::what() const noexcept
 Environment ASTNode::s_Environment;
 volatile bool ASTNode::s_IsTerminated = false;
 
+std::vector< std::string > ASTNode::s_IncludePaths;
+
 
 ASTNode::~ASTNode()
 {
@@ -83,10 +85,19 @@ int ASTNode::get_default_size()
 ASTNode* ASTNode::parse( const char* str, bool is_file )
 {
     ASTNode* yyroot = nullptr;
+    FILE* file = nullptr;
 
-    FILE* file;
     if( is_file ) {
         file = fopen( str, "r" );
+        if( !file ) {
+            for( string path: s_IncludePaths ) {
+                if( path.length() > 0 && path.back() != '/' ) path += '/';
+                path += str;
+                file = fopen( path.c_str(), "r" );
+                if( file ) break;
+            }
+        }
+
         if( !file ) throw ASTExceptionFileNotFound();
     }
 
@@ -94,7 +105,7 @@ ASTNode* ASTNode::parse( const char* str, bool is_file )
     yylex_init( &scanner );
 
     YY_BUFFER_STATE lex_buffer;
-    if( is_file ) lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
+    if( file ) lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
     else lex_buffer = yy_scan_string( str, scanner );
 
     yy_switch_to_buffer( lex_buffer, scanner );
@@ -114,7 +125,7 @@ ASTNode* ASTNode::parse( const char* str, bool is_file )
     yy_delete_buffer( lex_buffer, scanner );
     yylex_destroy( scanner );
 
-    if( is_file  ) fclose( file );
+    if( file  ) fclose( file );
 
     return yyroot;
 }
