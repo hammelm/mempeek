@@ -1,12 +1,12 @@
 #ifndef __mempeek_ast_h__
 #define __mempeek_ast_h__
 
+#include "mempeek_parser.h"
 #include "environment.h"
 
 #include <ostream>
 #include <string>
 #include <vector>
-#include <utility>
 
 #include <stdint.h>
 
@@ -16,49 +16,28 @@
 
 
 //////////////////////////////////////////////////////////////////////////////
-// ASTNode exceptions
-//////////////////////////////////////////////////////////////////////////////
-
-// TODO: add more exact information about failure to exception classes
-
-class ASTException : public std::exception {
-public:
-    const char* what() const noexcept override;
-};
-
-class ASTControlflowException : public ASTException {};
-class ASTCompileException : public ASTException {};
-class ASTRuntimeException : public ASTException {};
-
-class ASTExceptionBreak : public ASTControlflowException {};
-class ASTExceptionQuit : public ASTControlflowException {};
-class ASTExceptionTerminate : public ASTControlflowException {};
-
-class ASTExceptionSyntaxError : public ASTCompileException {};
-class ASTExceptionNamingConflict : public ASTCompileException {};
-class ASTExceptionUndefinedVar : public ASTCompileException {};
-class ASTExceptionMappingFailure : public ASTCompileException {};
-class ASTExceptionFileNotFound : public ASTCompileException {};
-
-class ASTExceptionDivisionByZero : public ASTRuntimeException {};
-class ASTExceptionNoMapping : public ASTRuntimeException {};
-class ASTExceptionBusError : public ASTRuntimeException {};
-
-
-//////////////////////////////////////////////////////////////////////////////
 // class ASTNode
 //////////////////////////////////////////////////////////////////////////////
 
 class ASTNode {
 public:
-	ASTNode() {}
+	typedef struct {
+		std::string file;
+		int first_line;
+		int last_line;
+	} location_t;
+
+	ASTNode( const yylloc_t* yylloc );
 	virtual ~ASTNode();
+
+	const ASTNode::location_t& get_location();
 
 	void add_child( ASTNode* node );
 
 	virtual uint64_t execute() = 0;
 
 	static ASTNode* parse( const char* str, bool is_file );
+	static ASTNode* parse( const location_t& location, const char* str, bool is_file );
 
 	static int get_default_size();
 
@@ -80,6 +59,8 @@ protected:
 private:
 	nodelist_t m_Children;
 
+	location_t m_Location;
+
 	static Environment s_Environment;
 	static volatile bool s_IsTerminated;
 
@@ -96,7 +77,7 @@ private:
 
 class ASTNodeBreak : public ASTNode {
 public:
-    ASTNodeBreak( int token );
+    ASTNodeBreak( const yylloc_t* yylloc, int token );
 
     uint64_t execute() override;
 
@@ -111,7 +92,7 @@ private:
 
 class ASTNodeBlock : public ASTNode {
 public:
-	ASTNodeBlock();
+	ASTNodeBlock( const yylloc_t* yylloc );
 
 	uint64_t execute() override;
 };
@@ -123,7 +104,7 @@ public:
 
 class ASTNodeAssign : public ASTNode {
 public:
-    ASTNodeAssign( std::string name, ASTNode* expression );
+    ASTNodeAssign( const yylloc_t* yylloc, std::string name, ASTNode* expression );
 
     uint64_t execute() override;
 
@@ -140,8 +121,8 @@ private:
 
 class ASTNodeIf : public ASTNode {
 public:
-	ASTNodeIf( ASTNode* condition, ASTNode* then_block );
-	ASTNodeIf( ASTNode* condition, ASTNode* then_block, ASTNode* else_block  );
+	ASTNodeIf( const yylloc_t* yylloc, ASTNode* condition, ASTNode* then_block );
+	ASTNodeIf( const yylloc_t* yylloc, ASTNode* condition, ASTNode* then_block, ASTNode* else_block  );
 
 	uint64_t execute() override;
 };
@@ -153,7 +134,7 @@ public:
 
 class ASTNodeWhile : public ASTNode {
 public:
-	ASTNodeWhile( ASTNode* condition, ASTNode* block );
+	ASTNodeWhile( const yylloc_t* yylloc, ASTNode* condition, ASTNode* block );
 
 	uint64_t execute() override;
 };
@@ -165,8 +146,8 @@ public:
 
 class ASTNodeFor : public ASTNode {
 public:
-    ASTNodeFor( ASTNodeAssign* var, ASTNode* to );
-    ASTNodeFor( ASTNodeAssign* var, ASTNode* to, ASTNode* step );
+    ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign* var, ASTNode* to );
+    ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign* var, ASTNode* to, ASTNode* step );
 
     uint64_t execute() override;
 
@@ -181,7 +162,7 @@ private:
 
 class ASTNodePeek : public ASTNode {
 public:
-	ASTNodePeek( ASTNode* address, int size_restriction );
+	ASTNodePeek( const yylloc_t* yylloc, ASTNode* address, int size_restriction );
 
 	uint64_t execute() override;
 
@@ -198,8 +179,8 @@ private:
 
 class ASTNodePoke : public ASTNode {
 public:
-	ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction );
-	ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction );
+	ASTNodePoke( const yylloc_t* yylloc, ASTNode* address, ASTNode* value, int size_restriction );
+	ASTNodePoke( const yylloc_t* yylloc, ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction );
 
 	uint64_t execute() override;
 
@@ -231,9 +212,9 @@ public:
 		MOD_TYPEMASK = 0x0f
 	};
 
-	ASTNodePrint();
-	ASTNodePrint( std::string text );
-	ASTNodePrint( ASTNode* expression, int modifier );
+	ASTNodePrint( const yylloc_t* yylloc );
+	ASTNodePrint( const yylloc_t* yylloc, std::string text );
+	ASTNodePrint( const yylloc_t* yylloc, ASTNode* expression, int modifier );
 
 	uint64_t execute() override;
 
@@ -253,7 +234,7 @@ private:
 
 class ASTNodeSleep : public ASTNode {
 public:
-    ASTNodeSleep( ASTNode* expression );
+    ASTNodeSleep( const yylloc_t* yylloc, ASTNode* expression );
 
     uint64_t execute() override;
 };
@@ -265,8 +246,8 @@ public:
 
 class ASTNodeDef : public ASTNode {
 public:
-	ASTNodeDef( std::string name, ASTNode* address );
-	ASTNodeDef( std::string name, ASTNode* address, std::string from );
+	ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode* address );
+	ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode* address, std::string from );
 
 	uint64_t execute() override;
 
@@ -284,8 +265,8 @@ private:
 
 class ASTNodeMap : public ASTNode {
 public:
-	ASTNodeMap( std::string address, std::string size );
-    ASTNodeMap( std::string address, std::string size, std::string device );
+	ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size );
+    ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size, std::string device );
 
 	uint64_t execute() override;
 };
@@ -297,7 +278,7 @@ public:
 
 class ASTNodeImport : public ASTNode {
 public:
-	ASTNodeImport( std::string file );
+	ASTNodeImport( const yylloc_t* yylloc, std::string file );
 
 	uint64_t execute() override;
 };
@@ -309,7 +290,7 @@ public:
 
 class ASTNodeUnaryOperator : public ASTNode {
 public:
-	ASTNodeUnaryOperator( ASTNode* expression, int op );
+	ASTNodeUnaryOperator( const yylloc_t* yylloc, ASTNode* expression, int op );
 
 	uint64_t execute() override;
 
@@ -324,7 +305,7 @@ private:
 
 class ASTNodeBinaryOperator : public ASTNode {
 public:
-	ASTNodeBinaryOperator( ASTNode* expression1, ASTNode* expression2, int op );
+	ASTNodeBinaryOperator( const yylloc_t* yylloc, ASTNode* expression1, ASTNode* expression2, int op );
 
 	uint64_t execute() override;
 
@@ -339,7 +320,7 @@ private:
 
 class ASTNodeRestriction : public ASTNode {
 public:
-	ASTNodeRestriction( ASTNode* node, int size_restriction );
+	ASTNodeRestriction( const yylloc_t* yylloc, ASTNode* node, int size_restriction );
 
 	uint64_t execute() override;
 
@@ -354,8 +335,8 @@ private:
 
 class ASTNodeVar : public ASTNode {
 public:
-	ASTNodeVar( std::string name );
-	ASTNodeVar( std::string name, ASTNode* index );
+	ASTNodeVar( const yylloc_t* yylloc, std::string name );
+	ASTNodeVar( const yylloc_t* yylloc, std::string name, ASTNode* index );
 
 	uint64_t execute() override;
 
@@ -370,7 +351,7 @@ private:
 
 class ASTNodeConstant : public ASTNode {
 public:
-	ASTNodeConstant( std::string str );
+	ASTNodeConstant( const yylloc_t* yylloc, std::string str );
 
 	uint64_t execute() override;
 
@@ -382,6 +363,11 @@ private:
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNode inline functions
 //////////////////////////////////////////////////////////////////////////////
+
+inline const ASTNode::location_t& ASTNode::get_location()
+{
+	return m_Location;
+}
 
 inline void ASTNode::add_child( ASTNode* node )
 {

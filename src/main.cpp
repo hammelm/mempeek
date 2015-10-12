@@ -1,4 +1,5 @@
 #include "mempeek_ast.h"
+#include "mempeek_exceptions.h"
 #include "console.h"
 
 #if defined( YYDEBUG ) && YYDEBUG != 0
@@ -42,10 +43,10 @@ static void parse( const char* str, bool is_file )
         cout << endl << "terminated execution" << endl;
     }
     catch( const ASTCompileException& ex ) {
-        cerr << "compile error: " << ex.what() << endl;
+        cerr << ex.get_location() << "compile error: " << ex.what() << endl;
     }
     catch( const ASTRuntimeException& ex ) {
-        cerr << "runtime error: " << ex.what() << endl;
+        cerr << ex.get_location() << "runtime error: " << ex.what() << endl;
     }
     catch( ... ) {
         signal( SIGABRT, SIG_DFL );

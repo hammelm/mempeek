@@ -2,7 +2,7 @@ GXX = $(CROSS_COMPILE)g++
 FLEX = flex
 BISON = bison
 
-OBJS = main.o console.o mmap.o lexer.o parser.o environment.o mempeek_ast.o
+OBJS = main.o console.o mmap.o lexer.o parser.o environment.o mempeek_ast.o mempeek_exceptions.o
 GENERATED = lexer.cpp parser.cpp
 
 DEFINES = 

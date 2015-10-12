@@ -1,27 +1,19 @@
+#include "mempeek_ast.h"
+
+#include "mempeek_exceptions.h"
 #include "mempeek_parser.h"
 #include "parser.h"
 #include "lexer.h"
 
 #include <iostream>
-#include <sstream>
 #include <iomanip>
-#include <typeinfo>
 
 #include <stdio.h>
+#include <ctype.h>
 #include <time.h>
 #include <errno.h>
 
 using namespace std;
-
-
-//////////////////////////////////////////////////////////////////////////////
-// ASTNode exceptions
-//////////////////////////////////////////////////////////////////////////////
-
-const char* ASTException::what() const noexcept
-{
-    return typeid( *this ).name();
-}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -33,6 +25,20 @@ volatile bool ASTNode::s_IsTerminated = false;
 
 std::vector< std::string > ASTNode::s_IncludePaths;
 
+
+ASTNode::ASTNode( const yylloc_t* yylloc )
+{
+	if( yylloc ) {
+		m_Location.file = yylloc->file ? yylloc->file : "";
+		m_Location.first_line = yylloc->first_line;
+		m_Location.last_line = yylloc->last_line;
+	}
+	else {
+		m_Location.file = "";
+		m_Location.first_line = 0;
+		m_Location.last_line = 0;
+	}
+}
 
 ASTNode::~ASTNode()
 {
@@ -84,6 +90,12 @@ int ASTNode::get_default_size()
 
 ASTNode* ASTNode::parse( const char* str, bool is_file )
 {
+	location_t location = { "", 0, 0 };
+	return parse( location, str, is_file );
+}
+
+ASTNode* ASTNode::parse( const location_t& location, const char* str, bool is_file )
+{
     ASTNode* yyroot = nullptr;
     FILE* file = nullptr;
 
@@ -98,11 +110,12 @@ ASTNode* ASTNode::parse( const char* str, bool is_file )
             }
         }
 
-        if( !file ) throw ASTExceptionFileNotFound();
+        if( !file ) throw ASTExceptionFileNotFound( location, str );
     }
 
     yyscan_t scanner;
     yylex_init( &scanner );
+    yyset_extra( is_file ? str : nullptr, scanner );
 
     YY_BUFFER_STATE lex_buffer;
     if( file ) lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
@@ -135,8 +148,9 @@ ASTNode* ASTNode::parse( const char* str, bool is_file )
 // class ASTNodeBreak
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeBreak::ASTNodeBreak( int token )
- : m_Token( token )
+ASTNodeBreak::ASTNodeBreak( const yylloc_t* yylloc, int token )
+ : ASTNode( yylloc ),
+   m_Token( token )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeBreak token=" << token << endl;
@@ -161,7 +175,8 @@ uint64_t ASTNodeBreak::execute()
 // class ASTNodeBlock implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeBlock::ASTNodeBlock()
+ASTNodeBlock::ASTNodeBlock( const yylloc_t* yylloc )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeBlock" << endl;
@@ -187,7 +202,8 @@ uint64_t ASTNodeBlock::execute()
 // class ASTNodeIf implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeIf::ASTNodeIf( ASTNode* condition, ASTNode* then_block )
+ASTNodeIf::ASTNodeIf( const yylloc_t* yylloc, ASTNode* condition, ASTNode* then_block )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeIf condition=[" << condition
@@ -198,7 +214,8 @@ ASTNodeIf::ASTNodeIf( ASTNode* condition, ASTNode* then_block )
 	add_child( then_block );
 }
 
-ASTNodeIf::ASTNodeIf( ASTNode* condition, ASTNode* then_block, ASTNode* else_block )
+ASTNodeIf::ASTNodeIf( const yylloc_t* yylloc, ASTNode* condition, ASTNode* then_block, ASTNode* else_block )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeIf condition=[" << condition
@@ -231,7 +248,8 @@ uint64_t ASTNodeIf::execute()
 // class ASTNodeWhile implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeWhile::ASTNodeWhile( ASTNode* condition, ASTNode* block )
+ASTNodeWhile::ASTNodeWhile( const yylloc_t* yylloc, ASTNode* condition, ASTNode* block )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeWhile condition=[" << condition << "] block=[" << block << "]" << endl;
@@ -267,7 +285,8 @@ uint64_t ASTNodeWhile::execute()
 // class ASTNodeFor
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeFor::ASTNodeFor( ASTNodeAssign* var, ASTNode* to )
+ASTNodeFor::ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign* var, ASTNode* to )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeFor var=[" << var << "] to=[" << to << "]" << endl;
@@ -279,7 +298,8 @@ ASTNodeFor::ASTNodeFor( ASTNodeAssign* var, ASTNode* to )
     add_child( to );
 }
 
-ASTNodeFor::ASTNodeFor( ASTNodeAssign* var, ASTNode* to, ASTNode* step )
+ASTNodeFor::ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign* var, ASTNode* to, ASTNode* step )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeFor var=[" << var << "] to=[" << to << "] step=[" << step << "]" << endl;
@@ -317,8 +337,9 @@ uint64_t ASTNodeFor::execute()
 // class ASTNodePeek implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodePeek::ASTNodePeek( ASTNode* address, int size_restriction )
- : m_SizeRestriction( size_restriction )
+ASTNodePeek::ASTNodePeek( const yylloc_t* yylloc, ASTNode* address, int size_restriction )
+ : ASTNode( yylloc ),
+   m_SizeRestriction( size_restriction )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePeek address=[" << address << "] restriction=";
@@ -356,10 +377,10 @@ uint64_t ASTNodePeek::peek()
 	void* address = (void*)get_children()[0]->execute();
 	MMap* mmap = get_environment().get_mapping( address, sizeof(T) );
 
-    if( !mmap ) throw ASTExceptionNoMapping();
+    if( !mmap ) throw ASTExceptionNoMapping( get_location(), address, sizeof(T) );
 
     uint64_t ret = mmap->peek<T>( address );
-    if( mmap->has_failed() ) throw ASTExceptionBusError();
+    if( mmap->has_failed() ) throw ASTExceptionBusError( get_location(), address, sizeof(T) );
 
     return ret;
 }
@@ -369,8 +390,9 @@ uint64_t ASTNodePeek::peek()
 // class ASTNodePoke implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction )
- : m_SizeRestriction( size_restriction )
+ASTNodePoke::ASTNodePoke( const yylloc_t* yylloc, ASTNode* address, ASTNode* value, int size_restriction )
+ : ASTNode( yylloc ),
+   m_SizeRestriction( size_restriction )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePoke address=[" << address << "] value=[" << value << "] restriction=";
@@ -387,8 +409,9 @@ ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, int size_restriction
 	add_child( value );
 }
 
-ASTNodePoke::ASTNodePoke( ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction )
- : m_SizeRestriction( size_restriction )
+ASTNodePoke::ASTNodePoke( const yylloc_t* yylloc, ASTNode* address, ASTNode* value, ASTNode* mask, int size_restriction )
+ : ASTNode( yylloc ),
+   m_SizeRestriction( size_restriction )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePoke address=[" << address << "] value=[" << value
@@ -431,7 +454,7 @@ void ASTNodePoke::poke()
 
 	MMap* mmap = get_environment().get_mapping( address, sizeof(T) );
 
-	if( !mmap ) throw ASTExceptionNoMapping();
+	if( !mmap ) throw ASTExceptionNoMapping( get_location(), address, sizeof(T) );
 
 	if( get_children().size() == 2 ) mmap->poke<T>( address, value );
 	else {
@@ -440,7 +463,7 @@ void ASTNodePoke::poke()
 		mmap->set<T>( address, value & mask);
 	}
 
-    if( mmap->has_failed() ) throw ASTExceptionBusError();
+    if( mmap->has_failed() ) throw ASTExceptionBusError( get_location(), address, sizeof(T) );
 }
 
 
@@ -448,24 +471,27 @@ void ASTNodePoke::poke()
 // class ASTNodePrint implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodePrint::ASTNodePrint()
- : m_Text( "\n" )
+ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc )
+ : ASTNode( yylloc ),
+   m_Text( "\n" )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint newline" << endl;
 #endif
 }
 
-ASTNodePrint::ASTNodePrint( std::string text )
- : m_Text( text )
+ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc, std::string text )
+ : ASTNode( yylloc ),
+   m_Text( text )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint text=\"" << text << "\"" << endl;
 #endif
 }
 
-ASTNodePrint::ASTNodePrint( ASTNode* expression, int modifier )
- : m_Modifier( modifier )
+ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc, ASTNode* expression, int modifier )
+ : ASTNode( yylloc ),
+   m_Modifier( modifier )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
@@ -560,7 +586,8 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 // class ASTNodeSleep implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeSleep::ASTNodeSleep( ASTNode* expression )
+ASTNodeSleep::ASTNodeSleep( const yylloc_t* yylloc, ASTNode* expression )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeSleep expression=[" << expression << "]" << endl;
@@ -603,7 +630,8 @@ uint64_t ASTNodeSleep::execute()
 // class ASTNodeAssign implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeAssign::ASTNodeAssign( std::string name, ASTNode* expression )
+ASTNodeAssign::ASTNodeAssign( const yylloc_t* yylloc, std::string name, ASTNode* expression )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeAssign name=" << name << " expression=[" << expression << "]" << endl;
@@ -613,7 +641,7 @@ ASTNodeAssign::ASTNodeAssign( std::string name, ASTNode* expression )
 
 	add_child( expression );
 
-	if( !m_Var ) throw ASTExceptionNamingConflict();
+	if( !m_Var ) throw ASTExceptionNamingConflict( get_location(), name );
 }
 
 uint64_t ASTNodeAssign::execute()
@@ -633,7 +661,8 @@ uint64_t ASTNodeAssign::execute()
 // class ASTNodeDef implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression )
+ASTNodeDef::ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode* expression )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "]" << endl;
@@ -644,10 +673,11 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression )
 
 	add_child( expression );
 
-	if( !m_Def ) throw ASTExceptionNamingConflict();
+	if( !m_Def ) throw ASTExceptionNamingConflict( get_location(), name );
 }
 
-ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression, std::string from )
+ASTNodeDef::ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode* expression, std::string from )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "] from=" << from << endl;
@@ -660,8 +690,8 @@ ASTNodeDef::ASTNodeDef( std::string name, ASTNode* expression, std::string from 
 
 	add_child( expression );
 
-	if( !m_Def ) throw ASTExceptionNamingConflict();
-    if( !m_FromBase ) throw ASTExceptionUndefinedVar();
+	if( !m_Def ) throw ASTExceptionNamingConflict( get_location(), name );
+    if( !m_FromBase ) throw ASTExceptionUndefinedVar( get_location(), from );
 
     for( string member: get_environment().get_struct_members( from ) ) {
         Environment::var* dst = get_environment().alloc_def( name + '.' + member );
@@ -694,7 +724,8 @@ uint64_t ASTNodeDef::execute()
 // class ASTNodeMap implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeMap::ASTNodeMap( std::string address, std::string size )
+ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeMap address=" << address << " size=" << size << endl;
@@ -703,10 +734,13 @@ ASTNodeMap::ASTNodeMap( std::string address, std::string size )
 	uint64_t phys_addr = parse_int( address );
 	uint64_t mapping_size = parse_int( size );
 
-	if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) throw ASTExceptionMappingFailure();
+	if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) {
+		throw ASTExceptionMappingFailure( get_location(), address, size, "/dev/mem" );
+	}
 }
 
-ASTNodeMap::ASTNodeMap( std::string address, std::string size, std::string device )
+ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size, std::string device )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeMap address=" << address << " size=" << size << " device=" << device << endl;
@@ -715,7 +749,9 @@ ASTNodeMap::ASTNodeMap( std::string address, std::string size, std::string devic
     uint64_t phys_addr = parse_int( address );
     uint64_t mapping_size = parse_int( size );
 
-    if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) throw ASTExceptionMappingFailure();
+    if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) {
+    	throw ASTExceptionMappingFailure( get_location(), address, size, device );
+    }
 }
 
 uint64_t ASTNodeMap::execute()
@@ -734,14 +770,14 @@ uint64_t ASTNodeMap::execute()
 // class ASTNodeImport implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeImport::ASTNodeImport( std::string file )
+ASTNodeImport::ASTNodeImport( const yylloc_t* yylloc, std::string file )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeImport file=" << file << endl;
 #endif
 
-	ASTNode* yyroot = ASTNode::parse( file.c_str(), true );
-
+	ASTNode* yyroot = ASTNode::parse( get_location(), file.c_str(), true );
 	add_child( yyroot );
 }
 
@@ -766,8 +802,9 @@ uint64_t ASTNodeImport::execute()
 // class ASTNodeUnaryOperator implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeUnaryOperator::ASTNodeUnaryOperator( ASTNode* expression, int op )
- : m_Operator( op )
+ASTNodeUnaryOperator::ASTNodeUnaryOperator( const yylloc_t* yylloc, ASTNode* expression, int op )
+ : ASTNode( yylloc ),
+   m_Operator( op )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeUnaryOperator expression=[" << expression << "] operator=" << op << endl;
@@ -798,8 +835,9 @@ uint64_t ASTNodeUnaryOperator::execute()
 // class ASTNodeBinaryOperator implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeBinaryOperator::ASTNodeBinaryOperator( ASTNode* expression1, ASTNode* expression2, int op )
- : m_Operator( op )
+ASTNodeBinaryOperator::ASTNodeBinaryOperator( const yylloc_t* yylloc, ASTNode* expression1, ASTNode* expression2, int op )
+ : ASTNode( yylloc ),
+   m_Operator( op )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeBinaryOperator expression1=[" << expression1
@@ -823,8 +861,8 @@ uint64_t ASTNodeBinaryOperator::execute()
 	case T_PLUS: return r0 + r1;
 	case T_MINUS: return r0 - r1;
 	case T_MUL: return r0 * r1;
-	case T_DIV: if( r1 != 0 ) return r0 / r1; else throw ASTExceptionDivisionByZero();
-	case T_MOD: if( r1 != 0 ) return r0 % r1; else throw ASTExceptionDivisionByZero();
+	case T_DIV: if( r1 != 0 ) return r0 / r1; else throw ASTExceptionDivisionByZero( get_location() );
+	case T_MOD: if( r1 != 0 ) return r0 % r1; else throw ASTExceptionDivisionByZero( get_location() );
 	case T_LSHIFT: return r0 << r1;
 	case T_RSHIFT: return r0 >> r1;
 	case T_LT: return (r0 < r1) ? 0xffffffffffffffff : 0;
@@ -849,8 +887,9 @@ uint64_t ASTNodeBinaryOperator::execute()
 // class ASTNodeRestriction implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeRestriction::ASTNodeRestriction( ASTNode* node, int size_restriction )
- : m_SizeRestriction( size_restriction )
+ASTNodeRestriction::ASTNodeRestriction( const yylloc_t* yylloc, ASTNode* node, int size_restriction )
+ : ASTNode( yylloc ),
+   m_SizeRestriction( size_restriction )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeRestriction node=[" << node << "] restriction=";
@@ -890,7 +929,8 @@ uint64_t ASTNodeRestriction::execute()
 // class ASTNodeVar implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeVar::ASTNodeVar( std::string name )
+ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << endl;
@@ -898,10 +938,11 @@ ASTNodeVar::ASTNodeVar( std::string name )
 
 	m_Var = get_environment().get( name );
 
-    if( !m_Var ) throw ASTExceptionUndefinedVar();
+    if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
 }
 
-ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
+ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name, ASTNode* index )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << " index=[" << index << "]" << endl;
@@ -911,7 +952,7 @@ ASTNodeVar::ASTNodeVar( std::string name, ASTNode* index )
 
 	add_child( index );
 
-    if( !m_Var ) throw ASTExceptionUndefinedVar();
+    if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
 }
 
 uint64_t ASTNodeVar::execute()
@@ -932,7 +973,8 @@ uint64_t ASTNodeVar::execute()
 // class ASTNodeConstant implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeConstant::ASTNodeConstant( std::string str )
+ASTNodeConstant::ASTNodeConstant( const yylloc_t* yylloc, std::string str )
+ : ASTNode( yylloc )
 {
 	m_Value = parse_int( str );
 

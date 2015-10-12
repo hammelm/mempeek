@@ -2,11 +2,15 @@
 #include "mempeek_parser.h"
 #include "parser.h"
 
+#define YY_USER_ACTION yylloc->first_line = yylloc->last_line = yylineno; yylloc->file = yyget_extra( yyscanner );
+
 #define TOKEN( t ) yylval_param->value = yytext; yylval_param->token = t; return t;
 %}
 
 %option noyywrap
-%option reentrant bison-bridge
+%option yylineno
+%option reentrant bison-bridge bison-locations
+%option extra-type="const char*"
 
 %%
 
