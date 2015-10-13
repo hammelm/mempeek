@@ -99,6 +99,7 @@ int main( int argc, char** argv )
             }
             else {
                 parse( argv[i], true );
+                has_commands = true;
             }
         }
 
