@@ -80,6 +80,17 @@ void ASTException::msg( const char* msg )
     m_What = strcpy( new char[ strlen(msg) + 1 ], msg );
 }
 
+void ASTException::clone( const ASTException& ex )
+{
+    if( m_Location ) delete[] m_Location;
+    if( ex.m_Location ) m_Location = strcpy( new char[ strlen( ex.m_Location ) + 1 ], ex.m_Location );
+    else m_Location = nullptr;
+
+    if( m_What ) delete[] m_What;
+    if( ex.m_What ) m_What = strcpy( new char[ strlen( ex.m_What ) + 1 ], ex.m_What );
+    else m_What = nullptr;
+}
+
 void ASTException::create_msg( const char* msg, std::vector< std::string >& args )
 {
     string what = "";

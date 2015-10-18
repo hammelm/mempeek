@@ -29,6 +29,7 @@
 #include "mempeek_ast.h"
 
 #include <sstream>
+#include <iomanip>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,7 @@ public:
 protected:
     void loc( const ASTNode::location_t& location );
     void msg( const char* msg );
+    void clone( const ASTException& ex );
 
     template< typename... ARGS >
     void msg( const char* msg, ARGS... varargs );
@@ -122,11 +124,14 @@ public:
 
 class ASTExceptionMappingFailure : public ASTCompileException {
 public:
-	ASTExceptionMappingFailure( const ASTNode::location_t& location, std::string address,
-								std::string size, std::string device )
+	ASTExceptionMappingFailure( const ASTNode::location_t& location, uint64_t address,
+								uint64_t size, std::string device )
 	{
 		loc( location );
-		msg( "failed to map address range $0 size $1 of device \"$2\"", address, size, device );
+		std::ostringstream a, s;
+		a << std::hex << std::setw( sizeof(void*) * 2 ) << std::setfill( '0' ) << address;
+	    s << std::hex << std::setw( sizeof(void*) * 2 ) << std::setfill( '0' ) << size;
+		msg( "failed to map address range $0 size $1 of device \"$2\"", a.str(), s.str(), device );
 	}
 };
 
@@ -139,6 +144,22 @@ public:
 	}
 };
 
+class ASTExceptionNonconstExpression : public ASTCompileException {
+public:
+    ASTExceptionNonconstExpression( const ASTNode::location_t& location )
+    {
+        loc( location );
+        msg( "illegal usage of non-const expression" );
+    }
+};
+
+class ASTExceptionConstDivisionByZero : public ASTCompileException {
+public:
+    ASTExceptionConstDivisionByZero( const ASTException& ex )
+    {
+        clone( ex );
+    }
+};
 
 //////////////////////////////////////////////////////////////////////////////
 // ASTNode runtime exceptions

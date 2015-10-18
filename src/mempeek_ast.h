@@ -64,6 +64,8 @@ public:
 
 	virtual uint64_t execute() = 0;
 
+	bool is_constant();
+
 	static ASTNode::ptr parse( const char* str, bool is_file );
 	static ASTNode::ptr parse( const location_t& location, const char* str, bool is_file );
 
@@ -82,12 +84,14 @@ protected:
 
 	const nodelist_t& get_children();
 
-	static uint64_t parse_int( std::string str );
+	void set_constant();
 
 private:
 	nodelist_t m_Children;
 
 	location_t m_Location;
+
+	bool m_IsConstant = false;
 
 	static Environment s_Environment;
 	static volatile bool s_IsTerminated;
@@ -300,12 +304,6 @@ public:
 	ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr address, std::string from );
 
 	uint64_t execute() override;
-
-private:
-	Environment::var* m_Def;
-
-	const Environment::var* m_FromBase;
-	std::vector< std::pair< Environment::var*, const Environment::var* > > m_FromMembers;
 };
 
 
@@ -317,8 +315,8 @@ class ASTNodeMap : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeMap> ptr;
 
-	ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size );
-    ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size, std::string device );
+	ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size );
+    ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size, std::string device );
 
 	uint64_t execute() override;
 };
@@ -416,11 +414,14 @@ public:
     typedef std::shared_ptr<ASTNodeConstant> ptr;
 
 	ASTNodeConstant( const yylloc_t* yylloc, std::string str );
+    ASTNodeConstant( const yylloc_t* yylloc, uint64_t value );
 
 	uint64_t execute() override;
 
 private:
-	uint64_t m_Value;
+    static uint64_t parse_int( std::string str );
+
+    uint64_t m_Value;
 };
 
 
@@ -431,6 +432,11 @@ private:
 inline const ASTNode::location_t& ASTNode::get_location()
 {
 	return m_Location;
+}
+
+inline bool ASTNode::is_constant()
+{
+    return m_IsConstant;
 }
 
 inline void ASTNode::add_child( ASTNode::ptr node )
@@ -445,6 +451,11 @@ inline void ASTNode::add_child( ASTNode::ptr node )
 inline const ASTNode::nodelist_t& ASTNode::get_children()
 {
 	return m_Children;
+}
+
+inline void ASTNode::set_constant()
+{
+    m_IsConstant = true;
 }
 
 inline Environment& ASTNode::get_environment()

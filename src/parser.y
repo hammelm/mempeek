@@ -136,8 +136,8 @@ def_stmt : T_DEF plain_identifier expression                            { $$.nod
          | T_DEF plain_identifier expression T_FROM plain_identifier    { $$.node = make_shared<ASTNodeDef>( &@$, $2.value, $3.node, $5.value ); }
          ;
 
-map_stmt : T_MAP T_CONSTANT T_CONSTANT                  { $$.node = make_shared<ASTNodeMap>( &@$, $2.value, $3.value ); }
-         | T_MAP T_CONSTANT T_CONSTANT T_STRING         { $$.node = make_shared<ASTNodeMap>( &@$, $2.value, $3.value, $4.value.substr( 1, $4.value.length() - 2 ) ); }
+map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( &@$, $2.node, $3.node ); }
+         | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( &@$, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
 
 import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( &@$, $2.value.substr( 1, $2.value.length() - 2 ) ); }

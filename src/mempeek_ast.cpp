@@ -72,38 +72,9 @@ ASTNode::~ASTNode()
 #endif
 }
 
-uint64_t ASTNode::parse_int( string str )
-{
-	uint64_t value = 0;
-
-	if( str.length() > 2 )
-	{
-		if( str[0] == '0' && str[1] == 'b' ) {
-			for( size_t i = 2; i < str.length(); i++ ) {
-				value <<= 1;
-				if( str[i] == '1' ) value |= 1;
-				else if( str[i] != '0' ) return 0;
-			}
-			return value;
-		}
-
-		if( str[0] == '0' && str[1] == 'x' ) {
-			istringstream stream( str );
-			stream >> hex >> value;
-			if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-			else return 0;
-		}
-	}
-
-	istringstream stream( str );
-	stream >> dec >> value;
-	if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-	else return 0;
-}
-
 int ASTNode::get_default_size()
 {
-	switch( sizeof(long) ) {
+	switch( sizeof(void*) ) {
 	case 2: return T_16BIT;
 	case 8: return T_64BIT;
 	default: return T_32BIT;
@@ -661,7 +632,15 @@ ASTNodeAssign::ASTNodeAssign( const yylloc_t* yylloc, std::string name, ASTNode:
 
 	m_Var = get_environment().alloc_var( name );
 
-	add_child( expression );
+	if( expression->is_constant() ) {
+	    try {
+	        add_child( make_shared<ASTNodeConstant>( yylloc, expression->execute() ) );
+	    }
+	    catch( const ASTExceptionDivisionByZero& ex ) {
+	        throw ASTExceptionConstDivisionByZero( ex );
+	    }
+	}
+	else add_child( expression );
 
 	if( !m_Var ) throw ASTExceptionNamingConflict( get_location(), name );
 }
@@ -687,38 +666,53 @@ ASTNodeDef::ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr e
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "]" << endl;
+    cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "]" << endl;
 #endif
 
-	m_Def = get_environment().alloc_def( name );
-	m_FromBase = nullptr;
+    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
 
-	add_child( expression );
+    try {
+        const uint64_t value = expression->execute();
 
-	if( !m_Def ) throw ASTExceptionNamingConflict( get_location(), name );
+        Environment::var* def = get_environment().alloc_def( name );
+        if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
+        def->set( value );
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
+    }
 }
 
 ASTNodeDef::ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr expression, std::string from )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "] from=" << from << endl;
+    cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "] from=" << from << endl;
 #endif
 
-	m_Def = get_environment().alloc_def( name );
+    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
 
-	m_FromBase = get_environment().get( from );
-	if( m_FromBase && !m_FromBase->is_def() ) m_FromBase = nullptr;
+    try {
+        const uint64_t value = expression->execute();
 
-	add_child( expression );
+        Environment::var* def = get_environment().alloc_def( name );
+        if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
+        def->set( value );
 
-	if( !m_Def ) throw ASTExceptionNamingConflict( get_location(), name );
-    if( !m_FromBase ) throw ASTExceptionUndefinedVar( get_location(), from );
+        const Environment::var* from_base = get_environment().get( from );
+        if( !from_base || !from_base->is_def() ) throw ASTExceptionNamingConflict( get_location(), from );
 
-    for( string member: get_environment().get_struct_members( from ) ) {
-        Environment::var* dst = get_environment().alloc_def( name + '.' + member );
-        const Environment::var* src = get_environment().get( from + '.' + member );
-        m_FromMembers.push_back( make_pair( dst, src ) );
+        const uint64_t from_value = from_base->get();
+
+        for( string member: get_environment().get_struct_members( from ) ) {
+            Environment::var* dst = get_environment().alloc_def( name + '.' + member );
+            const Environment::var* src = get_environment().get( from + '.' + member );
+
+            dst->set( src->get() - from_value );
+        }
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
     }
 }
 
@@ -728,15 +722,7 @@ uint64_t ASTNodeDef::execute()
 	cerr << "AST[" << this << "]: executing ASTNodeDef" << endl;
 #endif
 
-	uint64_t value = get_children()[0]->execute();
-	if( m_Def ) m_Def->set( value );
-
-	if( m_FromBase ) {
-		uint64_t base = m_FromBase->get();
-		for( auto member: m_FromMembers ) {
-			member.first->set( member.second->get() - base );
-		}
-	}
+	// nothing to do
 
 	return 0;
 }
@@ -746,33 +732,49 @@ uint64_t ASTNodeDef::execute()
 // class ASTNodeMap implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size )
+ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodeMap address=" << address << " size=" << size << endl;
+    cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "]" << endl;
 #endif
 
-	uint64_t phys_addr = parse_int( address );
-	uint64_t mapping_size = parse_int( size );
+    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
+    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
 
-	if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) {
-		throw ASTExceptionMappingFailure( get_location(), address, size, "/dev/mem" );
-	}
+    try {
+        const uint64_t phys_addr = address->execute();
+        const uint64_t mapping_size = size->execute();
+
+        if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) {
+            throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, "/dev/mem" );
+        }
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
+    }
 }
 
-ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, std::string address, std::string size, std::string device )
+ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size, std::string device )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeMap address=" << address << " size=" << size << " device=" << device << endl;
+        cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "] device=" << device << endl;
 #endif
 
-    uint64_t phys_addr = parse_int( address );
-    uint64_t mapping_size = parse_int( size );
+    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
+    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
 
-    if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) {
-    	throw ASTExceptionMappingFailure( get_location(), address, size, device );
+    try {
+        const uint64_t phys_addr = address->execute();
+        const uint64_t mapping_size = size->execute();
+
+        if( !get_environment().map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) {
+            throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, device );
+        }
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
     }
 }
 
@@ -833,6 +835,8 @@ ASTNodeUnaryOperator::ASTNodeUnaryOperator( const yylloc_t* yylloc, ASTNode::ptr
 #endif
 
 	add_child( expression );
+
+	if( expression->is_constant() ) set_constant();
 }
 
 uint64_t ASTNodeUnaryOperator::execute()
@@ -868,6 +872,8 @@ ASTNodeBinaryOperator::ASTNodeBinaryOperator( const yylloc_t* yylloc, ASTNode::p
 
 	add_child( expression1 );
 	add_child( expression2 );
+
+	if( expression1->is_constant() && expression2->is_constant() ) set_constant();
 }
 
 uint64_t ASTNodeBinaryOperator::execute()
@@ -961,6 +967,8 @@ ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name )
 	m_Var = get_environment().get( name );
 
     if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
+
+    if( m_Var->is_def() ) set_constant();
 }
 
 ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name, ASTNode::ptr index )
@@ -975,6 +983,8 @@ ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name, ASTNode::ptr i
 	add_child( index );
 
     if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
+
+    if( m_Var->is_def() && index->is_constant() ) set_constant();
 }
 
 uint64_t ASTNodeVar::execute()
@@ -1003,6 +1013,20 @@ ASTNodeConstant::ASTNodeConstant( const yylloc_t* yylloc, std::string str )
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeConstant value=" << m_Value << endl;
 #endif
+
+	set_constant();
+}
+
+ASTNodeConstant::ASTNodeConstant( const yylloc_t* yylloc, uint64_t value )
+ : ASTNode( yylloc )
+{
+    m_Value = value;
+
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeConstant value=" << m_Value << endl;
+#endif
+
+    set_constant();
 }
 
 uint64_t ASTNodeConstant::execute()
@@ -1013,3 +1037,32 @@ uint64_t ASTNodeConstant::execute()
 
 	return m_Value;
 };
+
+uint64_t ASTNodeConstant::parse_int( string str )
+{
+    uint64_t value = 0;
+
+    if( str.length() > 2 )
+    {
+        if( str[0] == '0' && str[1] == 'b' ) {
+            for( size_t i = 2; i < str.length(); i++ ) {
+                value <<= 1;
+                if( str[i] == '1' ) value |= 1;
+                else if( str[i] != '0' ) return 0;
+            }
+            return value;
+        }
+
+        if( str[0] == '0' && str[1] == 'x' ) {
+            istringstream stream( str );
+            stream >> hex >> value;
+            if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
+            else return 0;
+        }
+    }
+
+    istringstream stream( str );
+    stream >> dec >> value;
+    if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
+    else return 0;
+}
