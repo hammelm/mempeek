@@ -870,10 +870,19 @@ ASTNodeBinaryOperator::ASTNodeBinaryOperator( const yylloc_t* yylloc, ASTNode::p
 	     << "] expression2=[" << expression2 << "] operator=" << op << endl;
 #endif
 
+    if( expression1->is_constant() && expression2->is_constant() ) set_constant();
+    else {
+        try {
+            if( expression1->is_constant() ) expression1 = make_shared<ASTNodeConstant>( yylloc, expression1->execute() );
+            if( expression2->is_constant() ) expression2 = make_shared<ASTNodeConstant>( yylloc, expression2->execute() );
+        }
+        catch( const ASTExceptionDivisionByZero& ex ) {
+            throw ASTExceptionConstDivisionByZero( ex );
+        }
+    }
+
 	add_child( expression1 );
 	add_child( expression2 );
-
-	if( expression1->is_constant() && expression2->is_constant() ) set_constant();
 }
 
 uint64_t ASTNodeBinaryOperator::execute()
