@@ -3,6 +3,7 @@
 *.cpp text
 *.l text
 *.y text
+*.mp eol=lf
 *.xml eol=lf
 *.bin -text
 Makefile eol=lf

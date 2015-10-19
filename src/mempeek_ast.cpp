@@ -51,19 +51,9 @@ volatile bool ASTNode::s_IsTerminated = false;
 std::vector< std::string > ASTNode::s_IncludePaths;
 
 
-ASTNode::ASTNode( const yylloc_t* yylloc )
-{
-	if( yylloc ) {
-		m_Location.file = yylloc->file ? yylloc->file : "";
-		m_Location.first_line = yylloc->first_line;
-		m_Location.last_line = yylloc->last_line;
-	}
-	else {
-		m_Location.file = "";
-		m_Location.first_line = 0;
-		m_Location.last_line = 0;
-	}
-}
+ASTNode::ASTNode( const yylloc_t& yylloc )
+ : m_Location( yylloc )
+{}
 
 ASTNode::~ASTNode()
 {
@@ -83,11 +73,11 @@ int ASTNode::get_default_size()
 
 ASTNode::ptr ASTNode::parse( const char* str, bool is_file )
 {
-	location_t location = { "", 0, 0 };
+	yylloc_t location = { "", 0, 0 };
 	return parse( location, str, is_file );
 }
 
-ASTNode::ptr ASTNode::parse( const location_t& location, const char* str, bool is_file )
+ASTNode::ptr ASTNode::parse( const yylloc_t& location, const char* str, bool is_file )
 {
     ASTNode::ptr yyroot = nullptr;
     FILE* file = nullptr;
@@ -108,7 +98,7 @@ ASTNode::ptr ASTNode::parse( const location_t& location, const char* str, bool i
 
     yyscan_t scanner;
     yylex_init( &scanner );
-    yyset_extra( is_file ? str : nullptr, scanner );
+    yyset_extra( is_file ? str : "", scanner );
 
     YY_BUFFER_STATE lex_buffer;
     if( file ) lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
@@ -141,7 +131,7 @@ ASTNode::ptr ASTNode::parse( const location_t& location, const char* str, bool i
 // class ASTNodeBreak
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeBreak::ASTNodeBreak( const yylloc_t* yylloc, int token )
+ASTNodeBreak::ASTNodeBreak( const yylloc_t& yylloc, int token )
  : ASTNode( yylloc ),
    m_Token( token )
 {
@@ -168,7 +158,7 @@ uint64_t ASTNodeBreak::execute()
 // class ASTNodeBlock implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeBlock::ASTNodeBlock( const yylloc_t* yylloc )
+ASTNodeBlock::ASTNodeBlock( const yylloc_t& yylloc )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -195,7 +185,7 @@ uint64_t ASTNodeBlock::execute()
 // class ASTNodeIf implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeIf::ASTNodeIf( const yylloc_t* yylloc, ASTNode::ptr condition, ASTNode::ptr then_block )
+ASTNodeIf::ASTNodeIf( const yylloc_t& yylloc, ASTNode::ptr condition, ASTNode::ptr then_block )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -207,7 +197,7 @@ ASTNodeIf::ASTNodeIf( const yylloc_t* yylloc, ASTNode::ptr condition, ASTNode::p
 	add_child( then_block );
 }
 
-ASTNodeIf::ASTNodeIf( const yylloc_t* yylloc, ASTNode::ptr condition, ASTNode::ptr then_block, ASTNode::ptr else_block )
+ASTNodeIf::ASTNodeIf( const yylloc_t& yylloc, ASTNode::ptr condition, ASTNode::ptr then_block, ASTNode::ptr else_block )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -241,7 +231,7 @@ uint64_t ASTNodeIf::execute()
 // class ASTNodeWhile implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeWhile::ASTNodeWhile( const yylloc_t* yylloc, ASTNode::ptr condition, ASTNode::ptr block )
+ASTNodeWhile::ASTNodeWhile( const yylloc_t& yylloc, ASTNode::ptr condition, ASTNode::ptr block )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -278,7 +268,7 @@ uint64_t ASTNodeWhile::execute()
 // class ASTNodeFor
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeFor::ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to )
+ASTNodeFor::ASTNodeFor( const yylloc_t& yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -291,7 +281,7 @@ ASTNodeFor::ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign::ptr var, ASTNode:
     add_child( to );
 }
 
-ASTNodeFor::ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to, ASTNode::ptr step )
+ASTNodeFor::ASTNodeFor( const yylloc_t& yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to, ASTNode::ptr step )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -330,7 +320,7 @@ uint64_t ASTNodeFor::execute()
 // class ASTNodePeek implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodePeek::ASTNodePeek( const yylloc_t* yylloc, ASTNode::ptr address, int size_restriction )
+ASTNodePeek::ASTNodePeek( const yylloc_t& yylloc, ASTNode::ptr address, int size_restriction )
  : ASTNode( yylloc ),
    m_SizeRestriction( size_restriction )
 {
@@ -383,7 +373,7 @@ uint64_t ASTNodePeek::peek()
 // class ASTNodePoke implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodePoke::ASTNodePoke( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr value, int size_restriction )
+ASTNodePoke::ASTNodePoke( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr value, int size_restriction )
  : ASTNode( yylloc ),
    m_SizeRestriction( size_restriction )
 {
@@ -402,7 +392,7 @@ ASTNodePoke::ASTNodePoke( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode:
 	add_child( value );
 }
 
-ASTNodePoke::ASTNodePoke( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr value, ASTNode::ptr mask, int size_restriction )
+ASTNodePoke::ASTNodePoke( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr value, ASTNode::ptr mask, int size_restriction )
  : ASTNode( yylloc ),
    m_SizeRestriction( size_restriction )
 {
@@ -464,7 +454,7 @@ void ASTNodePoke::poke()
 // class ASTNodePrint implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc )
+ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc )
  : ASTNode( yylloc ),
    m_Text( "\n" )
 {
@@ -473,7 +463,7 @@ ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc )
 #endif
 }
 
-ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc, std::string text )
+ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, std::string text )
  : ASTNode( yylloc ),
    m_Text( text )
 {
@@ -482,7 +472,7 @@ ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc, std::string text )
 #endif
 }
 
-ASTNodePrint::ASTNodePrint( const yylloc_t* yylloc, ASTNode::ptr expression, int modifier )
+ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier )
  : ASTNode( yylloc ),
    m_Modifier( modifier )
 {
@@ -579,7 +569,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 // class ASTNodeSleep implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeSleep::ASTNodeSleep( const yylloc_t* yylloc, ASTNode::ptr expression )
+ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -623,7 +613,7 @@ uint64_t ASTNodeSleep::execute()
 // class ASTNodeAssign implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeAssign::ASTNodeAssign( const yylloc_t* yylloc, std::string name, ASTNode::ptr expression )
+ASTNodeAssign::ASTNodeAssign( const yylloc_t& yylloc, std::string name, ASTNode::ptr expression )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -662,14 +652,14 @@ uint64_t ASTNodeAssign::execute()
 // class ASTNodeDef implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeDef::ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr expression )
+ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, std::string name, ASTNode::ptr expression )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "]" << endl;
 #endif
 
-    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
+    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( expression->get_location() );
 
     try {
         const uint64_t value = expression->execute();
@@ -683,14 +673,14 @@ ASTNodeDef::ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr e
     }
 }
 
-ASTNodeDef::ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr expression, std::string from )
+ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, std::string name, ASTNode::ptr expression, std::string from )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "] from=" << from << endl;
 #endif
 
-    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
+    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( expression->get_location() );
 
     try {
         const uint64_t value = expression->execute();
@@ -732,15 +722,15 @@ uint64_t ASTNodeDef::execute()
 // class ASTNodeMap implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size )
+ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr size )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "]" << endl;
 #endif
 
-    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
-    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
+    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( address->get_location() );
+    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( size->get_location() );
 
     try {
         const uint64_t phys_addr = address->execute();
@@ -755,15 +745,15 @@ ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::p
     }
 }
 
-ASTNodeMap::ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size, std::string device )
+ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr size, std::string device )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
         cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "] device=" << device << endl;
 #endif
 
-    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
-    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( get_location() );
+    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( address->get_location() );
+    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( size->get_location() );
 
     try {
         const uint64_t phys_addr = address->execute();
@@ -794,7 +784,7 @@ uint64_t ASTNodeMap::execute()
 // class ASTNodeImport implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeImport::ASTNodeImport( const yylloc_t* yylloc, std::string file )
+ASTNodeImport::ASTNodeImport( const yylloc_t& yylloc, std::string file )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -826,7 +816,7 @@ uint64_t ASTNodeImport::execute()
 // class ASTNodeUnaryOperator implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeUnaryOperator::ASTNodeUnaryOperator( const yylloc_t* yylloc, ASTNode::ptr expression, int op )
+ASTNodeUnaryOperator::ASTNodeUnaryOperator( const yylloc_t& yylloc, ASTNode::ptr expression, int op )
  : ASTNode( yylloc ),
    m_Operator( op )
 {
@@ -861,7 +851,7 @@ uint64_t ASTNodeUnaryOperator::execute()
 // class ASTNodeBinaryOperator implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeBinaryOperator::ASTNodeBinaryOperator( const yylloc_t* yylloc, ASTNode::ptr expression1, ASTNode::ptr expression2, int op )
+ASTNodeBinaryOperator::ASTNodeBinaryOperator( const yylloc_t& yylloc, ASTNode::ptr expression1, ASTNode::ptr expression2, int op )
  : ASTNode( yylloc ),
    m_Operator( op )
 {
@@ -873,8 +863,8 @@ ASTNodeBinaryOperator::ASTNodeBinaryOperator( const yylloc_t* yylloc, ASTNode::p
     if( expression1->is_constant() && expression2->is_constant() ) set_constant();
     else {
         try {
-            if( expression1->is_constant() ) expression1 = make_shared<ASTNodeConstant>( yylloc, expression1->execute() );
-            if( expression2->is_constant() ) expression2 = make_shared<ASTNodeConstant>( yylloc, expression2->execute() );
+            if( expression1->is_constant() ) expression1 = make_shared<ASTNodeConstant>( expression1->get_location(), expression1->execute() );
+            if( expression2->is_constant() ) expression2 = make_shared<ASTNodeConstant>( expression2->get_location(), expression2->execute() );
         }
         catch( const ASTExceptionDivisionByZero& ex ) {
             throw ASTExceptionConstDivisionByZero( ex );
@@ -924,7 +914,7 @@ uint64_t ASTNodeBinaryOperator::execute()
 // class ASTNodeRestriction implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeRestriction::ASTNodeRestriction( const yylloc_t* yylloc, ASTNode::ptr node, int size_restriction )
+ASTNodeRestriction::ASTNodeRestriction( const yylloc_t& yylloc, ASTNode::ptr node, int size_restriction )
  : ASTNode( yylloc ),
    m_SizeRestriction( size_restriction )
 {
@@ -966,7 +956,7 @@ uint64_t ASTNodeRestriction::execute()
 // class ASTNodeVar implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name )
+ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, std::string name )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -980,7 +970,7 @@ ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name )
     if( m_Var->is_def() ) set_constant();
 }
 
-ASTNodeVar::ASTNodeVar( const yylloc_t* yylloc, std::string name, ASTNode::ptr index )
+ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, std::string name, ASTNode::ptr index )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
@@ -1014,7 +1004,7 @@ uint64_t ASTNodeVar::execute()
 // class ASTNodeConstant implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeConstant::ASTNodeConstant( const yylloc_t* yylloc, std::string str )
+ASTNodeConstant::ASTNodeConstant( const yylloc_t& yylloc, std::string str )
  : ASTNode( yylloc )
 {
 	m_Value = parse_int( str );
@@ -1026,7 +1016,7 @@ ASTNodeConstant::ASTNodeConstant( const yylloc_t* yylloc, std::string str )
 	set_constant();
 }
 
-ASTNodeConstant::ASTNodeConstant( const yylloc_t* yylloc, uint64_t value )
+ASTNodeConstant::ASTNodeConstant( const yylloc_t& yylloc, uint64_t value )
  : ASTNode( yylloc )
 {
     m_Value = value;

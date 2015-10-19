@@ -42,7 +42,7 @@ typedef struct {
 } yyvalue_t;
 
 typedef struct {
-	const char* file;
+	std::string file;
 	int first_line;
 	int last_line;
 } yylloc_t;

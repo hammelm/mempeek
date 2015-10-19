@@ -47,7 +47,7 @@ public:
     const char* get_location() const;
 
 protected:
-    void loc( const ASTNode::location_t& location );
+    void loc( const yylloc_t& location );
     void msg( const char* msg );
     void clone( const ASTException& ex );
 
@@ -91,22 +91,16 @@ class ASTExceptionTerminate : public ASTControlflowException {};
 
 class ASTExceptionSyntaxError : public ASTCompileException {
 public:
-	ASTExceptionSyntaxError( const yylloc_t* yylloc )
+	ASTExceptionSyntaxError( const yylloc_t& location )
 	{
-		if( yylloc ) {
-			ASTNode::location_t location;
-			location.file = yylloc->file ? yylloc->file : "";
-			location.first_line = yylloc->first_line;
-			location.last_line = yylloc->last_line;
-			loc( location );
-		}
+		loc( location );
 		msg( "syntax error" );
 	}
 };
 
 class ASTExceptionNamingConflict : public ASTCompileException {
 public:
-	ASTExceptionNamingConflict( const ASTNode::location_t& location, std::string name )
+	ASTExceptionNamingConflict( const yylloc_t& location, std::string name )
 	{
 		loc( location );
 		msg( "conflicting name \"$0\"", name );
@@ -115,7 +109,7 @@ public:
 
 class ASTExceptionUndefinedVar : public ASTCompileException {
 public:
-	ASTExceptionUndefinedVar( const ASTNode::location_t& location, std::string name )
+	ASTExceptionUndefinedVar( const yylloc_t& location, std::string name )
 	{
 		loc( location );
 		msg( "using undefined var \"$0\"", name );
@@ -124,7 +118,7 @@ public:
 
 class ASTExceptionMappingFailure : public ASTCompileException {
 public:
-	ASTExceptionMappingFailure( const ASTNode::location_t& location, uint64_t address,
+	ASTExceptionMappingFailure( const yylloc_t& location, uint64_t address,
 								uint64_t size, std::string device )
 	{
 		loc( location );
@@ -137,7 +131,7 @@ public:
 
 class ASTExceptionFileNotFound : public ASTCompileException {
 public:
-	ASTExceptionFileNotFound( const ASTNode::location_t& location, const char* file )
+	ASTExceptionFileNotFound( const yylloc_t& location, const char* file )
 	{
 		loc( location );
 		msg( "file \"$0\" not found", file );
@@ -146,7 +140,7 @@ public:
 
 class ASTExceptionNonconstExpression : public ASTCompileException {
 public:
-    ASTExceptionNonconstExpression( const ASTNode::location_t& location )
+    ASTExceptionNonconstExpression( const yylloc_t& location )
     {
         loc( location );
         msg( "illegal usage of non-const expression" );
@@ -167,7 +161,7 @@ public:
 
 class ASTExceptionDivisionByZero : public ASTRuntimeException {
 public:
-	ASTExceptionDivisionByZero( const ASTNode::location_t& location )
+	ASTExceptionDivisionByZero( const yylloc_t& location )
 	{
 		loc( location );
 		msg( "division by zero" );
@@ -176,7 +170,7 @@ public:
 
 class ASTExceptionNoMapping : public ASTRuntimeException {
 public:
-	ASTExceptionNoMapping( const ASTNode::location_t& location, void* address, size_t size )
+	ASTExceptionNoMapping( const yylloc_t& location, void* address, size_t size )
 	{
 		loc( location );
 		msg( "no mapping found for $0 bit access to address $1", size * 8, address );
@@ -185,7 +179,7 @@ public:
 
 class ASTExceptionBusError : public ASTRuntimeException {
 public:
-	ASTExceptionBusError( const ASTNode::location_t& location, void* address, size_t size )
+	ASTExceptionBusError( const yylloc_t& location, void* address, size_t size )
 	{
 		loc( location );
 		msg( "failed $0 bit access to address $1", size * 8, address );

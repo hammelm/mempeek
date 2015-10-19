@@ -55,7 +55,7 @@ const char* ASTException::get_location() const
 	else return "";
 }
 
-void ASTException::loc( const ASTNode::location_t& location )
+void ASTException::loc( const yylloc_t& location )
 {
 	string str = "";
 

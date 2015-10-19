@@ -49,16 +49,10 @@ class ASTNode {
 public:
     typedef std::shared_ptr<ASTNode> ptr;
 
-	typedef struct {
-		std::string file;
-		int first_line;
-		int last_line;
-	} location_t;
-
-	ASTNode( const yylloc_t* yylloc );
+	ASTNode( const yylloc_t& yylloc );
 	virtual ~ASTNode();
 
-	const ASTNode::location_t& get_location();
+	const yylloc_t& get_location();
 
 	void add_child( ASTNode::ptr node );
 
@@ -67,7 +61,7 @@ public:
 	bool is_constant();
 
 	static ASTNode::ptr parse( const char* str, bool is_file );
-	static ASTNode::ptr parse( const location_t& location, const char* str, bool is_file );
+	static ASTNode::ptr parse( const yylloc_t& location, const char* str, bool is_file );
 
 	static int get_default_size();
 
@@ -89,7 +83,7 @@ protected:
 private:
 	nodelist_t m_Children;
 
-	location_t m_Location;
+	yylloc_t m_Location;
 
 	bool m_IsConstant = false;
 
@@ -111,7 +105,7 @@ class ASTNodeBreak : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeBreak> ptr;
 
-    ASTNodeBreak( const yylloc_t* yylloc, int token );
+    ASTNodeBreak( const yylloc_t& yylloc, int token );
 
     uint64_t execute() override;
 
@@ -128,7 +122,7 @@ class ASTNodeBlock : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeBlock> ptr;
 
-	ASTNodeBlock( const yylloc_t* yylloc );
+	ASTNodeBlock( const yylloc_t& yylloc );
 
 	uint64_t execute() override;
 };
@@ -142,7 +136,7 @@ class ASTNodeAssign : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeAssign> ptr;
 
-    ASTNodeAssign( const yylloc_t* yylloc, std::string name, ASTNode::ptr expression );
+    ASTNodeAssign( const yylloc_t& yylloc, std::string name, ASTNode::ptr expression );
 
     uint64_t execute() override;
 
@@ -161,8 +155,8 @@ class ASTNodeIf : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeIf> ptr;
 
-	ASTNodeIf( const yylloc_t* yylloc, ASTNode::ptr condition, ASTNode::ptr then_block );
-	ASTNodeIf( const yylloc_t* yylloc, ASTNode::ptr condition, ASTNode::ptr then_block, ASTNode::ptr else_block  );
+	ASTNodeIf( const yylloc_t& yylloc, ASTNode::ptr condition, ASTNode::ptr then_block );
+	ASTNodeIf( const yylloc_t& yylloc, ASTNode::ptr condition, ASTNode::ptr then_block, ASTNode::ptr else_block  );
 
 	uint64_t execute() override;
 };
@@ -176,7 +170,7 @@ class ASTNodeWhile : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeWhile> ptr;
 
-	ASTNodeWhile( const yylloc_t* yylloc, ASTNode::ptr condition, ASTNode::ptr block );
+	ASTNodeWhile( const yylloc_t& yylloc, ASTNode::ptr condition, ASTNode::ptr block );
 
 	uint64_t execute() override;
 };
@@ -190,8 +184,8 @@ class ASTNodeFor : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeFor> ptr;
 
-    ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to );
-    ASTNodeFor( const yylloc_t* yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to, ASTNode::ptr step );
+    ASTNodeFor( const yylloc_t& yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to );
+    ASTNodeFor( const yylloc_t& yylloc, ASTNodeAssign::ptr var, ASTNode::ptr to, ASTNode::ptr step );
 
     uint64_t execute() override;
 
@@ -208,7 +202,7 @@ class ASTNodePeek : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodePeek> ptr;
 
-	ASTNodePeek( const yylloc_t* yylloc, ASTNode::ptr address, int size_restriction );
+	ASTNodePeek( const yylloc_t& yylloc, ASTNode::ptr address, int size_restriction );
 
 	uint64_t execute() override;
 
@@ -227,8 +221,8 @@ class ASTNodePoke : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodePoke> ptr;
 
-	ASTNodePoke( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr value, int size_restriction );
-	ASTNodePoke( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr value, ASTNode::ptr mask, int size_restriction );
+	ASTNodePoke( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr value, int size_restriction );
+	ASTNodePoke( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr value, ASTNode::ptr mask, int size_restriction );
 
 	uint64_t execute() override;
 
@@ -262,9 +256,9 @@ public:
 		MOD_TYPEMASK = 0x0f
 	};
 
-	ASTNodePrint( const yylloc_t* yylloc );
-	ASTNodePrint( const yylloc_t* yylloc, std::string text );
-	ASTNodePrint( const yylloc_t* yylloc, ASTNode::ptr expression, int modifier );
+	ASTNodePrint( const yylloc_t& yylloc );
+	ASTNodePrint( const yylloc_t& yylloc, std::string text );
+	ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier );
 
 	uint64_t execute() override;
 
@@ -286,7 +280,7 @@ class ASTNodeSleep : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSleep> ptr;
 
-    ASTNodeSleep( const yylloc_t* yylloc, ASTNode::ptr expression );
+    ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression );
 
     uint64_t execute() override;
 };
@@ -300,8 +294,8 @@ class ASTNodeDef : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeDef> ptr;
 
-	ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr address );
-	ASTNodeDef( const yylloc_t* yylloc, std::string name, ASTNode::ptr address, std::string from );
+	ASTNodeDef( const yylloc_t& yylloc, std::string name, ASTNode::ptr address );
+	ASTNodeDef( const yylloc_t& yylloc, std::string name, ASTNode::ptr address, std::string from );
 
 	uint64_t execute() override;
 };
@@ -315,8 +309,8 @@ class ASTNodeMap : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeMap> ptr;
 
-	ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size );
-    ASTNodeMap( const yylloc_t* yylloc, ASTNode::ptr address, ASTNode::ptr size, std::string device );
+	ASTNodeMap( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr size );
+    ASTNodeMap( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr size, std::string device );
 
 	uint64_t execute() override;
 };
@@ -330,7 +324,7 @@ class ASTNodeImport : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeImport> ptr;
 
-	ASTNodeImport( const yylloc_t* yylloc, std::string file );
+	ASTNodeImport( const yylloc_t& yylloc, std::string file );
 
 	uint64_t execute() override;
 };
@@ -344,7 +338,7 @@ class ASTNodeUnaryOperator : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeUnaryOperator> ptr;
 
-	ASTNodeUnaryOperator( const yylloc_t* yylloc, ASTNode::ptr expression, int op );
+	ASTNodeUnaryOperator( const yylloc_t& yylloc, ASTNode::ptr expression, int op );
 
 	uint64_t execute() override;
 
@@ -361,7 +355,7 @@ class ASTNodeBinaryOperator : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeBinaryOperator> ptr;
 
-	ASTNodeBinaryOperator( const yylloc_t* yylloc, ASTNode::ptr expression1, ASTNode::ptr expression2, int op );
+	ASTNodeBinaryOperator( const yylloc_t& yylloc, ASTNode::ptr expression1, ASTNode::ptr expression2, int op );
 
 	uint64_t execute() override;
 
@@ -378,7 +372,7 @@ class ASTNodeRestriction : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeRestriction> ptr;
 
-	ASTNodeRestriction( const yylloc_t* yylloc, ASTNode::ptr node, int size_restriction );
+	ASTNodeRestriction( const yylloc_t& yylloc, ASTNode::ptr node, int size_restriction );
 
 	uint64_t execute() override;
 
@@ -395,8 +389,8 @@ class ASTNodeVar : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeVar> ptr;
 
-	ASTNodeVar( const yylloc_t* yylloc, std::string name );
-	ASTNodeVar( const yylloc_t* yylloc, std::string name, ASTNode::ptr index );
+	ASTNodeVar( const yylloc_t& yylloc, std::string name );
+	ASTNodeVar( const yylloc_t& yylloc, std::string name, ASTNode::ptr index );
 
 	uint64_t execute() override;
 
@@ -413,8 +407,8 @@ class ASTNodeConstant : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeConstant> ptr;
 
-	ASTNodeConstant( const yylloc_t* yylloc, std::string str );
-    ASTNodeConstant( const yylloc_t* yylloc, uint64_t value );
+	ASTNodeConstant( const yylloc_t& yylloc, std::string str );
+    ASTNodeConstant( const yylloc_t& yylloc, uint64_t value );
 
 	uint64_t execute() override;
 
@@ -429,7 +423,7 @@ private:
 // class ASTNode inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline const ASTNode::location_t& ASTNode::get_location()
+inline const yylloc_t& ASTNode::get_location()
 {
 	return m_Location;
 }
