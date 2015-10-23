@@ -26,6 +26,7 @@
 #include "mempeek_ast.h"
 #include "mempeek_exceptions.h"
 #include "console.h"
+#include "teestream.h"
 
 #if defined( YYDEBUG ) && YYDEBUG != 0
 #include "mempeek_parser.h"
@@ -33,6 +34,7 @@
 #endif
 
 #include <iostream>
+#include <fstream>
 
 #include <string.h>
 #include <signal.h>
@@ -91,9 +93,11 @@ int main( int argc, char** argv )
     yydebug = 1;
 #endif
 
-    Console console( "mempeek", "~/.mempeek_history" );
-
     MMap::enable_signal_handler();
+
+    ofstream* logfile = nullptr;
+    basic_teebuf< char >* cout_buf = nullptr;
+    basic_teebuf< char >* cerr_buf = nullptr;
 
     try {
         bool is_interactive = false;
@@ -105,7 +109,7 @@ int main( int argc, char** argv )
             else if( strcmp( argv[i], "-I" ) == 0 ) {
                 if( ++i >= argc ) {
                     cerr << "missing include path" << endl;
-                    break;
+                    throw ASTExceptionQuit();
                 }
 
                 ASTNode::add_include_path( argv[i] );
@@ -113,13 +117,36 @@ int main( int argc, char** argv )
             else if( strcmp( argv[i], "-c" ) == 0 ) {
                 if( ++i >= argc ) {
                     cerr << "missing command" << endl;
-                    break;
+                    throw ASTExceptionQuit();
                 }
                 // TODO: parser should treat EOF as end of statement
                 string cmd = string( argv[i] ) + '\n';
 
                 parse( cmd.c_str(), false );
                 has_commands = true;
+            }
+            else if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "-ll" ) == 0 ) {
+                if( logfile ) {
+                    cerr << "duplicate logfile option" << endl;
+                    throw ASTExceptionQuit();
+                }
+                if( ++i >= argc ) {
+                    cerr << "missing file name" << endl;
+                    throw ASTExceptionQuit();
+                }
+
+                if( strcmp( argv[ i - 1 ], "-l" ) == 0 ) logfile = new ofstream( argv[i] );
+                else logfile = new ofstream( argv[i], ios::app );
+
+                cout_buf = new basic_teebuf<char>;
+                cout_buf->attach( cout.rdbuf() );
+                cout_buf->attach( logfile->rdbuf() );
+                cout.rdbuf( cout_buf );
+
+                cerr_buf = new basic_teebuf<char>;
+                cerr_buf->attach( cerr.rdbuf() );
+                cerr_buf->attach( logfile->rdbuf() );
+                cerr.rdbuf( cerr_buf );
             }
             else {
                 parse( argv[i], true );
@@ -128,14 +155,23 @@ int main( int argc, char** argv )
         }
 
         if( is_interactive || !has_commands ) {
+            Console console( "mempeek", "~/.mempeek_history" );
             for(;;) {
                 string line = console.get_line();
+                if( logfile ) *logfile << "> " << line;
                 parse( line.c_str(), false );
             }
         }
     }
     catch( ASTExceptionQuit ) {
         // nothing to do
+    }
+
+    if( logfile ) {
+        cout_buf->detach( logfile->rdbuf() );
+        cerr_buf->detach( logfile->rdbuf() );
+        delete logfile;
+        // teebuffers are not deleted because cout/cerr still use them
     }
 
     return 0;

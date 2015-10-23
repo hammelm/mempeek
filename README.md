@@ -13,6 +13,8 @@ mempeek makes it very easy to interactively explore the features of new peripher
         -i          Enter interactive mode when all scripts and commands are completed
         -I <path>   Add <path> to the search path of the "import" command
         -c <stmt>   Execute the mempeek command <stmt>
+        -l <file>   Write output and interactive input to <file>
+        -ll <file>  Append output and interactive input to <file>
     
 The -I and -c options can be used several times to add more than one include path or to
 execute more than one command. Options and commands can be mixed and are executed in the
