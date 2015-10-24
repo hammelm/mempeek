@@ -36,10 +36,11 @@ using namespace std;
 
 int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
 
-void yyerror( YYLTYPE* yylloc, yyscan_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
+void yyerror( YYLTYPE* yylloc, yyscan_t, yynodeptr_t&, const char* err ) { throw ASTExceptionSyntaxError( *yylloc, err ); }
 
 %}
 
+%error-verbose
 %define api.value.type { yyvalue_t }
 %define api.pure full
 %parse-param { yyscan_t scanner } { yynodeptr_t& yyroot }
@@ -47,6 +48,8 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yynodeptr_t&, const char* ) { throw AST
 
 %token T_DEF T_FROM
 %token T_MAP
+%token T_DEFPROC T_ENDPROC
+%token T_DEFFUNC T_ENDFUNC
 %token T_IMPORT
 %token T_PEEK
 %token T_POKE T_MASK
@@ -87,6 +90,8 @@ toplevel_statement : statement                          { $$.node = $1.node; }
                    | map_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
                    | def_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
                    | import_stmt T_END_OF_STATEMENT     { $$.node = $1.node; }
+                   | proc_def
+                   | func_def
                    ;
 
 statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
@@ -98,7 +103,38 @@ statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; }
           | if_block                                    { $$.node = $1.node; }
           | while_block                                 { $$.node = $1.node; }
           | for_block                                   { $$.node = $1.node; }
+          | plain_identifier proc_params T_END_OF_STATEMENT
           ;
+
+proc_def : T_DEFPROC plain_identifier proc_args T_END_OF_STATEMENT
+               block
+           T_ENDPROC T_END_OF_STATEMENT
+         ;
+
+proc_args : %empty
+          | plain_identifier
+          | proc_args plain_identifier
+          ;
+
+proc_params : %empty
+            | expression
+            | proc_params expression
+            ;
+
+func_def : T_DEFFUNC plain_identifier '(' func_args ')' T_END_OF_STATEMENT
+               block
+           T_ENDFUNC T_END_OF_STATEMENT
+         ;
+
+func_args : %empty
+          | plain_identifier
+          | func_args ',' plain_identifier
+          ;
+
+func_params : %empty
+            | expression
+            | func_params ',' expression
+            ;
 
 if_block : if_def statement                                             { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node ); }
          | if_def statement else_def                                    { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node, $3.node ); }
@@ -230,6 +266,7 @@ atomic_expr : T_CONSTANT                                { $$.node = make_shared<
             | identifier                                { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, $3.node, $1.token ); }
+            | plain_identifier '(' func_params ')'
             ;
 
 peek_token : T_PEEK                                     { $$.token = ASTNode::get_default_size(); }

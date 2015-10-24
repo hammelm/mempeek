@@ -91,10 +91,10 @@ class ASTExceptionTerminate : public ASTControlflowException {};
 
 class ASTExceptionSyntaxError : public ASTCompileException {
 public:
-	ASTExceptionSyntaxError( const yylloc_t& location )
+	ASTExceptionSyntaxError( const yylloc_t& location, std::string err )
 	{
 		loc( location );
-		msg( "syntax error" );
+		msg( "syntax error: $0", err );
 	}
 };
 
