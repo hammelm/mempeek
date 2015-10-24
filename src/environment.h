@@ -32,6 +32,7 @@
 #include <utility>
 #include <map>
 #include <set>
+#include <stack>
 
 #include <stdint.h>
 
@@ -39,6 +40,8 @@
 //////////////////////////////////////////////////////////////////////////////
 // class Environment
 //////////////////////////////////////////////////////////////////////////////
+
+class LocalEnvironment;
 
 class Environment {
 public:
@@ -49,6 +52,7 @@ public:
 
 	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
+    var* alloc_global( std::string name );
 
 	const var* get( std::string name );
 
@@ -58,9 +62,45 @@ public:
 
 	MMap* get_mapping( void* phys_addr, size_t size );
 
+	void set_local_environment( LocalEnvironment* localenv );
+	LocalEnvironment* get_local_environment();
+	void clear_local_environment();
+
 private:
+	class defvar;
+    class structvar;
+	class globalvar;
+
 	std::map< std::string, var* > m_Vars;
 	std::map< void*, MMap* > m_Mappings;
+
+	LocalEnvironment* m_LocalEnv = nullptr;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class LocalEnvironment
+//////////////////////////////////////////////////////////////////////////////
+
+class LocalEnvironment {
+public:
+    LocalEnvironment();
+    ~LocalEnvironment();
+
+    Environment::var* alloc_var( std::string name );
+
+    const Environment::var* get( std::string name );
+
+    void push();
+    void pop();
+
+private:
+    class localvar;
+
+    std::map< std::string, Environment::var* > m_Vars;
+
+    uint64_t* m_Storage = nullptr;
+    std::stack< uint64_t* > m_Stack;
 };
 
 
@@ -70,51 +110,121 @@ private:
 
 class  Environment::var {
 public:
-	var( uint64_t value, bool is_def );
-	var( uint64_t value, const var* base_value );
+	virtual ~var();
 
-	bool is_def() const;
+	virtual bool is_def() const;
+    virtual bool is_local() const;
 
-	uint64_t get() const;
-	void set( uint64_t value );
-
-private:
-	bool m_IsDef;
-	uint64_t m_Value;
-	const uint64_t* m_BaseValue;
+	virtual uint64_t get() const = 0;
+	virtual void set( uint64_t value ) = 0;
 };
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class Environment::var inline functions
+// class Environment::defvar
 //////////////////////////////////////////////////////////////////////////////
 
-inline Environment::var::var( uint64_t value, bool is_def )
- : m_IsDef( is_def ),
-   m_Value( value ),
-   m_BaseValue( nullptr )
-{}
+class Environment::defvar : public Environment::var {
+public:
+    bool is_def() const override;
 
-inline Environment::var::var( uint64_t value, const var* base_value )
- : m_IsDef( true ),
-   m_Value( value ),
-   m_BaseValue( &base_value->m_Value )
-{}
+    uint64_t get() const override;
+    void set( uint64_t value ) override;
 
-inline bool Environment::var::is_def() const
+private:
+    uint64_t m_Value = 0;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment::structvar
+//////////////////////////////////////////////////////////////////////////////
+
+class Environment::structvar : public Environment::var {
+public:
+    structvar( const Environment::var* base );
+
+    bool is_def() const override;
+
+    uint64_t get() const override;
+    void set( uint64_t offset ) override;
+
+private:
+    uint64_t m_Offset = 0;
+    const Environment::var* m_Base;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment::globalvar
+//////////////////////////////////////////////////////////////////////////////
+
+class Environment::globalvar : public Environment::var {
+public:
+    uint64_t get() const override;
+    void set( uint64_t value ) override;
+
+private:
+    uint64_t m_Value = 0;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class LocalEnvironment::localvar
+//////////////////////////////////////////////////////////////////////////////
+
+class LocalEnvironment::localvar : public Environment::var {
+public:
+    localvar( uint64_t*& storage, size_t offset );
+
+    bool is_local() const override;
+
+    uint64_t get() const override;
+    void set( uint64_t value ) override;
+
+private:
+    uint64_t*& m_Storage;
+    size_t m_Offset;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment inline functions
+//////////////////////////////////////////////////////////////////////////////
+
+inline void Environment::set_local_environment( LocalEnvironment* localenv )
 {
-	return m_IsDef;
+    m_LocalEnv = localenv;
 }
 
-inline uint64_t Environment::var::get() const
+inline LocalEnvironment* Environment::get_local_environment()
 {
-	if( m_BaseValue ) return m_Value + *m_BaseValue;
-	else return m_Value;
+    return m_LocalEnv;
 }
 
-inline void Environment::var::set( uint64_t value )
+inline void Environment::clear_local_environment()
 {
-	m_Value = value;
+    m_LocalEnv = nullptr;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class LocalEnvironment inline functions
+//////////////////////////////////////////////////////////////////////////////
+
+inline void LocalEnvironment::push()
+{
+    m_Stack.push( m_Storage );
+    m_Storage = new uint64_t[ m_Vars.size() ];
+}
+
+inline void LocalEnvironment::pop()
+{
+    if( !m_Stack.empty() ) {
+        delete[] m_Storage;
+        m_Storage = m_Stack.top();
+        m_Stack.pop();
+    }
 }
 
 

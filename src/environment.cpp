@@ -49,14 +49,14 @@ Environment::var* Environment::alloc_def( std::string name )
 	    size_t dot = name.find( '.' );
 
 	    if( dot == string::npos ) {
-			Environment::var* var = new Environment::var( 0, true );
+			Environment::var* var = new Environment::defvar();
 			iter = m_Vars.insert( make_pair( name, var ) ).first;
 	    }
 	    else {
 	        auto base = m_Vars.find( name.substr( 0, dot ) );
 	        if( base == m_Vars.end() ) return nullptr;
 
-			Environment::var* var = new Environment::var( 0, base->second );
+			Environment::var* var = new Environment::structvar( base->second );
 			iter = m_Vars.insert( make_pair( name, var ) ).first;
 		}
 	}
@@ -67,10 +67,16 @@ Environment::var* Environment::alloc_def( std::string name )
 
 Environment::var* Environment::alloc_var( std::string name )
 {
+    if( m_LocalEnv ) return m_LocalEnv->alloc_var( name );
+    else return alloc_global( name );
+}
+
+Environment::var* Environment::alloc_global( std::string name )
+{
 	auto iter = m_Vars.find( name );
 
 	if( iter == m_Vars.end() ) {
-		Environment::var* var = new Environment::var( 0, false );
+		Environment::var* var = new Environment::globalvar();
 		iter = m_Vars.insert( make_pair( name, var ) ).first;
 	}
 	else if( iter->second->is_def() ) return nullptr;
@@ -80,6 +86,11 @@ Environment::var* Environment::alloc_var( std::string name )
 
 const Environment::var* Environment::get( std::string name )
 {
+    if( m_LocalEnv ) {
+        const Environment::var* var = m_LocalEnv->get( name );
+        if( var ) return var;
+    }
+
 	auto iter = m_Vars.find( name );
 	if( iter == m_Vars.end() ) return nullptr;
 	else return iter->second;
@@ -123,4 +134,144 @@ MMap* Environment::get_mapping( void* phys_addr, size_t size )
 
 	if( (uint8_t*)mmap->get_base_address() + mmap->get_size() < (uint8_t*)phys_addr + size ) return nullptr;
 	else return mmap;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class LocalEnvironment implementation
+//////////////////////////////////////////////////////////////////////////////
+
+LocalEnvironment::LocalEnvironment()
+{}
+
+LocalEnvironment::~LocalEnvironment()
+{
+    if( m_Storage ) delete[] m_Storage;
+    while( !m_Stack.empty() ) {
+        delete[] m_Stack.top();
+        m_Stack.pop();
+    }
+    for( auto value: m_Vars ) delete value.second;
+}
+
+Environment::var* LocalEnvironment::alloc_var( std::string name )
+{
+    auto iter = m_Vars.find( name );
+
+    if( iter == m_Vars.end() ) {
+        Environment::var* var = new LocalEnvironment::localvar( m_Storage, m_Vars.size() );
+        iter = m_Vars.insert( make_pair( name, var ) ).first;
+    }
+    else if( iter->second->is_def() ) return nullptr;
+
+    return iter->second;
+}
+
+const Environment::var* LocalEnvironment::get( std::string name )
+{
+    auto iter = m_Vars.find( name );
+    if( iter == m_Vars.end() ) return nullptr;
+    else return iter->second;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment::var implementation
+//////////////////////////////////////////////////////////////////////////////
+
+Environment::var::~var()
+{}
+
+bool Environment::var::is_def() const
+{
+    return false;
+}
+
+bool Environment::var::is_local() const
+{
+    return false;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment::defvar implementation
+//////////////////////////////////////////////////////////////////////////////
+
+bool Environment::defvar::is_def() const
+{
+    return true;
+}
+
+uint64_t Environment::defvar::get() const
+{
+    return m_Value;
+}
+
+void Environment::defvar::set( uint64_t value )
+{
+    m_Value = value;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment::structvar implementation
+//////////////////////////////////////////////////////////////////////////////
+
+Environment::structvar::structvar( const Environment::var* base )
+ : m_Base( base )
+{}
+
+bool Environment::structvar::is_def() const
+{
+    return true;
+}
+
+uint64_t Environment::structvar::get() const
+{
+    return m_Base->get() + m_Offset;
+}
+
+void Environment::structvar::set( uint64_t offset )
+{
+    m_Offset = offset;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment::globalvar implementation
+//////////////////////////////////////////////////////////////////////////////
+
+uint64_t Environment::globalvar::get() const
+{
+    return m_Value;
+}
+
+void Environment::globalvar::set( uint64_t value )
+{
+    m_Value = value;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class LocalEnvironment::localvar implementation
+//////////////////////////////////////////////////////////////////////////////
+
+LocalEnvironment::localvar::localvar( uint64_t*& storage, size_t offset )
+ : m_Storage( storage ),
+   m_Offset( offset )
+{}
+
+bool LocalEnvironment::localvar::is_local() const
+{
+    return true;
+}
+
+uint64_t LocalEnvironment::localvar::get() const
+{
+    return m_Storage[ m_Offset ];
+}
+
+void LocalEnvironment::localvar::set( uint64_t value )
+{
+    m_Storage[ m_Offset ] = value;
 }
