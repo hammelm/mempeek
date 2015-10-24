@@ -59,6 +59,7 @@ public:
 	virtual uint64_t execute() = 0;
 
 	bool is_constant();
+	virtual ASTNode::ptr clone_to_const();
 
 	static ASTNode::ptr parse( const char* str, bool is_file );
 	static ASTNode::ptr parse( const yylloc_t& location, const char* str, bool is_file );
@@ -342,6 +343,8 @@ public:
 
 	uint64_t execute() override;
 
+    ASTNode::ptr clone_to_const() override;
+
 private:
 	int m_Operator;
 };
@@ -358,6 +361,8 @@ public:
 	ASTNodeBinaryOperator( const yylloc_t& yylloc, ASTNode::ptr expression1, ASTNode::ptr expression2, int op );
 
 	uint64_t execute() override;
+
+	ASTNode::ptr clone_to_const() override;
 
 private:
 	int m_Operator;
@@ -439,7 +444,11 @@ inline void ASTNode::add_child( ASTNode::ptr node )
 	std::cerr << "AST[" << this << "]: add child node=[" << node << "]" << std::endl;
 #endif
 
-	m_Children.push_back( node );
+	if( node->m_IsConstant ) {
+	    ASTNode::ptr constnode = node->clone_to_const();
+	    m_Children.push_back( constnode ? constnode : node );
+	}
+	else m_Children.push_back( node );
 }
 
 inline const ASTNode::nodelist_t& ASTNode::get_children()

@@ -62,6 +62,11 @@ ASTNode::~ASTNode()
 #endif
 }
 
+ASTNode::ptr ASTNode::clone_to_const()
+{
+    return nullptr;
+}
+
 int ASTNode::get_default_size()
 {
 	switch( sizeof(void*) ) {
@@ -622,15 +627,7 @@ ASTNodeAssign::ASTNodeAssign( const yylloc_t& yylloc, std::string name, ASTNode:
 
 	m_Var = get_environment().alloc_var( name );
 
-	if( expression->is_constant() ) {
-	    try {
-	        add_child( make_shared<ASTNodeConstant>( yylloc, expression->execute() ) );
-	    }
-	    catch( const ASTExceptionDivisionByZero& ex ) {
-	        throw ASTExceptionConstDivisionByZero( ex );
-	    }
-	}
-	else add_child( expression );
+	add_child( expression );
 
 	if( !m_Var ) throw ASTExceptionNamingConflict( get_location(), name );
 }
@@ -846,6 +843,22 @@ uint64_t ASTNodeUnaryOperator::execute()
 	}
 }
 
+ASTNode::ptr ASTNodeUnaryOperator::clone_to_const()
+{
+    if( !is_constant() ) return nullptr;
+
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: running const optimization" << endl;
+#endif
+
+    try {
+        return make_shared<ASTNodeConstant>( get_location(), execute() );
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
+    }
+}
+
 
 /////////////////////////////////////////////////////////////////////////////
 // class ASTNodeBinaryOperator implementation
@@ -861,15 +874,6 @@ ASTNodeBinaryOperator::ASTNodeBinaryOperator( const yylloc_t& yylloc, ASTNode::p
 #endif
 
     if( expression1->is_constant() && expression2->is_constant() ) set_constant();
-    else {
-        try {
-            if( expression1->is_constant() ) expression1 = make_shared<ASTNodeConstant>( expression1->get_location(), expression1->execute() );
-            if( expression2->is_constant() ) expression2 = make_shared<ASTNodeConstant>( expression2->get_location(), expression2->execute() );
-        }
-        catch( const ASTExceptionDivisionByZero& ex ) {
-            throw ASTExceptionConstDivisionByZero( ex );
-        }
-    }
 
 	add_child( expression1 );
 	add_child( expression2 );
@@ -907,6 +911,22 @@ uint64_t ASTNodeBinaryOperator::execute()
 
 	default: return 0;
 	}
+}
+
+ASTNode::ptr ASTNodeBinaryOperator::clone_to_const()
+{
+    if( !is_constant() ) return nullptr;
+
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: running const optimization" << endl;
+#endif
+
+    try {
+        return make_shared<ASTNodeConstant>( get_location(), execute() );
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
+    }
 }
 
 
