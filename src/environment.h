@@ -33,6 +33,8 @@
 #include <map>
 #include <set>
 #include <stack>
+#include <vector>
+#include <memory>
 
 #include <stdint.h>
 
@@ -42,6 +44,8 @@
 //////////////////////////////////////////////////////////////////////////////
 
 class LocalEnvironment;
+class ASTNode;
+class ASTNodeSubroutine;
 
 class Environment {
 public:
@@ -62,9 +66,16 @@ public:
 
 	MMap* get_mapping( void* phys_addr, size_t size );
 
-	void set_local_environment( LocalEnvironment* localenv );
-	LocalEnvironment* get_local_environment();
-	void clear_local_environment();
+	void enter_subroutine_context( std::shared_ptr<ASTNodeSubroutine> subroutine );
+	void commit_subroutine_context(std::string name,  bool is_function );
+
+	void set_subroutine_param( std::string name );
+
+	std::shared_ptr<ASTNodeSubroutine> get_procedure( std::string name,
+	                                                  std::vector< std::shared_ptr<ASTNode> >& params );
+
+    std::shared_ptr<ASTNodeSubroutine> get_function( std::string name,
+                                                     std::vector< std::shared_ptr<ASTNode> >& params );
 
 private:
 	class defvar;
@@ -72,9 +83,12 @@ private:
 	class globalvar;
 
 	std::map< std::string, var* > m_Vars;
+    std::map< std::string, std::shared_ptr<ASTNodeSubroutine> > m_Procedures;
+    std::map< std::string, std::shared_ptr<ASTNodeSubroutine> > m_Functions;
 	std::map< void*, MMap* > m_Mappings;
 
 	LocalEnvironment* m_LocalEnv = nullptr;
+	std::shared_ptr<ASTNodeSubroutine> m_Subroutine = nullptr;
 };
 
 
@@ -186,26 +200,6 @@ private:
     uint64_t*& m_Storage;
     size_t m_Offset;
 };
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class Environment inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline void Environment::set_local_environment( LocalEnvironment* localenv )
-{
-    m_LocalEnv = localenv;
-}
-
-inline LocalEnvironment* Environment::get_local_environment()
-{
-    return m_LocalEnv;
-}
-
-inline void Environment::clear_local_environment()
-{
-    m_LocalEnv = nullptr;
-}
 
 
 //////////////////////////////////////////////////////////////////////////////

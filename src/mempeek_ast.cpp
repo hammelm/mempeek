@@ -154,6 +154,7 @@ uint64_t ASTNodeBreak::execute()
     return 0;
 }
 
+
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodeBlock implementation
 //////////////////////////////////////////////////////////////////////////////
@@ -178,6 +179,73 @@ uint64_t ASTNodeBlock::execute()
 	}
 
 	return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeSubroutine implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc )
+ : ASTNode( yylloc ),
+   m_Return( nullptr )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeSubroutine" << endl;
+#endif
+}
+
+uint64_t ASTNodeSubroutine::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeSubroutine" << endl;
+#endif
+
+    m_LocalEnv.push();
+
+    try {
+        auto param = m_Params.begin();
+        auto expression = get_children().begin() + 1;
+
+        while( param != m_Params.end() && expression != get_children().end() ) {
+            (*param)->set( (*expression)->execute() );
+            ++param;
+            ++expression;
+        }
+
+        get_children()[0]->execute();
+    }
+    catch( ... ) {
+        m_LocalEnv.pop();
+        throw;
+    }
+
+    uint64_t ret = m_Return ? m_Return->get() : 0;
+
+    m_LocalEnv.pop();
+
+    return ret;
+}
+
+void ASTNodeSubroutine::add_parameter( std::string name )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: adding parameter " << name << " to ASTNodeSubroutine" << endl;
+#endif
+
+    Environment::var* var = get_environment().alloc_var( name );
+    if( !var ) throw ASTExceptionNamingConflict( get_location(), name );
+    m_Params.push_back( var );
+}
+
+void ASTNodeSubroutine::add_return()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: adding return variable" << endl;
+#endif
+
+    m_Return = get_environment().alloc_var( "return" );
+    if( !m_Return ) throw ASTExceptionNamingConflict( get_location(), "return" );
 }
 
 

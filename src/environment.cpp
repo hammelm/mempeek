@@ -25,6 +25,9 @@
 
 #include "environment.h"
 
+#include "mempeek_ast.h"
+#include "mempeek_exceptions.h"
+
 using namespace std;
 
 
@@ -134,6 +137,62 @@ MMap* Environment::get_mapping( void* phys_addr, size_t size )
 
 	if( (uint8_t*)mmap->get_base_address() + mmap->get_size() < (uint8_t*)phys_addr + size ) return nullptr;
 	else return mmap;
+}
+
+void Environment::enter_subroutine_context( std::shared_ptr<ASTNodeSubroutine> subroutine )
+{
+    m_Subroutine = subroutine;
+    m_LocalEnv = subroutine->get_local_environment();
+}
+
+void Environment::commit_subroutine_context( std::string name, bool is_function )
+{
+    if( is_function) {
+        if( m_Functions.find( name ) != m_Functions.end() ) throw ASTExceptionNamingConflict( m_Subroutine->get_location(), name );
+        m_Functions[ name ] = m_Subroutine;
+    }
+    else {
+        if( m_Procedures.find( name ) != m_Procedures.end() ) throw ASTExceptionNamingConflict( m_Subroutine->get_location(), name );
+        m_Procedures[ name ] = m_Subroutine;
+    }
+
+    m_Subroutine = nullptr;
+    m_LocalEnv = nullptr;
+}
+
+void Environment::set_subroutine_param( std::string name )
+{
+    m_Subroutine->add_parameter( name );
+}
+
+std::shared_ptr<ASTNodeSubroutine> Environment::get_procedure( std::string name,
+                                                               std::vector< std::shared_ptr<ASTNode> >& params )
+{
+    auto proc = m_Procedures.find( name );
+
+    if( proc == m_Procedures.end() ) return nullptr;
+    if( proc->second->get_num_parameters() != params.size() ) return nullptr;
+
+    for( auto param: params ) {
+        proc->second->add_child( param );
+    }
+
+    return proc->second;
+}
+
+std::shared_ptr<ASTNodeSubroutine> Environment::get_function( std::string name,
+                                                              std::vector< std::shared_ptr<ASTNode> >& params )
+{
+    auto func = m_Functions.find( name );
+
+    if( func == m_Functions.end() ) return nullptr;
+    if( func->second->get_num_parameters() != params.size() ) return nullptr;
+
+    for( auto param: params ) {
+        func->second->add_child( param );
+    }
+
+    return func->second;
 }
 
 
