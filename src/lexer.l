@@ -54,6 +54,7 @@
 "endproc"               TOKEN( T_ENDPROC )
 "deffunc"               TOKEN( T_DEFFUNC )
 "endfunc"               TOKEN( T_ENDFUNC )
+"exit"                  TOKEN( T_EXIT )
 "from"                  TOKEN( T_FROM )
 "import"                TOKEN( T_IMPORT )
 "peek"                  TOKEN( T_PEEK )

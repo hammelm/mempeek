@@ -62,6 +62,9 @@ static void parse( const char* str, bool is_file )
 #endif
 		yyroot->execute();
     }
+    catch( ASTExceptionExit& ) {
+        // nothing to do
+    }
     catch( ASTExceptionBreak& ) {
         // nothing to do
     }
@@ -163,7 +166,7 @@ int main( int argc, char** argv )
             }
         }
     }
-    catch( ASTExceptionQuit ) {
+    catch( ASTExceptionQuit& ) {
         // nothing to do
     }
 

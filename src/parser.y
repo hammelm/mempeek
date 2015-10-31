@@ -51,6 +51,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yynodeptr_t&, const char* err ) { throw
 %token T_MAP
 %token T_DEFPROC T_ENDPROC
 %token T_DEFFUNC T_ENDFUNC
+%token T_EXIT
 %token T_IMPORT
 %token T_PEEK
 %token T_POKE T_MASK
@@ -87,9 +88,10 @@ block : statement                                       { $$.node = make_shared<
       | block statement                                 { $$.node = $1.node; $$.node->add_child( $2.node ); }
       ;
 
-subroutine_block :                                      { $$.node = make_shared<ASTNodeBlock>( @$ ); ASTNode::get_environment().set_subroutine_body( $$.node ); }
-                   statement                            { $$.node = $1.node; $$.node->add_child( $2.node ); }
-                 | subroutine_block statement           { $$.node = $1.node; $$.node->add_child( $2.node ); }
+subroutine_block :                                          { $$.node = make_shared<ASTNodeBlock>( @$ ); ASTNode::get_environment().set_subroutine_body( $$.node ); }
+                   subroutine_statement                     { $$.node = $1.node; $$.node->add_child( $2.node ); }
+                 | subroutine_block subroutine_statement    { $$.node = $1.node; $$.node->add_child( $2.node ); }
+                 ;
 
 toplevel_statement : statement                          { $$.node = $1.node; }
                    | map_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
@@ -103,6 +105,7 @@ statement : assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node;
           | poke_stmt T_END_OF_STATEMENT                    { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
           | sleep_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
+          | T_EXIT T_END_OF_STATEMENT                       { $$.node = make_shared<ASTNodeBreak>( @1, T_EXIT ); }
           | T_BREAK T_END_OF_STATEMENT                      { $$.node = make_shared<ASTNodeBreak>( @1, T_BREAK ); }
           | T_QUIT T_END_OF_STATEMENT                       { $$.node = make_shared<ASTNodeBreak>( @1, T_QUIT ); }
           | if_block                                        { $$.node = $1.node; }
@@ -110,6 +113,9 @@ statement : assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node;
           | for_block                                       { $$.node = $1.node; }
           | plain_identifier proc_params T_END_OF_STATEMENT { $$.node = ASTNode::get_environment().get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1, "unknown procedure call" ); }
           ;
+
+subroutine_statement : statement                        { $$.node = $1.node; }
+                     ;
 
 proc_def : T_DEFPROC plain_identifier                   { ASTNode::get_environment().enter_subroutine_context( @1, $2.value, false ); }
                proc_args T_END_OF_STATEMENT

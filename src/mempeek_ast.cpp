@@ -147,6 +147,7 @@ uint64_t ASTNodeBreak::execute()
 #endif
 
     switch( m_Token ) {
+    case T_EXIT: throw ASTExceptionExit();
     case T_BREAK: throw ASTExceptionBreak();
     case T_QUIT: throw ASTExceptionQuit();
     }
@@ -215,16 +216,22 @@ uint64_t ASTNodeSubroutine::execute()
         is_pushed = true;
 
         for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( m_Values[i] );
-
         get_children()[0]->execute();
-
-        if( m_Retval ) ret = m_Retval->get();
-
-        m_LocalEnv->pop();
+    }
+    catch( ASTExceptionExit& ) {
+        // nothing to do
+    }
+    catch( ASTExceptionBreak& ) {
+        // nothing to do
     }
     catch( ... ) {
         if( is_pushed ) m_LocalEnv->pop();
         throw;
+    }
+
+    if( is_pushed ) {
+        if( m_Retval ) ret = m_Retval->get();
+        m_LocalEnv->pop();
     }
 
     return ret;
@@ -854,6 +861,9 @@ uint64_t ASTNodeImport::execute()
 	try {
 		get_children()[0]->execute();
 	}
+    catch( ASTExceptionExit& ) {
+        // nothing to do
+    }
 	catch( ASTExceptionBreak& ) {
 		// nothing to do
 	}
