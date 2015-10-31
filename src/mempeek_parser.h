@@ -31,6 +31,7 @@
 #include <memory>
 
 class ASTNode;
+class Environment;
 
 typedef std::shared_ptr<ASTNode> yynodeptr_t;
 
@@ -42,6 +43,8 @@ typedef struct {
     yynodeptr_t node = nullptr;
     std::vector< yynodeptr_t > nodelist;
 } yyvalue_t;
+
+typedef Environment* yyenv_t;
 
 typedef struct {
 	std::string file;

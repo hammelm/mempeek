@@ -27,6 +27,8 @@
 
 #include "mempeek_ast.h"
 #include "mempeek_exceptions.h"
+#include "parser.h"
+#include "lexer.h"
 
 #include <assert.h>
 
@@ -36,6 +38,9 @@ using namespace std;
 //////////////////////////////////////////////////////////////////////////////
 // class Environment implementation
 //////////////////////////////////////////////////////////////////////////////
+
+volatile sig_atomic_t Environment::s_IsTerminated = 0;
+
 
 Environment::Environment()
 {
@@ -50,6 +55,61 @@ Environment::~Environment()
 
 	delete m_ProcedureManager;
 	delete m_FunctionManager;
+}
+
+std::shared_ptr<ASTNode> Environment::parse( const char* str, bool is_file )
+{
+    yylloc_t location = { "", 0, 0 };
+    return parse( location, str, is_file );
+}
+
+std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const char* str, bool is_file )
+{
+    ASTNode::ptr yyroot = nullptr;
+    FILE* file = nullptr;
+
+    if( is_file ) {
+        file = fopen( str, "r" );
+        if( !file ) {
+            for( string path: m_IncludePaths ) {
+                if( path.length() > 0 && path.back() != '/' ) path += '/';
+                path += str;
+                file = fopen( path.c_str(), "r" );
+                if( file ) break;
+            }
+        }
+
+        if( !file ) throw ASTExceptionFileNotFound( location, str );
+    }
+
+    yyscan_t scanner;
+    yylex_init( &scanner );
+    yyset_extra( is_file ? str : "", scanner );
+
+    YY_BUFFER_STATE lex_buffer;
+    if( file ) lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
+    else lex_buffer = yy_scan_string( str, scanner );
+
+    yy_switch_to_buffer( lex_buffer, scanner );
+
+    try {
+        yyparse( scanner, this, yyroot );
+    }
+    catch( ... ) {
+        yy_delete_buffer( lex_buffer, scanner );
+        yylex_destroy( scanner );
+
+        if( is_file  ) fclose( file );
+
+        throw;
+    }
+
+    yy_delete_buffer( lex_buffer, scanner );
+    yylex_destroy( scanner );
+
+    if( file  ) fclose( file );
+
+    return yyroot;
 }
 
 Environment::var* Environment::alloc_def( std::string name )
@@ -192,6 +252,15 @@ std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, st
     std::shared_ptr<ASTNode> node = m_FunctionManager->get_subroutine( location, name, params );
     if( !node ) throw ASTExceptionNamingConflict( location, name );
     return node;
+}
+
+int Environment::get_default_size()
+{
+    switch( sizeof(void*) ) {
+    case 2: return T_16BIT;
+    case 8: return T_64BIT;
+    default: return T_32BIT;
+    }
 }
 
 

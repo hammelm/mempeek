@@ -55,6 +55,12 @@ public:
 	Environment();
 	~Environment();
 
+	std::shared_ptr<ASTNode> parse( const char* str, bool is_file );
+    std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file );
+
+    void add_include_path( std::string path );
+
+
 	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
     var* alloc_global( std::string name );
@@ -75,6 +81,12 @@ public:
 	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
     std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 
+    static int get_default_size();
+
+    static void set_terminate();
+    static void clear_terminate();
+    static bool is_terminated();
+
 private:
 	class defvar;
     class structvar;
@@ -88,6 +100,10 @@ private:
 
 	LocalEnvironment* m_LocalEnv = nullptr;
 	SubroutineManager* m_SubroutineContext = nullptr;
+
+	std::vector< std::string > m_IncludePaths;
+
+    static volatile sig_atomic_t s_IsTerminated;
 };
 
 
@@ -232,6 +248,31 @@ private:
     uint64_t*& m_Storage;
     size_t m_Offset;
 };
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class Environment inline functions
+//////////////////////////////////////////////////////////////////////////////
+
+inline void Environment::add_include_path( std::string path )
+{
+    m_IncludePaths.push_back( path );
+}
+
+inline void Environment::set_terminate()
+{
+    s_IsTerminated = 1;
+}
+
+inline void Environment::clear_terminate()
+{
+    s_IsTerminated = 0;
+}
+
+inline bool Environment::is_terminated()
+{
+    return s_IsTerminated == 1;
+}
 
 
 //////////////////////////////////////////////////////////////////////////////

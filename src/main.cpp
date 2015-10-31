@@ -44,18 +44,18 @@ using namespace std;
 
 static void signal_handler( int )
 {
-    ASTNode::set_terminate();
+    Environment::set_terminate();
 }
 
-static void parse( const char* str, bool is_file )
+static void parse( Environment* env, const char* str, bool is_file )
 {
-    ASTNode::clear_terminate();
+    Environment::clear_terminate();
     signal( SIGABRT, signal_handler );
     signal( SIGINT, signal_handler );
     signal( SIGTERM, signal_handler );
 
     try {
-        ASTNode::ptr yyroot = ASTNode::parse( str, is_file );
+        ASTNode::ptr yyroot = env->parse( str, is_file );
 
 #ifdef ASTDEBUG
 		cerr << "executing ASTNode[" << yyroot << "]" << endl;
@@ -102,6 +102,8 @@ int main( int argc, char** argv )
     basic_teebuf< char >* cout_buf = nullptr;
     basic_teebuf< char >* cerr_buf = nullptr;
 
+    Environment env;
+
     try {
         bool is_interactive = false;
         bool has_commands = false;
@@ -115,7 +117,7 @@ int main( int argc, char** argv )
                     throw ASTExceptionQuit();
                 }
 
-                ASTNode::add_include_path( argv[i] );
+                env.add_include_path( argv[i] );
             }
             else if( strcmp( argv[i], "-c" ) == 0 ) {
                 if( ++i >= argc ) {
@@ -125,7 +127,7 @@ int main( int argc, char** argv )
                 // TODO: parser should treat EOF as end of statement
                 string cmd = string( argv[i] ) + '\n';
 
-                parse( cmd.c_str(), false );
+                parse( &env, cmd.c_str(), false );
                 has_commands = true;
             }
             else if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "-ll" ) == 0 ) {
@@ -152,7 +154,7 @@ int main( int argc, char** argv )
                 cerr.rdbuf( cerr_buf );
             }
             else {
-                parse( argv[i], true );
+                parse( &env, argv[i], true );
                 has_commands = true;
             }
         }
@@ -162,7 +164,7 @@ int main( int argc, char** argv )
             for(;;) {
                 string line = console.get_line();
                 if( logfile ) *logfile << "> " << line;
-                parse( line.c_str(), false );
+                parse( &env, line.c_str(), false );
             }
         }
     }
