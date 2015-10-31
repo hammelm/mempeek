@@ -28,6 +28,8 @@
 #include "mempeek_ast.h"
 #include "mempeek_exceptions.h"
 
+#include <assert.h>
+
 using namespace std;
 
 
@@ -36,12 +38,18 @@ using namespace std;
 //////////////////////////////////////////////////////////////////////////////
 
 Environment::Environment()
-{}
+{
+    m_ProcedureManager = new SubroutineManager( this );
+    m_FunctionManager = new SubroutineManager( this );
+}
 
 Environment::~Environment()
 {
 	for( auto value: m_Vars ) delete value.second;
 	for( auto value: m_Mappings ) delete value.second;
+
+	delete m_ProcedureManager;
+	delete m_FunctionManager;
 }
 
 Environment::var* Environment::alloc_def( std::string name )
@@ -139,62 +147,141 @@ MMap* Environment::get_mapping( void* phys_addr, size_t size )
 	else return mmap;
 }
 
-void Environment::enter_subroutine_context( std::shared_ptr<ASTNodeSubroutine> subroutine )
+void Environment::enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function )
 {
-    m_Subroutine = subroutine;
-    m_LocalEnv = subroutine->get_local_environment();
-}
+    assert( m_SubroutineContext == nullptr && m_LocalEnv == nullptr );
 
-void Environment::commit_subroutine_context( std::string name, bool is_function )
-{
-    if( is_function) {
-        if( m_Functions.find( name ) != m_Functions.end() ) throw ASTExceptionNamingConflict( m_Subroutine->get_location(), name );
-        m_Functions[ name ] = m_Subroutine;
-    }
-    else {
-        if( m_Procedures.find( name ) != m_Procedures.end() ) throw ASTExceptionNamingConflict( m_Subroutine->get_location(), name );
-        m_Procedures[ name ] = m_Subroutine;
-    }
+    m_SubroutineContext = is_function ? m_FunctionManager : m_ProcedureManager;
 
-    m_Subroutine = nullptr;
-    m_LocalEnv = nullptr;
+    m_LocalEnv = m_SubroutineContext->begin_subroutine( location, name, is_function );
 }
 
 void Environment::set_subroutine_param( std::string name )
 {
-    m_Subroutine->add_parameter( name );
+    assert( m_SubroutineContext );
+
+    m_SubroutineContext->set_param( name );
 }
 
-std::shared_ptr<ASTNodeSubroutine> Environment::get_procedure( std::string name,
-                                                               std::vector< std::shared_ptr<ASTNode> >& params )
+void Environment::set_subroutine_body( std::shared_ptr<ASTNode> body  )
 {
-    auto proc = m_Procedures.find( name );
+    assert( m_SubroutineContext );
 
-    if( proc == m_Procedures.end() ) return nullptr;
-    if( proc->second->get_num_parameters() != params.size() ) return nullptr;
+    m_SubroutineContext->set_body( body );
+}
 
-    for( auto param: params ) {
-        proc->second->add_child( param );
+void Environment::commit_subroutine_context( )
+{
+    assert( m_SubroutineContext );
+
+    m_SubroutineContext->commit_subroutine();
+
+    m_SubroutineContext = nullptr;
+    m_LocalEnv = nullptr;
+}
+
+std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+{
+    std::shared_ptr<ASTNode> node = m_ProcedureManager->get_subroutine( location, name, params );
+    if( !node ) throw ASTExceptionNamingConflict( location, name );
+    return node;
+}
+
+std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+{
+    std::shared_ptr<ASTNode> node = m_FunctionManager->get_subroutine( location, name, params );
+    if( !node ) throw ASTExceptionNamingConflict( location, name );
+    return node;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class SubroutineManager implementation
+//////////////////////////////////////////////////////////////////////////////
+
+SubroutineManager::SubroutineManager( Environment* env )
+ : m_Environment( env )
+{}
+
+SubroutineManager::~SubroutineManager()
+{
+    if( m_PendingSubroutine ) {
+        delete m_PendingSubroutine->env;
+        delete m_PendingSubroutine;
     }
 
-    return proc->second;
+    for( auto value: m_Subroutines ) {
+        delete value.second->env;
+        delete value.second;
+    }
 }
 
-std::shared_ptr<ASTNodeSubroutine> Environment::get_function( std::string name,
-                                                              std::vector< std::shared_ptr<ASTNode> >& params )
+LocalEnvironment* SubroutineManager::begin_subroutine( const yylloc_t& location, std::string name, bool is_function )
 {
-    auto func = m_Functions.find( name );
+    assert( m_PendingSubroutine == nullptr );
 
-    if( func == m_Functions.end() ) return nullptr;
-    if( func->second->get_num_parameters() != params.size() ) return nullptr;
+    if( m_Subroutines.find( name ) != m_Subroutines.end() ) throw ASTExceptionNamingConflict( location, name );
 
-    for( auto param: params ) {
-        func->second->add_child( param );
+    m_PendingName = name;
+    m_PendingSubroutine = new subroutine_t;
+    m_PendingSubroutine->env = new LocalEnvironment;
+    m_PendingSubroutine->location = location;
+
+    if( is_function ) {
+        m_PendingSubroutine->retval =  m_PendingSubroutine->env->alloc_var( "return" );
+        assert( m_PendingSubroutine->retval );
     }
 
-    return func->second;
+    return m_PendingSubroutine->env;
 }
 
+void SubroutineManager::set_param( std::string name )
+{
+    assert( m_PendingSubroutine );
+
+    Environment::var* var = m_Environment->alloc_var( name );
+    if( !var ) throw ASTExceptionNamingConflict( m_PendingSubroutine->location, name );
+
+    m_PendingSubroutine->params.push_back( var );
+}
+
+void SubroutineManager::set_body( std::shared_ptr<ASTNode> body )
+{
+    assert( m_PendingSubroutine );
+
+    m_PendingSubroutine->body = body;
+}
+
+void SubroutineManager::commit_subroutine()
+{
+    assert( m_PendingSubroutine );
+
+    m_Subroutines[ m_PendingName ] = m_PendingSubroutine;
+
+    m_PendingSubroutine = nullptr;
+}
+
+std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+{
+    subroutine_t* subroutine;
+
+    if( m_PendingSubroutine && m_PendingName == name ) subroutine = m_PendingSubroutine;
+    else {
+        auto value = m_Subroutines.find( name );
+        if( value == m_Subroutines.end() ) return nullptr;
+        subroutine = value->second;
+    }
+
+    if( subroutine->params.size() != params.size() ) throw ASTExceptionSyntaxError( location, "parameter mismatch" );
+
+    ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->env,
+                                                        subroutine->params, subroutine->retval );
+
+    node->add_child( subroutine->body );
+    for( auto param: params ) node->add_child( param );
+
+    return node;
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // class LocalEnvironment implementation

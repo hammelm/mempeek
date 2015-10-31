@@ -186,9 +186,13 @@ uint64_t ASTNodeBlock::execute()
 // class ASTNodeSubroutine implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc )
+ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, LocalEnvironment* env,
+                                      std::vector< Environment::var* >& params, Environment::var* retval )
  : ASTNode( yylloc ),
-   m_Return( nullptr )
+   m_LocalEnv( env ),
+   m_Params( params ),
+   m_Values( params.size() ),
+   m_Retval( retval )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeSubroutine" << endl;
@@ -201,51 +205,29 @@ uint64_t ASTNodeSubroutine::execute()
     cerr << "AST[" << this << "]: executing ASTNodeSubroutine" << endl;
 #endif
 
-    m_LocalEnv.push();
+    bool is_pushed = false;
+    uint64_t ret = 0;
 
     try {
-        auto param = m_Params.begin();
-        auto expression = get_children().begin() + 1;
+        for( size_t i = 0; i < m_Params.size(); i++ ) m_Values[i] = get_children()[ i + 1 ]->execute();
 
-        while( param != m_Params.end() && expression != get_children().end() ) {
-            (*param)->set( (*expression)->execute() );
-            ++param;
-            ++expression;
-        }
+        m_LocalEnv->push();
+        is_pushed = true;
+
+        for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( m_Values[i] );
 
         get_children()[0]->execute();
+
+        if( m_Retval ) ret = m_Retval->get();
+
+        m_LocalEnv->pop();
     }
     catch( ... ) {
-        m_LocalEnv.pop();
+        if( is_pushed ) m_LocalEnv->pop();
         throw;
     }
 
-    uint64_t ret = m_Return ? m_Return->get() : 0;
-
-    m_LocalEnv.pop();
-
     return ret;
-}
-
-void ASTNodeSubroutine::add_parameter( std::string name )
-{
-#ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: adding parameter " << name << " to ASTNodeSubroutine" << endl;
-#endif
-
-    Environment::var* var = get_environment().alloc_var( name );
-    if( !var ) throw ASTExceptionNamingConflict( get_location(), name );
-    m_Params.push_back( var );
-}
-
-void ASTNodeSubroutine::add_return()
-{
-#ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: adding return variable" << endl;
-#endif
-
-    m_Return = get_environment().alloc_var( "return" );
-    if( !m_Return ) throw ASTExceptionNamingConflict( get_location(), "return" );
 }
 
 

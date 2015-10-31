@@ -136,24 +136,17 @@ class ASTNodeSubroutine : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSubroutine> ptr;
 
-    ASTNodeSubroutine( const yylloc_t& yylloc );
+    ASTNodeSubroutine( const yylloc_t& yylloc, LocalEnvironment* env,
+                       std::vector< Environment::var* >& params, Environment::var* retval = nullptr );
 
     uint64_t execute() override;
 
-    LocalEnvironment* get_local_environment();
-
-    void add_parameter( std::string name );
-    void add_return();
-
-    size_t get_num_parameters();
-
-    ASTNodeSubroutine::ptr clone( std::vector< ASTNode::ptr >& params );
-
 private:
-    LocalEnvironment m_LocalEnv;
+    LocalEnvironment* m_LocalEnv;
 
     std::vector< Environment::var* > m_Params;
-    Environment::var* m_Return;
+    std::vector< uint64_t > m_Values;
+    Environment::var* m_Retval;
 };
 
 
@@ -504,21 +497,6 @@ inline void ASTNode::clear_terminate()
 inline bool ASTNode::is_terminated()
 {
     return s_IsTerminated;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class ASTNodeSubroutine inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline LocalEnvironment* ASTNodeSubroutine::get_local_environment()
-{
-    return &m_LocalEnv;
-}
-
-inline size_t ASTNodeSubroutine::get_num_parameters()
-{
-    return m_Params.size();
 }
 
 

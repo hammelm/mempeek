@@ -26,6 +26,7 @@
 #ifndef __environment_h__
 #define __environment_h__
 
+#include "mempeek_parser.h"
 #include "mmap.h"
 
 #include <string>
@@ -43,9 +44,9 @@
 // class Environment
 //////////////////////////////////////////////////////////////////////////////
 
+class SubroutineManager;
 class LocalEnvironment;
 class ASTNode;
-class ASTNodeSubroutine;
 
 class Environment {
 public:
@@ -66,16 +67,13 @@ public:
 
 	MMap* get_mapping( void* phys_addr, size_t size );
 
-	void enter_subroutine_context( std::shared_ptr<ASTNodeSubroutine> subroutine );
-	void commit_subroutine_context(std::string name,  bool is_function );
+	void enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function );
+    void set_subroutine_param( std::string name );
+    void set_subroutine_body( std::shared_ptr<ASTNode> body );
+	void commit_subroutine_context();
 
-	void set_subroutine_param( std::string name );
-
-	std::shared_ptr<ASTNodeSubroutine> get_procedure( std::string name,
-	                                                  std::vector< std::shared_ptr<ASTNode> >& params );
-
-    std::shared_ptr<ASTNodeSubroutine> get_function( std::string name,
-                                                     std::vector< std::shared_ptr<ASTNode> >& params );
+	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
+    std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 
 private:
 	class defvar;
@@ -83,14 +81,48 @@ private:
 	class globalvar;
 
 	std::map< std::string, var* > m_Vars;
-    std::map< std::string, std::shared_ptr<ASTNodeSubroutine> > m_Procedures;
-    std::map< std::string, std::shared_ptr<ASTNodeSubroutine> > m_Functions;
 	std::map< void*, MMap* > m_Mappings;
 
+	SubroutineManager* m_ProcedureManager;
+	SubroutineManager* m_FunctionManager;
+
 	LocalEnvironment* m_LocalEnv = nullptr;
-	std::shared_ptr<ASTNodeSubroutine> m_Subroutine = nullptr;
+	SubroutineManager* m_SubroutineContext = nullptr;
 };
 
+
+//////////////////////////////////////////////////////////////////////////////
+// class SubroutineManager
+//////////////////////////////////////////////////////////////////////////////
+
+class SubroutineManager {
+public:
+    SubroutineManager( Environment* env );
+    ~SubroutineManager();
+
+    LocalEnvironment* begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
+    void set_param( std::string name );
+    void set_body( std::shared_ptr<ASTNode> body );
+    void commit_subroutine();
+
+    std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
+
+private:
+    typedef struct {
+        LocalEnvironment* env;
+        std::vector< Environment::var* > params;
+        std::shared_ptr<ASTNode> body;
+        Environment::var* retval = nullptr;
+        yylloc_t location;
+    } subroutine_t;
+
+    Environment* m_Environment;
+
+    std::map< std::string, subroutine_t* > m_Subroutines;
+
+    std::string m_PendingName;
+    subroutine_t* m_PendingSubroutine = nullptr;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 // class LocalEnvironment

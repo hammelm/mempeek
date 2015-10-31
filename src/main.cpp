@@ -58,7 +58,7 @@ static void parse( const char* str, bool is_file )
         ASTNode::ptr yyroot = ASTNode::parse( str, is_file );
 
 #ifdef ASTDEBUG
-		cout << "executing ASTNode[" << yyroot << "]" << endl;
+		cerr << "executing ASTNode[" << yyroot << "]" << endl;
 #endif
 		yyroot->execute();
     }
