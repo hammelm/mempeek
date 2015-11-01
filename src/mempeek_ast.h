@@ -127,7 +127,6 @@ private:
     LocalEnvironment* m_LocalEnv;
 
     std::vector< Environment::var* > m_Params;
-    std::vector< uint64_t > m_Values;
     Environment::var* m_Retval;
 };
 

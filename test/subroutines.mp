@@ -1,3 +1,4 @@
+#
 # test case: subroutines
 #
 # output:

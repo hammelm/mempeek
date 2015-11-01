@@ -122,7 +122,6 @@ ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, LocalEnvironment* 
  : ASTNode( yylloc ),
    m_LocalEnv( env ),
    m_Params( params ),
-   m_Values( params.size() ),
    m_Retval( retval )
 {
 #ifdef ASTDEBUG
@@ -140,12 +139,14 @@ uint64_t ASTNodeSubroutine::execute()
     uint64_t ret = 0;
 
     try {
-        for( size_t i = 0; i < m_Params.size(); i++ ) m_Values[i] = get_children()[ i + 1 ]->execute();
+        vector<uint64_t> values( m_Params.size() );
+
+        for( size_t i = 0; i < m_Params.size(); i++ ) values[i] = get_children()[ i + 1 ]->execute();
 
         m_LocalEnv->push();
         is_pushed = true;
 
-        for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( m_Values[i] );
+        for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( values[i] );
         get_children()[0]->execute();
     }
     catch( ASTExceptionExit& ) {
