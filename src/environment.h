@@ -45,6 +45,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 class SubroutineManager;
+class VarStorage;
 class LocalEnvironment;
 class ASTNode;
 
@@ -88,18 +89,15 @@ public:
     static bool is_terminated();
 
 private:
-	class defvar;
-    class structvar;
-	class globalvar;
+    VarStorage* m_GlobalVars;
 
-	std::map< std::string, var* > m_Vars;
 	std::map< void*, MMap* > m_Mappings;
 
 	SubroutineManager* m_ProcedureManager;
 	SubroutineManager* m_FunctionManager;
 
-	LocalEnvironment* m_LocalEnv = nullptr;
 	SubroutineManager* m_SubroutineContext = nullptr;
+    VarStorage* m_LocalVars = nullptr;
 
 	std::vector< std::string > m_IncludePaths;
 
@@ -116,7 +114,7 @@ public:
     SubroutineManager( Environment* env );
     ~SubroutineManager();
 
-    LocalEnvironment* begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
+    VarStorage* begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
     void set_param( std::string name );
     void set_body( std::shared_ptr<ASTNode> body );
     void commit_subroutine();
@@ -125,7 +123,7 @@ public:
 
 private:
     typedef struct {
-        LocalEnvironment* env;
+        VarStorage* vars;
         std::vector< Environment::var* > params;
         std::shared_ptr<ASTNode> body;
         Environment::var* retval = nullptr;
@@ -140,16 +138,22 @@ private:
     subroutine_t* m_PendingSubroutine = nullptr;
 };
 
+
 //////////////////////////////////////////////////////////////////////////////
-// class LocalEnvironment
+// class VarStorage
 //////////////////////////////////////////////////////////////////////////////
 
-class LocalEnvironment {
+class VarStorage {
 public:
-    LocalEnvironment();
-    ~LocalEnvironment();
+    VarStorage();
+    ~VarStorage();
 
-    Environment::var* alloc_var( std::string name );
+    Environment::var* alloc_def( std::string name );
+    Environment::var* alloc_global( std::string name );
+    Environment::var* alloc_ref( std::string name, Environment::var* var );
+    Environment::var* alloc_local( std::string name );
+
+    std::set< std::string > get_struct_members( std::string name );
 
     const Environment::var* get( std::string name );
 
@@ -157,11 +161,16 @@ public:
     void pop();
 
 private:
+    class defvar;
+    class structvar;
+    class globalvar;
     class localvar;
+    class refvar;
 
     std::map< std::string, Environment::var* > m_Vars;
 
     uint64_t* m_Storage = nullptr;
+    size_t m_StorageSize = 0;
     std::stack< uint64_t* > m_Stack;
 };
 
@@ -183,10 +192,10 @@ public:
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class Environment::defvar
+// class VarStorage::defvar
 //////////////////////////////////////////////////////////////////////////////
 
-class Environment::defvar : public Environment::var {
+class VarStorage::defvar : public Environment::var {
 public:
     bool is_def() const override;
 
@@ -199,10 +208,10 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class Environment::structvar
+// class VarStorage::structvar
 //////////////////////////////////////////////////////////////////////////////
 
-class Environment::structvar : public Environment::var {
+class VarStorage::structvar : public Environment::var {
 public:
     structvar( const Environment::var* base );
 
@@ -218,10 +227,10 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class Environment::globalvar
+// class VarStorage::globalvar
 //////////////////////////////////////////////////////////////////////////////
 
-class Environment::globalvar : public Environment::var {
+class VarStorage::globalvar : public Environment::var {
 public:
     uint64_t get() const override;
     void set( uint64_t value ) override;
@@ -232,10 +241,10 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class LocalEnvironment::localvar
+// class VarStorage::localvar
 //////////////////////////////////////////////////////////////////////////////
 
-class LocalEnvironment::localvar : public Environment::var {
+class VarStorage::localvar : public Environment::var {
 public:
     localvar( uint64_t*& storage, size_t offset );
 
@@ -251,8 +260,54 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class VarStorage::refvar
+//////////////////////////////////////////////////////////////////////////////
+
+class VarStorage::refvar : public Environment::var {
+public:
+    refvar( Environment::var* var );
+
+    uint64_t get() const override;
+    void set( uint64_t value ) override;
+
+private:
+    Environment::var* m_Var;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class Environment inline functions
 //////////////////////////////////////////////////////////////////////////////
+
+inline Environment::var* Environment::alloc_def( std::string name )
+{
+    return m_GlobalVars->alloc_def( name );
+}
+
+inline Environment::var* Environment::alloc_var( std::string name )
+{
+    if( m_LocalVars ) return m_LocalVars->alloc_local( name );
+    else return m_GlobalVars->alloc_global( name );
+}
+
+inline Environment::var* Environment::alloc_global( std::string name )
+{
+    Environment::var* var = m_GlobalVars->alloc_global( name );
+
+    if( var && m_LocalVars ) return m_LocalVars->alloc_ref( name, var );
+    else return var;
+}
+
+inline const Environment::var* Environment::get( std::string name )
+{
+    if( m_LocalVars ) return m_LocalVars->get( name );
+    else return m_GlobalVars->get( name );
+}
+
+inline std::set< std::string > Environment::get_struct_members( std::string name )
+{
+    return m_GlobalVars->get_struct_members( name );
+}
 
 inline void Environment::add_include_path( std::string path )
 {
@@ -276,16 +331,24 @@ inline bool Environment::is_terminated()
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class LocalEnvironment inline functions
+// class VarStorage inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline void LocalEnvironment::push()
+inline const Environment::var* VarStorage::get( std::string name )
 {
-    m_Stack.push( m_Storage );
-    m_Storage = new uint64_t[ m_Vars.size() ];
+    auto iter = m_Vars.find( name );
+    if( iter == m_Vars.end() ) return nullptr;
+    else return iter->second;
 }
 
-inline void LocalEnvironment::pop()
+inline void VarStorage::push()
+{
+    if( m_StorageSize > 0 )
+        m_Stack.push( m_Storage );
+        m_Storage = new uint64_t[ m_StorageSize ];
+}
+
+inline void VarStorage::pop()
 {
     if( !m_Stack.empty() ) {
         delete[] m_Storage;

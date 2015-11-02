@@ -118,13 +118,13 @@ class ASTNodeSubroutine : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSubroutine> ptr;
 
-    ASTNodeSubroutine( const yylloc_t& yylloc, LocalEnvironment* env,
+    ASTNodeSubroutine( const yylloc_t& yylloc, VarStorage* vars,
                        std::vector< Environment::var* >& params, Environment::var* retval = nullptr );
 
     uint64_t execute() override;
 
 private:
-    LocalEnvironment* m_LocalEnv;
+    VarStorage* m_LocalVars;
 
     std::vector< Environment::var* > m_Params;
     Environment::var* m_Retval;

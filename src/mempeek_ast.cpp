@@ -117,10 +117,10 @@ uint64_t ASTNodeBlock::execute()
 // class ASTNodeSubroutine implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, LocalEnvironment* env,
+ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, VarStorage* vars,
                                       std::vector< Environment::var* >& params, Environment::var* retval )
  : ASTNode( yylloc ),
-   m_LocalEnv( env ),
+   m_LocalVars( vars ),
    m_Params( params ),
    m_Retval( retval )
 {
@@ -143,7 +143,7 @@ uint64_t ASTNodeSubroutine::execute()
 
         for( size_t i = 0; i < m_Params.size(); i++ ) values[i] = get_children()[ i + 1 ]->execute();
 
-        m_LocalEnv->push();
+        m_LocalVars->push();
         is_pushed = true;
 
         for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( values[i] );
@@ -156,13 +156,13 @@ uint64_t ASTNodeSubroutine::execute()
         // nothing to do
     }
     catch( ... ) {
-        if( is_pushed ) m_LocalEnv->pop();
+        if( is_pushed ) m_LocalVars->pop();
         throw;
     }
 
     if( is_pushed ) {
         if( m_Retval ) ret = m_Retval->get();
-        m_LocalEnv->pop();
+        m_LocalVars->pop();
     }
 
     return ret;
