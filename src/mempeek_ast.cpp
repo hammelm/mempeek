@@ -600,6 +600,7 @@ uint64_t ASTNodeSleep::execute()
     return 0;
 }
 
+
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodeAssign implementation
 //////////////////////////////////////////////////////////////////////////////
@@ -636,6 +637,49 @@ uint64_t ASTNodeAssign::execute()
 	if( m_Var ) m_Var->set( value );
 
 	return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeStatic implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeStatic::ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression )
+ : ASTNode( yylloc ),
+   m_IsInitialized( false )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeStatic name=" << name << " expression=[" << expression << "]" << endl;
+#endif
+
+    m_Var = env->alloc_static( name );
+
+    if( expression->is_constant() ) {
+        try {
+            add_child( make_shared<ASTNodeConstant>( yylloc, expression->execute() ) );
+        }
+        catch( const ASTExceptionDivisionByZero& ex ) {
+            throw ASTExceptionConstDivisionByZero( ex );
+        }
+    }
+    else add_child( expression );
+
+    if( !m_Var ) throw ASTExceptionNamingConflict( get_location(), name );
+}
+
+uint64_t ASTNodeStatic::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeStatic" << endl;
+#endif
+
+    if( !m_IsInitialized ) {
+        uint64_t value = get_children()[0]->execute();
+        if( m_Var ) m_Var->set( value );
+        m_IsInitialized = true;
+    }
+
+    return 0;
 }
 
 

@@ -101,7 +101,8 @@ toplevel_statement : statement                          { $$.node = $1.node; }
                    | func_def
                    ;
 
-statement : assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node; } 
+statement : %empty                                          { $$.node = nullptr; }
+          | assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node; } 
           | poke_stmt T_END_OF_STATEMENT                    { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
           | sleep_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
@@ -116,7 +117,8 @@ statement : assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node;
 
 subroutine_statement : statement                                    { $$.node = $1.node; }
                      | T_GLOBAL plain_identifier T_END_OF_STATEMENT { if( !env->alloc_global( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
-                     | T_STATIC plain_identifier T_END_OF_STATEMENT { if( !env->alloc_static( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+                     | T_STATIC plain_identifier
+                       T_ASSIGN expression T_END_OF_STATEMENT       { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node ); }
                      ;
 
 proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, false ); }
