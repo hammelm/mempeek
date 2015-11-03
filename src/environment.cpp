@@ -279,9 +279,8 @@ std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& loca
 
     if( subroutine->params.size() != params.size() ) throw ASTExceptionSyntaxError( location, "parameter mismatch" );
 
-    ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->vars, subroutine->params, subroutine->retval );
+    ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->body, subroutine->vars, subroutine->params, subroutine->retval );
 
-    node->add_child( subroutine->body );
     for( auto param: params ) node->add_child( param );
 
     return node;

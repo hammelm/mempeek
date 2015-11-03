@@ -117,12 +117,13 @@ uint64_t ASTNodeBlock::execute()
 // class ASTNodeSubroutine implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, VarStorage* vars,
+ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarStorage* vars,
                                       std::vector< Environment::var* >& params, Environment::var* retval )
  : ASTNode( yylloc ),
    m_LocalVars( vars ),
    m_Params( params ),
-   m_Retval( retval )
+   m_Retval( retval ),
+   m_Body( body )
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: creating ASTNodeSubroutine" << endl;
@@ -141,13 +142,14 @@ uint64_t ASTNodeSubroutine::execute()
     try {
         vector<uint64_t> values( m_Params.size() );
 
-        for( size_t i = 0; i < m_Params.size(); i++ ) values[i] = get_children()[ i + 1 ]->execute();
+        for( size_t i = 0; i < m_Params.size(); i++ ) values[i] = get_children()[i]->execute();
 
         m_LocalVars->push();
         is_pushed = true;
 
         for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( values[i] );
-        get_children()[0]->execute();
+
+        ASTNode::ptr(m_Body)->execute();
     }
     catch( ASTExceptionExit& ) {
         // nothing to do

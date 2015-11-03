@@ -118,7 +118,7 @@ class ASTNodeSubroutine : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSubroutine> ptr;
 
-    ASTNodeSubroutine( const yylloc_t& yylloc, VarStorage* vars,
+    ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarStorage* vars,
                        std::vector< Environment::var* >& params, Environment::var* retval = nullptr );
 
     uint64_t execute() override;
@@ -128,6 +128,11 @@ private:
 
     std::vector< Environment::var* > m_Params;
     Environment::var* m_Retval;
+
+    // use weak_ptr for subroutine body to break circular references of recursive
+    // calls, a shared_ptr to the body remains in class SubroutineManager
+    std::weak_ptr<ASTNode> m_Body;
+
 };
 
 
