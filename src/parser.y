@@ -51,7 +51,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* err 
 %token T_MAP
 %token T_DEFPROC T_ENDPROC
 %token T_DEFFUNC T_ENDFUNC
-%token T_EXIT
+%token T_EXIT T_GLOBAL T_STATIC
 %token T_IMPORT
 %token T_PEEK
 %token T_POKE T_MASK
@@ -114,7 +114,9 @@ statement : assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node;
           | plain_identifier proc_params T_END_OF_STATEMENT { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1, "unknown procedure call" ); }
           ;
 
-subroutine_statement : statement                        { $$.node = $1.node; }
+subroutine_statement : statement                                    { $$.node = $1.node; }
+                     | T_GLOBAL plain_identifier T_END_OF_STATEMENT { if( !env->alloc_global( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+                     | T_STATIC plain_identifier T_END_OF_STATEMENT { if( !env->alloc_static( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
                      ;
 
 proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, false ); }

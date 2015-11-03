@@ -65,6 +65,7 @@ public:
 	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
     var* alloc_global( std::string name );
+    var* alloc_static( std::string name );
 
 	const var* get( std::string name );
 
@@ -296,6 +297,12 @@ inline Environment::var* Environment::alloc_global( std::string name )
 
     if( var && m_LocalVars ) return m_LocalVars->alloc_ref( name, var );
     else return var;
+}
+
+inline Environment::var* Environment::alloc_static( std::string name )
+{
+    if( m_LocalVars ) return m_LocalVars->alloc_global( name );
+    else return m_GlobalVars->alloc_global( name );
 }
 
 inline const Environment::var* Environment::get( std::string name )
