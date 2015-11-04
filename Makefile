@@ -13,6 +13,7 @@ LIBS = -ledit
 all: prepare bin/mempeek
 
 prepare: bin obj generated $(addprefix generated/, $(GENERATED))
+	@./create_buildinfo.sh
 
 vpath %.cpp src
 vpath %.cpp generated
@@ -28,7 +29,7 @@ clean:
 	rm -rf generated
 
 bin/mempeek: $(addprefix obj/, $(OBJS))
-	$(GXX) -o $@ $^ $(LIBS)
+	$(GXX) -o $@ $^ generated/buildinfo.c $(LIBS)
 
 obj/%.o: %.cpp
 	$(GXX) $(CFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c -o $@ $<

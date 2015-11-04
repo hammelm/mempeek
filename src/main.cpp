@@ -27,6 +27,7 @@
 #include "mempeek_exceptions.h"
 #include "console.h"
 #include "teestream.h"
+#include "version.h"
 
 #if defined( YYDEBUG ) && YYDEBUG != 0
 #include "mempeek_parser.h"
@@ -105,7 +106,11 @@ int main( int argc, char** argv )
 
         for( int i = 1; i < argc; i++ )
         {
-            if( strcmp( argv[i], "-i" ) == 0 ) is_interactive = true;
+            if( strcmp( argv[i], "-v" ) == 0 ) {
+                print_release_info();
+                return 0;
+            }
+            else if( strcmp( argv[i], "-i" ) == 0 ) is_interactive = true;
             else if( strcmp( argv[i], "-I" ) == 0 ) {
                 if( ++i >= argc ) {
                     cerr << "missing include path" << endl;
@@ -156,6 +161,7 @@ int main( int argc, char** argv )
 
         if( is_interactive || !has_commands ) {
             Console console( "mempeek", "~/.mempeek_history" );
+            if( !has_commands ) print_release_info();
             for(;;) {
                 string line = console.get_line();
                 if( logfile ) *logfile << "> " << line;
