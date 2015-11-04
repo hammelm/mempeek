@@ -50,6 +50,13 @@
 
 "def"                   TOKEN( T_DEF )
 "map"                   TOKEN( T_MAP )
+"defproc"               TOKEN( T_DEFPROC )
+"endproc"               TOKEN( T_ENDPROC )
+"deffunc"               TOKEN( T_DEFFUNC )
+"endfunc"               TOKEN( T_ENDFUNC )
+"exit"                  TOKEN( T_EXIT )
+"global"                TOKEN( T_GLOBAL )
+"static"                TOKEN( T_STATIC )
 "from"                  TOKEN( T_FROM )
 "import"                TOKEN( T_IMPORT )
 "peek"                  TOKEN( T_PEEK )
@@ -109,6 +116,7 @@
 "!="                    TOKEN( T_NE )
 
 "."                     TOKEN( '.' )
+","                     TOKEN( ',' )
 "["                     TOKEN( '[' )
 "]"                     TOKEN( ']' )
 "("                     TOKEN( '(' )

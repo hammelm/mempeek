@@ -27,9 +27,11 @@
 #define __mempeek_parser_h__
 
 #include <string>
+#include <vector>
 #include <memory>
 
 class ASTNode;
+class Environment;
 
 typedef std::shared_ptr<ASTNode> yynodeptr_t;
 
@@ -39,7 +41,10 @@ typedef struct {
     std::string value = "";
     int token = 0;
     yynodeptr_t node = nullptr;
+    std::vector< yynodeptr_t > nodelist;
 } yyvalue_t;
+
+typedef Environment* yyenv_t;
 
 typedef struct {
 	std::string file;

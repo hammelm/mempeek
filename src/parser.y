@@ -26,6 +26,7 @@
 %{
 
 #include <iostream>
+#include <utility>
 #include <stdio.h>
 
 #include "mempeek_parser.h"
@@ -36,17 +37,20 @@ using namespace std;
 
 int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
 
-void yyerror( YYLTYPE* yylloc, yyscan_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
+void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
 
 %}
 
 %define api.value.type { yyvalue_t }
 %define api.pure full
-%parse-param { yyscan_t scanner } { yynodeptr_t& yyroot }
+%parse-param { yyscan_t scanner } { yyenv_t env } { yynodeptr_t& yyroot }
 %lex-param { yyscan_t scanner }
 
 %token T_DEF T_FROM
 %token T_MAP
+%token T_DEFPROC T_ENDPROC
+%token T_DEFFUNC T_ENDFUNC
+%token T_EXIT T_GLOBAL T_STATIC
 %token T_IMPORT
 %token T_PEEK
 %token T_POKE T_MASK
@@ -83,22 +87,72 @@ block : statement                                       { $$.node = make_shared<
       | block statement                                 { $$.node = $1.node; $$.node->add_child( $2.node ); }
       ;
 
+subroutine_block :                                          { $$.node = make_shared<ASTNodeBlock>( @$ ); env->set_subroutine_body( $$.node ); }
+                   subroutine_statement                     { $$.node = $1.node; $$.node->add_child( $2.node ); }
+                 | subroutine_block subroutine_statement    { $$.node = $1.node; $$.node->add_child( $2.node ); }
+                 ;
+
 toplevel_statement : statement                          { $$.node = $1.node; }
                    | map_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
                    | def_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
                    | import_stmt T_END_OF_STATEMENT     { $$.node = $1.node; }
+                   | proc_def
+                   | func_def
                    ;
 
-statement : assign_stmt T_END_OF_STATEMENT              { $$.node = $1.node; } 
-          | poke_stmt T_END_OF_STATEMENT                { $$.node = $1.node; }
-          | print_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
-          | sleep_stmt T_END_OF_STATEMENT               { $$.node = $1.node; }
-          | T_BREAK T_END_OF_STATEMENT                  { $$.node = make_shared<ASTNodeBreak>( @1, T_BREAK ); }
-          | T_QUIT T_END_OF_STATEMENT                   { $$.node = make_shared<ASTNodeBreak>( @1, T_QUIT ); }
-          | if_block                                    { $$.node = $1.node; }
-          | while_block                                 { $$.node = $1.node; }
-          | for_block                                   { $$.node = $1.node; }
+statement : %empty                                          { $$.node = nullptr; }
+          | assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node; } 
+          | poke_stmt T_END_OF_STATEMENT                    { $$.node = $1.node; }
+          | print_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
+          | sleep_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
+          | T_EXIT T_END_OF_STATEMENT                       { $$.node = make_shared<ASTNodeBreak>( @1, T_EXIT ); }
+          | T_BREAK T_END_OF_STATEMENT                      { $$.node = make_shared<ASTNodeBreak>( @1, T_BREAK ); }
+          | T_QUIT T_END_OF_STATEMENT                       { $$.node = make_shared<ASTNodeBreak>( @1, T_QUIT ); }
+          | if_block                                        { $$.node = $1.node; }
+          | while_block                                     { $$.node = $1.node; }
+          | for_block                                       { $$.node = $1.node; }
+          | plain_identifier proc_params T_END_OF_STATEMENT { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
           ;
+
+subroutine_statement : statement                                    { $$.node = $1.node; }
+                     | T_GLOBAL plain_identifier T_END_OF_STATEMENT { if( !env->alloc_global( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+                     | T_STATIC plain_identifier
+                       T_ASSIGN expression T_END_OF_STATEMENT       { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node ); }
+                     ;
+
+proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, false ); }
+               proc_args T_END_OF_STATEMENT
+               subroutine_block
+           T_ENDPROC                                    { env->commit_subroutine_context(); }
+           T_END_OF_STATEMENT                           { $$.node = nullptr; }
+         ;
+
+proc_args : %empty
+          | plain_identifier                            { env->set_subroutine_param( $1.value ); }
+          | proc_args plain_identifier                  { env->set_subroutine_param( $2.value ); }
+          ;
+
+proc_params : %empty
+            | expression                                { $$.nodelist.push_back( $1.node ); }
+            | proc_params expression                    { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $2.node ); }
+            ;
+
+func_def : T_DEFFUNC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, true ); } 
+               '(' func_args ')' T_END_OF_STATEMENT
+               subroutine_block
+           T_ENDFUNC                                    { env->commit_subroutine_context(); }
+           T_END_OF_STATEMENT                           { $$.node = nullptr; }
+         ;
+
+func_args : %empty
+          | plain_identifier                            { env->set_subroutine_param( $1.value ); }
+          | func_args ',' plain_identifier              { env->set_subroutine_param( $3.value ); }
+          ;
+
+func_params : %empty
+            | expression                                { $$.nodelist.push_back( $1.node ); }
+            | func_params ',' expression                { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
+            ;
 
 if_block : if_def statement                                             { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node ); }
          | if_def statement else_def                                    { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node, $3.node ); }
@@ -125,29 +179,29 @@ for_block : for_def statement                           { $$.node = $1.node; $$.
             T_ENDFOR T_END_OF_STATEMENT                 { $$.node = $1.node; $$.node->add_child( $3.node ); }
           ;
 
-for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO                     { $$.node = make_shared<ASTNodeFor>( @$, make_shared<ASTNodeAssign>( @2, $2.value, $4.node ), $6.node ); }
-        | T_FOR plain_identifier T_FROM expression T_TO expression T_STEP expression T_DO   { $$.node = make_shared<ASTNodeFor>( @$, make_shared<ASTNodeAssign>( @2, $2.value, $4.node ), $6.node, $8.node ); }
+for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO                     { $$.node = make_shared<ASTNodeFor>( @$, make_shared<ASTNodeAssign>( @2, env, $2.value, $4.node ), $6.node ); }
+        | T_FOR plain_identifier T_FROM expression T_TO expression T_STEP expression T_DO   { $$.node = make_shared<ASTNodeFor>( @$, make_shared<ASTNodeAssign>( @2, env, $2.value, $4.node ), $6.node, $8.node ); }
         ;
 
-assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<ASTNodeAssign>( @$, $1.value, $3.node ); }
+assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node ); }
 
-def_stmt : T_DEF plain_identifier expression                            { $$.node = make_shared<ASTNodeDef>( @$, $2.value, $3.node ); }
-         | T_DEF struct_identifier expression                           { $$.node = make_shared<ASTNodeDef>( @$, $2.value, $3.node ); }
-         | T_DEF plain_identifier expression T_FROM plain_identifier    { $$.node = make_shared<ASTNodeDef>( @$, $2.value, $3.node, $5.value ); }
+def_stmt : T_DEF plain_identifier expression                            { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
+         | T_DEF struct_identifier expression                           { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
+         | T_DEF plain_identifier expression T_FROM plain_identifier    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node, $5.value ); }
          ;
 
-map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, $2.node, $3.node ); }
-         | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
+map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node ); }
+         | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
 
-import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, $2.value.substr( 1, $2.value.length() - 2 ) ); }
+import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ) ); }
             ;
 
-poke_stmt : poke_token expression expression                        { $$.node = make_shared<ASTNodePoke>( @$, $2.node, $3.node, $1.token ); }
-          | poke_token expression expression T_MASK expression      { $$.node = make_shared<ASTNodePoke>( @$, $2.node, $3.node, $5.node, $1.token ); }
+poke_stmt : poke_token expression expression                        { $$.node = make_shared<ASTNodePoke>( @$, env, $2.node, $3.node, $1.token ); }
+          | poke_token expression expression T_MASK expression      { $$.node = make_shared<ASTNodePoke>( @$, env, $2.node, $3.node, $5.node, $1.token ); }
           ;
 
-poke_token : T_POKE                                     { $$.token = ASTNode::get_default_size(); }
+poke_token : T_POKE                                     { $$.token = Environment::get_default_size(); }
            | T_POKE size_suffix                         { $$.token = $2.token; }
            ;
 
@@ -229,10 +283,11 @@ unary_expr : T_MINUS atomic_expr                        { $$.node = make_shared<
 atomic_expr : T_CONSTANT                                { $$.node = make_shared<ASTNodeConstant>( @$, $1.value ); }
             | identifier                                { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
-            | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, $3.node, $1.token ); }
+            | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
+            | plain_identifier '(' func_params ')'      { $$.node = env->get_function( @1, $1.value, $3.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
             ;
 
-peek_token : T_PEEK                                     { $$.token = ASTNode::get_default_size(); }
+peek_token : T_PEEK                                     { $$.token = Environment::get_default_size(); }
            | T_PEEK size_suffix                         { $$.token = $2.token; }
            ;
 
@@ -240,8 +295,8 @@ identifier : index_identifier                           { $$.node = $1.node; }
            | index_identifier size_suffix               { $$.node = make_shared<ASTNodeRestriction>( @$, $1.node, $2.token ); }
            ;
 
-index_identifier : base_identifier                      { $$.node = make_shared<ASTNodeVar>( @$, $1.value ); }
-                 | base_identifier '[' expression ']'   { $$.node = make_shared<ASTNodeVar>( @$, $1.value, $3.node ); }
+index_identifier : base_identifier                      { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
+                 | base_identifier '[' expression ']'   { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value, $3.node ); }
                  ;
 
 base_identifier : struct_identifier                     { $$.value = $1.value; }

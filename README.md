@@ -237,14 +237,64 @@ the "mask" keyword is given, only the bits in memory which are set in *mask* are
 Read a value from memory at *address*. [size] can be ":8", ":16", ":32" or ":64",
 restricting the memory access to this bit size. Default size is the system bit size.
 
+functions and procedures
+------------------------
+
+Mempeek allows the definition of subroutines. There is a distinction between functions and
+procedures which have slightly different syntax and semantics. Functions can be used in
+expressions, and parameters are put between braces and are comma separated. A function
+returns a value which is used for further calculations in the expression. Procedures can be
+used like statements and do not have return values. The procedure parameters are written
+without parentheses and are separated only by white space.
+
+        defproc <name> [<parameter> [<parameter> [...]]]
+            <command>
+            ...
+            [exit]
+            ...
+        endproc
+
+        deffunc <name> ( [<parameter> [, <parameter> [, ...]]] )
+            <command>
+            ...
+            [exit]
+            ...
+        endfunc
+
+Define a function or procedure with name *name* and optional parameters. The body of the
+subroutine consists of a list of commands which are executed when the subroutine is called.
+The parameters can be accessed as variables within the subroutine body. When an "exit"
+keyword is encountered, the execution of the subroutine is stopped and control flow returns
+to the caller.
+
+Variables which are defined within the subroutine body are not visible outside of the
+subroutine body, and variables defined outside of the subroutine body are not visible
+within. Definition variables are visible within the subroutine body, but it is not allowed
+to create or change definition variables from within a subroutine.
+
+        return := <expresion>
+
+To return a value from a function, the special variable *return* is defined within the
+function body. The result of the function must be assigned to this variable. On exit, the
+value stored in the variable is used as return value.
+
+        global <var>
+        static <var> := <expression>
+
+The keyword "global" can be used to make a variable visible within the function scope which
+was defined outside of the function. The keyword "static" can be used to define a variable
+which is only visible within the function and remains unchanged between function calls.
+The result of *expression* is used as initial value for the variable when the "static"
+keyword is executed for the first time.
+
 other commands
 --------------
 
         import "file"
 
 Execute the content of "file". All mappings, variable definitions, and assignments are
-imported in the current scope. A break command in the imported file file stop execution and
-return to the current scope.
+imported in the current scope. An exit command in the imported file stops execution and
+returns to the current scope.
 
         sleep <time>
 
@@ -253,7 +303,6 @@ Suspend execution for *time* microseconds
         quit
 
 Terminate a program
-
 
 comments, whitespace, newline
 -----------------------------

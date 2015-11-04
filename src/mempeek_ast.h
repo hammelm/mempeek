@@ -61,19 +61,6 @@ public:
 	bool is_constant();
 	virtual ASTNode::ptr clone_to_const();
 
-	static ASTNode::ptr parse( const char* str, bool is_file );
-	static ASTNode::ptr parse( const yylloc_t& location, const char* str, bool is_file );
-
-	static int get_default_size();
-
-	static Environment& get_environment();
-
-	static void add_include_path( std::string path );
-
-	static void set_terminate();
-    static void clear_terminate();
-	static bool is_terminated();
-
 protected:
 	typedef std::vector< ASTNode::ptr > nodelist_t;
 
@@ -82,16 +69,11 @@ protected:
 	void set_constant();
 
 private:
-	nodelist_t m_Children;
+    yylloc_t m_Location;
 
-	yylloc_t m_Location;
+    nodelist_t m_Children;
 
 	bool m_IsConstant = false;
-
-	static Environment s_Environment;
-	static volatile bool s_IsTerminated;
-
-	static std::vector< std::string > s_IncludePaths;
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
@@ -130,6 +112,32 @@ public:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeSubroutine
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeSubroutine : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeSubroutine> ptr;
+
+    ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarStorage* vars,
+                       std::vector< Environment::var* >& params, Environment::var* retval = nullptr );
+
+    uint64_t execute() override;
+
+private:
+    VarStorage* m_LocalVars;
+
+    std::vector< Environment::var* > m_Params;
+    Environment::var* m_Retval;
+
+    // use weak_ptr for subroutine body to break circular references of recursive
+    // calls, a shared_ptr to the body remains in class SubroutineManager
+    std::weak_ptr<ASTNode> m_Body;
+
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeAssign
 //////////////////////////////////////////////////////////////////////////////
 
@@ -137,13 +145,33 @@ class ASTNodeAssign : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeAssign> ptr;
 
-    ASTNodeAssign( const yylloc_t& yylloc, std::string name, ASTNode::ptr expression );
+    ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
 
     uint64_t execute() override;
 
     Environment::var* get_var();
 
 private:
+    Environment::var* m_Var;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeStatic
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeStatic : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeStatic> ptr;
+
+    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
+
+    uint64_t execute() override;
+
+    Environment::var* get_var();
+
+private:
+    bool m_IsInitialized;
     Environment::var* m_Var;
 };
 
@@ -203,13 +231,14 @@ class ASTNodePeek : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodePeek> ptr;
 
-	ASTNodePeek( const yylloc_t& yylloc, ASTNode::ptr address, int size_restriction );
+	ASTNodePeek( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, int size_restriction );
 
 	uint64_t execute() override;
 
 private:
 	template< typename T> uint64_t peek();
 
+	Environment* m_Env;
 	int m_SizeRestriction;
 };
 
@@ -222,14 +251,15 @@ class ASTNodePoke : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodePoke> ptr;
 
-	ASTNodePoke( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr value, int size_restriction );
-	ASTNodePoke( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr value, ASTNode::ptr mask, int size_restriction );
+	ASTNodePoke( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr value, int size_restriction );
+	ASTNodePoke( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr value, ASTNode::ptr mask, int size_restriction );
 
 	uint64_t execute() override;
 
 private:
 	template< typename T> void poke();
 
+    Environment* m_Env;
 	int m_SizeRestriction;
 };
 
@@ -295,8 +325,8 @@ class ASTNodeDef : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeDef> ptr;
 
-	ASTNodeDef( const yylloc_t& yylloc, std::string name, ASTNode::ptr address );
-	ASTNodeDef( const yylloc_t& yylloc, std::string name, ASTNode::ptr address, std::string from );
+	ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr address );
+	ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr address, std::string from );
 
 	uint64_t execute() override;
 };
@@ -310,8 +340,8 @@ class ASTNodeMap : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeMap> ptr;
 
-	ASTNodeMap( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr size );
-    ASTNodeMap( const yylloc_t& yylloc, ASTNode::ptr address, ASTNode::ptr size, std::string device );
+	ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr size );
+    ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr size, std::string device );
 
 	uint64_t execute() override;
 };
@@ -325,7 +355,7 @@ class ASTNodeImport : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeImport> ptr;
 
-	ASTNodeImport( const yylloc_t& yylloc, std::string file );
+	ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file );
 
 	uint64_t execute() override;
 };
@@ -394,8 +424,8 @@ class ASTNodeVar : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeVar> ptr;
 
-	ASTNodeVar( const yylloc_t& yylloc, std::string name );
-	ASTNodeVar( const yylloc_t& yylloc, std::string name, ASTNode::ptr index );
+	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name );
+	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
 
 	uint64_t execute() override;
 
@@ -444,11 +474,13 @@ inline void ASTNode::add_child( ASTNode::ptr node )
 	std::cerr << "AST[" << this << "]: add child node=[" << node << "]" << std::endl;
 #endif
 
-	if( node->m_IsConstant ) {
-	    ASTNode::ptr constnode = node->clone_to_const();
-	    m_Children.push_back( constnode ? constnode : node );
-	}
-	else m_Children.push_back( node );
+    if( node ) {
+        if( node->m_IsConstant ) {
+            ASTNode::ptr constnode = node->clone_to_const();
+            m_Children.push_back( constnode ? constnode : node );
+        }
+        else m_Children.push_back( node );
+    }
 }
 
 inline const ASTNode::nodelist_t& ASTNode::get_children()
@@ -459,31 +491,6 @@ inline const ASTNode::nodelist_t& ASTNode::get_children()
 inline void ASTNode::set_constant()
 {
     m_IsConstant = true;
-}
-
-inline Environment& ASTNode::get_environment()
-{
-	return s_Environment;
-}
-
-inline void ASTNode::add_include_path( std::string path )
-{
-    s_IncludePaths.push_back( path );
-}
-
-inline void ASTNode::set_terminate()
-{
-    s_IsTerminated = true;
-}
-
-inline void ASTNode::clear_terminate()
-{
-    s_IsTerminated = false;
-}
-
-inline bool ASTNode::is_terminated()
-{
-    return s_IsTerminated;
 }
 
 
