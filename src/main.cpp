@@ -91,6 +91,21 @@ static void parse( Environment* env, const char* str, bool is_file )
     signal( SIGTERM, SIG_DFL );
 }
 
+static void print_usage( const char* name )
+{
+    cout << "Usage: " << name << " [options] [script] ...\n"
+            "\n"
+            "Options:\n"
+            "    -i          Enter interactive mode when all scripts and commands are completed\n"
+            "    -I <path>   Add <path> to the search path of the \"import\" command\n"
+            "    -c <stmt>   Execute the mempeek command <stmt>\n"
+            "    -l <file>   Write output and interactive input to <file>\n"
+            "    -ll <file>  Append output and interactive input to <file>\n"
+            "    -v          Print version\n"
+            "    -h          Print usage\n"
+         << flush;
+}
+
 int main( int argc, char** argv )
 {
 #if defined( YYDEBUG ) && YYDEBUG != 0
@@ -113,7 +128,11 @@ int main( int argc, char** argv )
         {
             if( strcmp( argv[i], "-v" ) == 0 ) {
                 print_release_info();
-                return 0;
+                throw ASTExceptionQuit();
+            }
+            else if( strcmp( argv[i], "-h" ) == 0 ) {
+                print_usage( argv[0] );
+                throw ASTExceptionQuit();
             }
             else if( strcmp( argv[i], "-i" ) == 0 ) is_interactive = true;
             else if( strcmp( argv[i], "-I" ) == 0 ) {
