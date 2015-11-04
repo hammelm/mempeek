@@ -119,6 +119,7 @@ public:
     void set_param( std::string name );
     void set_body( std::shared_ptr<ASTNode> body );
     void commit_subroutine();
+    void abort_subroutine();
 
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 

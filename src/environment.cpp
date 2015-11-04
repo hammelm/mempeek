@@ -104,6 +104,12 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
 
         if( is_file  ) fclose( file );
 
+        if( m_SubroutineContext ) {
+            m_SubroutineContext->abort_subroutine();
+            m_SubroutineContext = nullptr;
+            m_LocalVars = nullptr;
+        }
+
         throw;
     }
 
@@ -262,6 +268,16 @@ void SubroutineManager::commit_subroutine()
     assert( m_PendingSubroutine );
 
     m_Subroutines[ m_PendingName ] = m_PendingSubroutine;
+
+    m_PendingSubroutine = nullptr;
+}
+
+void SubroutineManager::abort_subroutine()
+{
+    assert( m_PendingSubroutine );
+
+    delete m_PendingSubroutine->vars;
+    delete m_PendingSubroutine;
 
     m_PendingSubroutine = nullptr;
 }
