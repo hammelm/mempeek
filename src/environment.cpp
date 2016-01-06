@@ -139,11 +139,9 @@ MMap* Environment::get_mapping( void* phys_addr, size_t size )
 	auto iter = m_Mappings.upper_bound( phys_addr );
 
 	MMap* mmap;
-	if( iter == m_Mappings.end() ) mmap = m_Mappings.rbegin()->second;
-	else {
-		if( --iter == m_Mappings.end() ) return nullptr;
-		mmap = iter->second;
-	}
+	if( iter == m_Mappings.begin() ) return nullptr;
+	else if( iter == m_Mappings.end() ) mmap = m_Mappings.rbegin()->second;
+	else mmap = (--iter)->second;
 
 	if( (uint8_t*)mmap->get_base_address() + mmap->get_size() < (uint8_t*)phys_addr + size ) return nullptr;
 	else return mmap;
