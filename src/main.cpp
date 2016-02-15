@@ -117,12 +117,9 @@ static unsigned char completion( EditLine* el, int ch )
     el_get( el, EL_CLIENTDATA, &env );
 
     // find current token
-    size_t pos = line.rfind( ' ' );
+    size_t pos = line.find_last_of( " \t[(+-*/%&|^~!=<>," );
     if( pos == string::npos ) pos = 0;
     else pos++;
-
-    size_t bpos = line.rfind( '[' );
-    if( bpos != string::npos && ++bpos > pos ) pos = bpos;
 
     // get all matching variables
     string prefix = line.substr( pos, string::npos );
@@ -141,24 +138,26 @@ static unsigned char completion( EditLine* el, int ch )
     }
 
     // append completion to command line
-    bool completion_error = false;
+    bool has_completion_error = false;
     if( completion.size() == 1 ) common += ' ';
     if( common.length() > 0 ) {
-        if( el_insertstr( el, common.c_str() ) != 0 ) completion_error = true;
+        if( el_insertstr( el, common.c_str() ) != 0 ) has_completion_error = true;
     }
 
     // show all matches
-    if( completion.size() > 1 ) {
+    bool needs_redisplay = false;
+    if( completion.size() > 1  && common.size() == 0 ) {
         int cnt = 0;
         for( auto var: completion ) {
             cout << (++cnt > 1 ? ' ' : '\n') << var;
         }
         cout << endl;
+        needs_redisplay = true;
     }
 
-    if( completion_error ) return CC_ERROR;
-    if( completion.size() == 1 ) return CC_REFRESH;
-    else return CC_REDISPLAY;
+    if( has_completion_error ) return CC_ERROR;
+    if( needs_redisplay ) return CC_REDISPLAY;
+    else return CC_REFRESH;
 }
 
 int main( int argc, char** argv )
