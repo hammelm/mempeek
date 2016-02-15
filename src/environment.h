@@ -68,6 +68,7 @@ public:
 
 	const var* get( std::string name );
 
+	std::set< std::string > get_autocompletion( std::string prefix );
 	std::set< std::string > get_struct_members( std::string name );
 
     bool map_memory( void* phys_addr, size_t size, std::string device );
@@ -154,6 +155,7 @@ public:
     Environment::var* alloc_ref( std::string name, Environment::var* var );
     Environment::var* alloc_local( std::string name );
 
+    std::set< std::string > get_autocompletion( std::string prefix );
     std::set< std::string > get_struct_members( std::string name );
 
     const Environment::var* get( std::string name );
@@ -309,6 +311,16 @@ inline const Environment::var* Environment::get( std::string name )
 {
     if( m_LocalVars ) return m_LocalVars->get( name );
     else return m_GlobalVars->get( name );
+}
+
+inline std::set< std::string > Environment::get_autocompletion( std::string prefix )
+{
+    auto ret = m_GlobalVars->get_autocompletion( prefix );
+    if( m_LocalVars ) {
+        auto vars =  m_LocalVars->get_autocompletion( prefix );
+        ret.insert( vars.begin(), vars.end() );
+    }
+    return ret;
 }
 
 inline std::set< std::string > Environment::get_struct_members( std::string name )

@@ -106,6 +106,61 @@ static void print_usage( const char* name )
          << flush;
 }
 
+static unsigned char completion( EditLine* el, int ch )
+{
+    // init
+    const LineInfo* li = el_line( el );
+    string line( li->buffer, li->cursor );
+
+    // retrieve environment
+    Environment* env;
+    el_get( el, EL_CLIENTDATA, &env );
+
+    // find current token
+    size_t pos = line.rfind( ' ' );
+    if( pos == string::npos ) pos = 0;
+    else pos++;
+
+    size_t bpos = line.rfind( '[' );
+    if( bpos != string::npos && ++bpos > pos ) pos = bpos;
+
+    // get all matching variables
+    string prefix = line.substr( pos, string::npos );
+    set< string > completion = env->get_autocompletion( prefix );
+
+    if( completion.size() == 0 ) return CC_NORM;
+
+    // find common prefix of all matches
+    string first = *completion.begin();
+    string last = *completion.rbegin();
+    string common = "";
+
+    for( size_t i = prefix.length(); i < first.length() && i < last.length(); i++ ) {
+        if( first[i] != last[i] ) break;
+        common += first[i];
+    }
+
+    // append completion to command line
+    bool completion_error = false;
+    if( completion.size() == 1 ) common += ' ';
+    if( common.length() > 0 ) {
+        if( el_insertstr( el, common.c_str() ) != 0 ) completion_error = true;
+    }
+
+    // show all matches
+    if( completion.size() > 1 ) {
+        int cnt = 0;
+        for( auto var: completion ) {
+            cout << (++cnt > 1 ? ' ' : '\n') << var;
+        }
+        cout << endl;
+    }
+
+    if( completion_error ) return CC_ERROR;
+    if( completion.size() == 1 ) return CC_REFRESH;
+    else return CC_REDISPLAY;
+}
+
 int main( int argc, char** argv )
 {
 #if defined( YYDEBUG ) && YYDEBUG != 0
@@ -185,6 +240,8 @@ int main( int argc, char** argv )
 
         if( is_interactive || !has_commands ) {
             Console console( "mempeek", "~/.mempeek_history" );
+            console.set_clientdata( &env );
+            console.set_completion( completion );
             if( !has_commands ) print_release_info();
             for(;;) {
                 string line = console.get_line();

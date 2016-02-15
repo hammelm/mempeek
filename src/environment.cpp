@@ -378,6 +378,18 @@ Environment::var* VarStorage::alloc_local( std::string name )
     return iter->second;
 }
 
+std::set< std::string > VarStorage::get_autocompletion( std::string prefix )
+{
+    set< string > vars;
+
+    for( auto iter = m_Vars.lower_bound( prefix ); iter != m_Vars.end(); iter++ ) {
+        if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
+        vars.insert( iter->first );
+    }
+
+    return vars;
+}
+
 std::set< std::string > VarStorage::get_struct_members( std::string name )
 {
     set< string > members;
