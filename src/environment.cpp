@@ -121,6 +121,19 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     return yyroot;
 }
 
+std::set< std::string > Environment::get_autocompletion( std::string prefix )
+{
+    set< string > completions;
+
+    m_FunctionManager->get_autocompletion( completions, prefix );
+    // m_ProcedureManager is skipped intentionally; procedures are more like keywords than variables
+
+    m_GlobalVars->get_autocompletion( completions, prefix );
+    if( m_LocalVars ) m_LocalVars->get_autocompletion( completions, prefix );
+
+    return completions;
+}
+
 bool Environment::map_memory( void* phys_addr, size_t size, std::string device )
 {
 	if( get_mapping( phys_addr, size ) ) return true;
@@ -280,6 +293,14 @@ void SubroutineManager::abort_subroutine()
     m_PendingSubroutine = nullptr;
 }
 
+void SubroutineManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
+{
+    for( auto iter = m_Subroutines.lower_bound( prefix ); iter != m_Subroutines.end(); iter++ ) {
+        if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
+        completions.insert( iter->first );
+    }
+}
+
 std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
 {
     subroutine_t* subroutine;
@@ -378,16 +399,12 @@ Environment::var* VarStorage::alloc_local( std::string name )
     return iter->second;
 }
 
-std::set< std::string > VarStorage::get_autocompletion( std::string prefix )
+void VarStorage::get_autocompletion( std::set< std::string >& completions, std::string prefix )
 {
-    set< string > vars;
-
     for( auto iter = m_Vars.lower_bound( prefix ); iter != m_Vars.end(); iter++ ) {
         if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
-        vars.insert( iter->first );
+        completions.insert( iter->first );
     }
-
-    return vars;
 }
 
 std::set< std::string > VarStorage::get_struct_members( std::string name )

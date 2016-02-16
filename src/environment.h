@@ -121,6 +121,8 @@ public:
     void commit_subroutine();
     void abort_subroutine();
 
+    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
+
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 
 private:
@@ -155,7 +157,8 @@ public:
     Environment::var* alloc_ref( std::string name, Environment::var* var );
     Environment::var* alloc_local( std::string name );
 
-    std::set< std::string > get_autocompletion( std::string prefix );
+    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
+
     std::set< std::string > get_struct_members( std::string name );
 
     const Environment::var* get( std::string name );
@@ -311,16 +314,6 @@ inline const Environment::var* Environment::get( std::string name )
 {
     if( m_LocalVars ) return m_LocalVars->get( name );
     else return m_GlobalVars->get( name );
-}
-
-inline std::set< std::string > Environment::get_autocompletion( std::string prefix )
-{
-    auto ret = m_GlobalVars->get_autocompletion( prefix );
-    if( m_LocalVars ) {
-        auto vars =  m_LocalVars->get_autocompletion( prefix );
-        ret.insert( vars.begin(), vars.end() );
-    }
-    return ret;
 }
 
 inline std::set< std::string > Environment::get_struct_members( std::string name )
