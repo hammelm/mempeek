@@ -41,6 +41,11 @@ definition variables is restricted to ensure that the value of such a variable i
 known at compile time. Normal variables have no restrictions, but some commands do not
 allow the usage of normal variables.
 
+Definition variables are handled differently within functions and procedures. Normal
+variables defined at global scope are not visible within the function or procedure scope
+unless they are declared global. Definition variables are visible within the function or
+procedure scope without any extra global declaration.
+
 The following commands are available in the mempeek language:
 
 assigning values to definition variables
@@ -112,12 +117,12 @@ and -1 for true ):
 
 Comparison operators (comparisons evaluate to the values 0 for false and -1 for true):
 
-        <expr1> < <expr2>       true if <expr> is lower than <expr2>
-        <expr1> > <expr2>       true if <expr> is greater than <expr2>
-        <expr1> <= <expr2>      true if <expr> is lower than or equal to <expr2>
-        <expr1> >= <expr2>      true if <expr> is greater than or equal to <expr2>
-        <expr1> == <expr2>      true if <expr> is equal to <expr2>
-        <expr1> != <expr2>      true if <expr> is not equal to <expr2>
+        <expr1> < <expr2>       true if <expr1> is lower than <expr2>
+        <expr1> > <expr2>       true if <expr1> is greater than <expr2>
+        <expr1> <= <expr2>      true if <expr1> is lower than or equal to <expr2>
+        <expr1> >= <expr2>      true if <expr1> is greater than or equal to <expr2>
+        <expr1> == <expr2>      true if <expr1> is equal to <expr2>
+        <expr1> != <expr2>      true if <expr1> is not equal to <expr2>
 
 index operator (can be applied on variables or definition variables):
 

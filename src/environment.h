@@ -60,7 +60,6 @@ public:
 
     void add_include_path( std::string path );
 
-
 	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
     var* alloc_global( std::string name );
@@ -303,12 +302,6 @@ inline Environment::var* Environment::alloc_static( std::string name )
 {
     if( m_LocalVars ) return m_LocalVars->alloc_global( name );
     else return m_GlobalVars->alloc_global( name );
-}
-
-inline const Environment::var* Environment::get( std::string name )
-{
-    if( m_LocalVars ) return m_LocalVars->get( name );
-    else return m_GlobalVars->get( name );
 }
 
 inline std::set< std::string > Environment::get_struct_members( std::string name )

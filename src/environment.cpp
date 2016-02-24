@@ -121,6 +121,19 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     return yyroot;
 }
 
+const Environment::var* Environment::get( std::string name )
+{
+    if( m_LocalVars ) {
+        const Environment::var* var = m_LocalVars->get( name );
+        if( var ) return var;
+
+        var = m_GlobalVars->get( name );
+        if( var && var->is_def() ) return var;
+        else return nullptr;
+    }
+    else return m_GlobalVars->get( name );
+}
+
 bool Environment::map_memory( void* phys_addr, size_t size, std::string device )
 {
 	if( get_mapping( phys_addr, size ) ) return true;
