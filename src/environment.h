@@ -286,7 +286,11 @@ inline Environment::var* Environment::alloc_def( std::string name )
 
 inline Environment::var* Environment::alloc_var( std::string name )
 {
-    if( m_LocalVars ) return m_LocalVars->alloc_local( name );
+    if( m_LocalVars ) {
+        const Environment::var* var = m_GlobalVars->get( name );
+        if( var && var->is_def() ) return nullptr;
+        return m_LocalVars->alloc_local( name );
+    }
     else return m_GlobalVars->alloc_global( name );
 }
 
