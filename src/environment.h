@@ -27,6 +27,7 @@
 #define __environment_h__
 
 #include "mempeek_parser.h"
+#include "builtins.h"
 #include "mmap.h"
 
 #include <string>
@@ -91,6 +92,8 @@ private:
     VarStorage* m_GlobalVars;
 
 	std::map< void*, MMap* > m_Mappings;
+
+	BuiltinManager* m_BuiltinManager;
 
 	SubroutineManager* m_ProcedureManager;
 	SubroutineManager* m_FunctionManager;

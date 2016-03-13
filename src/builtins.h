@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2016, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -23,24 +23,49 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __version_h__
-#define __version_h__
+#ifndef __builtins_h__
+#define __builtins_h__
 
-#include "buildinfo.h"
+#include "mempeek_parser.h"
 
-#include <iostream>
+#include <string>
+#include <map>
+#include <vector>
+#include <functional>
+#include <utility>
+#include <memory>
+
+class ASTNode;
 
 
-#define RELEASE_VERSION "1.0"
-#define RELEASE_COPYRIGHT "Copyright (c) 2015-2016 Martin Hammel"
+//////////////////////////////////////////////////////////////////////////////
+// class BuiltinManager
+//////////////////////////////////////////////////////////////////////////////
+
+class BuiltinManager {
+public:
+    BuiltinManager();
+
+    bool has_subroutine( std::string name );
+    std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
+
+private:
+     typedef std::function< std::shared_ptr<ASTNode>( const yylloc_t& location ) > nodecreator_t;
+     typedef std::map< std::string, std::pair< size_t, nodecreator_t > > builtinmap_t;
+
+     builtinmap_t m_Builtins;
+};
 
 
-inline void print_release_info( std::ostream& out = std::cout )
+//////////////////////////////////////////////////////////////////////////////
+// class BuiltinManager inline functions
+//////////////////////////////////////////////////////////////////////////////
+
+inline bool BuiltinManager::has_subroutine( std::string name )
 {
-    out << "Mempeek " << RELEASE_VERSION << " build " << BUILD_NO << " " << BUILD_DATE << std::endl
-        << RELEASE_COPYRIGHT << std::endl
-        << "All rights reserved." << std::endl;
+    auto iter = m_Builtins.find( name );
+    return iter != m_Builtins.end();
 }
 
 
-#endif // __version_h__
+#endif // __builtins_h__

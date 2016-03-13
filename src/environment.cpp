@@ -46,6 +46,8 @@ Environment::Environment()
 {
     m_GlobalVars = new VarStorage;
 
+    m_BuiltinManager = new BuiltinManager;
+
     m_ProcedureManager = new SubroutineManager( this );
     m_FunctionManager = new SubroutineManager( this );
 }
@@ -56,6 +58,8 @@ Environment::~Environment()
 
 	delete m_ProcedureManager;
 	delete m_FunctionManager;
+
+	delete m_BuiltinManager;
 
 	delete m_GlobalVars;
 }
@@ -164,6 +168,8 @@ void Environment::enter_subroutine_context( const yylloc_t& location, std::strin
 {
     assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr );
 
+    if( is_function && m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+
     m_SubroutineContext = is_function ? m_FunctionManager : m_ProcedureManager;
 
     m_LocalVars = m_SubroutineContext->begin_subroutine( location, name, is_function );
@@ -202,7 +208,10 @@ std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, s
 
 std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
 {
-    std::shared_ptr<ASTNode> node = m_FunctionManager->get_subroutine( location, name, params );
+    std::shared_ptr<ASTNode> node = m_BuiltinManager->get_subroutine( location, name, params );
+    if( node ) return node;
+
+    node = m_FunctionManager->get_subroutine( location, name, params );
     if( !node ) throw ASTExceptionNamingConflict( location, name );
     return node;
 }

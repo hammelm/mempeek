@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2016, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -23,24 +23,43 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __version_h__
-#define __version_h__
+#include "builtins.h"
 
-#include "buildinfo.h"
+#include "mempeek_ast.h"
+#include "mempeek_exceptions.h"
 
-#include <iostream>
-
-
-#define RELEASE_VERSION "1.0"
-#define RELEASE_COPYRIGHT "Copyright (c) 2015-2016 Martin Hammel"
+using namespace std;
 
 
-inline void print_release_info( std::ostream& out = std::cout )
+//////////////////////////////////////////////////////////////////////////////
+// builtin functions
+//////////////////////////////////////////////////////////////////////////////
+
+static ASTNode::ptr test( const yylloc_t& location )
 {
-    out << "Mempeek " << RELEASE_VERSION << " build " << BUILD_NO << " " << BUILD_DATE << std::endl
-        << RELEASE_COPYRIGHT << std::endl
-        << "All rights reserved." << std::endl;
+    return make_shared< ASTNodeBuiltin<3> >( location, [] ( uint64_t args[3] ) -> uint64_t {
+        return args[0] + args[1] * args[2];
+    });
 }
 
+//////////////////////////////////////////////////////////////////////////////
+// class BuiltinManager implementation
+//////////////////////////////////////////////////////////////////////////////
 
-#endif // __version_h__
+BuiltinManager::BuiltinManager()
+{
+    m_Builtins[ "test" ] = make_pair< size_t, nodecreator_t >( 3, test );
+}
+
+std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+{
+    auto iter = m_Builtins.find( name );
+    if( iter == m_Builtins.end() ) return nullptr;
+
+    if( iter->second.first != params.size() ) throw ASTExceptionSyntaxError( location );
+
+    ASTNode::ptr node = iter->second.second( location );
+    for( auto param: params ) node->add_child( param );
+
+    return node;
+}

@@ -35,6 +35,7 @@
 #include <memory>
 
 #include <stdint.h>
+#include <assert.h>
 
 #ifdef ASTDEBUG
 #include <iostream>
@@ -77,6 +78,24 @@ private:
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBuiltin
+//////////////////////////////////////////////////////////////////////////////
+
+template< size_t NUM_ARGS >
+class ASTNodeBuiltin : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeBuiltin> ptr;
+
+    ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( uint64_t args[NUM_ARGS] ) > builtin );
+
+    uint64_t execute() override;
+
+private:
+    std::function< uint64_t( uint64_t args[NUM_ARGS] ) > m_Builtin;
 };
 
 
@@ -501,6 +520,28 @@ inline void ASTNode::set_constant()
 inline Environment::var* ASTNodeAssign::get_var()
 {
     return m_Var;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBuiltin template functions
+//////////////////////////////////////////////////////////////////////////////
+
+template< size_t NUM_ARGS >
+inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( uint64_t args[NUM_ARGS] ) > builtin )
+ : ASTNode( yylloc ),
+   m_Builtin( builtin )
+{}
+
+template< size_t NUM_ARGS >
+uint64_t inline ASTNodeBuiltin< NUM_ARGS >::execute()
+{
+    assert( get_children().size() == NUM_ARGS );
+
+    uint64_t args[ NUM_ARGS ];
+    for( size_t i = 0; i < NUM_ARGS; i++ )
+        args[i] = get_children()[i]->execute();
+    return m_Builtin( args );
 }
 
 
