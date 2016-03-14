@@ -78,6 +78,7 @@
 "hex"                   TOKEN( T_HEX )
 "bin"                   TOKEN( T_BIN )
 "neg"                   TOKEN( T_NEG )
+"float"                 TOKEN( T_FLOAT )
 "noendl"                TOKEN( T_NOENDL )
 "sleep"                 TOKEN( T_SLEEP )
 "break"                 TOKEN( T_BREAK )
@@ -127,6 +128,9 @@
 "0b"[01]+               TOKEN( T_CONSTANT )
 [0-9]+                  TOKEN( T_CONSTANT )
 \"[^"]*\"               TOKEN( T_STRING )
+
+[+-]?[0-9]*\.[0-9]+                     TOKEN( T_FCONST )
+[+-]?[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?  TOKEN( T_FCONST )
 
 .                       printf( "unknown token\n" ); yyterminate();
 

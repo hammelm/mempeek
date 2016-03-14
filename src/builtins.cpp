@@ -28,19 +28,126 @@
 #include "mempeek_ast.h"
 #include "mempeek_exceptions.h"
 
+#include <math.h>
+
 using namespace std;
 
 
 //////////////////////////////////////////////////////////////////////////////
-// builtin functions
+// floating point builtin functions
 //////////////////////////////////////////////////////////////////////////////
 
-static ASTNode::ptr test( const yylloc_t& location )
+static ASTNode::ptr int2float( const yylloc_t& location )
 {
-    return make_shared< ASTNodeBuiltin<3> >( location, [] ( uint64_t args[3] ) -> uint64_t {
-        return args[0] + args[1] * args[2];
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = args[0];
+        return *(uint64_t*)&d1;
     });
 }
+
+static ASTNode::ptr float2int( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        return (uint64_t)(int64_t)d1;
+    });
+}
+
+static ASTNode::ptr fadd( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<2> >( location, [] ( uint64_t args[2] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = *(double*)(args + 1);
+        double d3 = d1 + d2;
+        return *(uint64_t*)&d3;
+    });
+}
+
+static ASTNode::ptr fsub( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<2> >( location, [] ( uint64_t args[2] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = *(double*)(args + 1);
+        double d3 = d1 - d2;
+        return *(uint64_t*)&d3;
+    });
+}
+
+static ASTNode::ptr fmul( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<2> >( location, [] ( uint64_t args[2] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = *(double*)(args + 1);
+        double d3 = d1 * d2;
+        return *(uint64_t*)&d3;
+    });
+}
+
+static ASTNode::ptr fdiv( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<2> >( location, [] ( uint64_t args[2] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = *(double*)(args + 1);
+        double d3 = d1 / d2;
+        return *(uint64_t*)&d3;
+    });
+}
+
+static ASTNode::ptr fsqrt( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = sqrt( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr flog( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = log( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr fpow( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<2> >( location, [] ( uint64_t args[2] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = *(double*)(args + 1);
+        double d3 = pow( d1, d2 );
+        return *(uint64_t*)&d3;
+    });
+}
+
+static ASTNode::ptr fabs_( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = fabs( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr ffloor( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = floor( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr fceil( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = ceil( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class BuiltinManager implementation
@@ -48,7 +155,18 @@ static ASTNode::ptr test( const yylloc_t& location )
 
 BuiltinManager::BuiltinManager()
 {
-    m_Builtins[ "test" ] = make_pair< size_t, nodecreator_t >( 3, test );
+    m_Builtins[ "int2float" ] = make_pair< size_t, nodecreator_t >( 1, int2float );
+    m_Builtins[ "float2int" ] = make_pair< size_t, nodecreator_t >( 1, float2int );
+    m_Builtins[ "fadd" ] = make_pair< size_t, nodecreator_t >( 2, fadd );
+    m_Builtins[ "fsub" ] = make_pair< size_t, nodecreator_t >( 2, fsub );
+    m_Builtins[ "fmul" ] = make_pair< size_t, nodecreator_t >( 2, fmul );
+    m_Builtins[ "fdiv" ] = make_pair< size_t, nodecreator_t >( 2, fdiv );
+    m_Builtins[ "fsqrt" ] = make_pair< size_t, nodecreator_t >( 1, fsqrt );
+    m_Builtins[ "flog" ] = make_pair< size_t, nodecreator_t >( 1, flog );
+    m_Builtins[ "fpow" ] = make_pair< size_t, nodecreator_t >( 2, fpow );
+    m_Builtins[ "fabs" ] = make_pair< size_t, nodecreator_t >( 1, fabs_ );
+    m_Builtins[ "ffloor" ] = make_pair< size_t, nodecreator_t >( 1, ffloor );
+    m_Builtins[ "fceil" ] = make_pair< size_t, nodecreator_t >( 1, fceil );
 }
 
 std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
@@ -59,7 +177,13 @@ std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& locatio
     if( iter->second.first != params.size() ) throw ASTExceptionSyntaxError( location );
 
     ASTNode::ptr node = iter->second.second( location );
-    for( auto param: params ) node->add_child( param );
 
-    return node;
+    bool is_const = true;
+    for( auto param: params ) {
+        node->add_child( param );
+        is_const &= param->is_constant();
+    }
+
+    if( is_const ) return make_shared< ASTNodeConstant >( location, node->execute() );
+    else return node;
 }

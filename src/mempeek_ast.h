@@ -296,6 +296,7 @@ public:
 		MOD_HEX = 0x02,
 		MOD_BIN = 0x03,
 		MOD_NEG = 0x04,
+		MOD_FLOAT = 0x05,
 
 		MOD_8BIT = 0x10,
 		MOD_16BIT = 0x20,
@@ -461,13 +462,14 @@ class ASTNodeConstant : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeConstant> ptr;
 
-	ASTNodeConstant( const yylloc_t& yylloc, std::string str );
+	ASTNodeConstant( const yylloc_t& yylloc, std::string str, bool is_float = false );
     ASTNodeConstant( const yylloc_t& yylloc, uint64_t value );
 
 	uint64_t execute() override;
 
 private:
     static uint64_t parse_int( std::string str );
+    static uint64_t parse_float( std::string str );
 
     uint64_t m_Value;
 };
