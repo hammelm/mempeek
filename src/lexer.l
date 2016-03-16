@@ -129,8 +129,8 @@
 [0-9]+                  TOKEN( T_CONSTANT )
 \"[^"]*\"               TOKEN( T_STRING )
 
-[+-]?[0-9]*\.[0-9]+                     TOKEN( T_FCONST )
-[+-]?[0-9]*\.?[0-9]+([eE][+-]?[0-9]+)?  TOKEN( T_FCONST )
+[+-]?[0-9]*\.[0-9]+                 TOKEN( T_FCONST )
+[+-]?[0-9]*\.?[0-9]+[eE][+-]?[0-9]+ TOKEN( T_FCONST )
 
 .                       printf( "unknown token\n" ); yyterminate();
 
