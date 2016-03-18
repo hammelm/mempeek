@@ -40,6 +40,9 @@
 #include <string.h>
 #include <signal.h>
 
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 using namespace std;
 
 
@@ -146,12 +149,58 @@ static unsigned char completion( EditLine* el, int ch )
 
     // show all matches
     bool needs_redisplay = false;
-    if( completion.size() > 1  && common.size() == 0 ) {
-        int cnt = 0;
-        for( auto var: completion ) {
-            cout << (++cnt > 1 ? ' ' : '\n') << var;
+    if( completion.size() > 1  && common.size() == 0 )
+    {
+        // calculate field length
+        size_t len = 0;
+        for( auto var: completion ) len = max( len, var.length() );
+        len = (len / 8 + 1) * 8;
+
+        // calculate display matrix size
+        size_t cols = 1;
+        size_t rows = completion.size();
+
+        struct winsize ws;
+        if( ioctl( STDOUT_FILENO, TIOCGWINSZ, &ws ) != -1 ) {
+            cols = ws.ws_col / len;
+            if( cols < 1 ) {
+                rows = completion.size();
+                cols = 1;
+            }
+            else if( cols < completion.size() ) {
+                rows = (completion.size() + cols - 1) / cols;
+                cols = (completion.size() + rows - 1) / rows;
+            }
+            else {
+                rows = 1;
+                cols = completion.size();
+            }
+        }
+        cout << "\nws: " << ws.ws_col << 'x' << ws.ws_row << endl;
+        cout << "len: " << len << endl;
+        cout << "completion: " << cols << 'x' << rows << endl;
+
+        // print completions
+        set< string >::iterator *iters = new set< string >::iterator[ cols ];
+        iters[0] = completion.begin();
+        for( size_t i = 1; i < cols; i++ ) {
+            iters[ i ] = iters[ i - 1 ];
+            for( size_t j = 0; j < rows; j++ ) iters[i]++;
+        }
+
+        for( size_t i = 0; i < rows; i++ ) {
+            for( size_t j = 0; j < cols; j++ ) {
+                if( iters[j] != completion.end() ) {
+                    string var = *iters[j]++;
+                    if( j == 0 ) cout << endl;
+                    cout << var;
+                    if( j < cols - 1 ) cout << string( len - var.length(), ' ' );
+                }
+            }
         }
         cout << endl;
+
+        delete[] iters;
         needs_redisplay = true;
     }
 
