@@ -169,6 +169,14 @@ BuiltinManager::BuiltinManager()
     m_Builtins[ "fceil" ] = make_pair< size_t, nodecreator_t >( 1, fceil );
 }
 
+void BuiltinManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
+{
+    for( auto iter = m_Builtins.lower_bound( prefix ); iter != m_Builtins.end(); iter++ ) {
+        if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
+        completions.insert( iter->first );
+    }
+}
+
 std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
 {
     auto iter = m_Builtins.find( name );

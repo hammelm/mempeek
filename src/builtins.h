@@ -30,6 +30,7 @@
 
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 #include <functional>
 #include <utility>
@@ -45,6 +46,8 @@ class ASTNode;
 class BuiltinManager {
 public:
     BuiltinManager();
+
+    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
     bool has_subroutine( std::string name );
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );

@@ -142,6 +142,7 @@ std::set< std::string > Environment::get_autocompletion( std::string prefix )
 {
     set< string > completions;
 
+    m_BuiltinManager->get_autocompletion( completions, prefix );
     m_FunctionManager->get_autocompletion( completions, prefix );
     // m_ProcedureManager is skipped intentionally; procedures are more like keywords than variables
 
