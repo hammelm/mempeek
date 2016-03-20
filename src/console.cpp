@@ -124,6 +124,11 @@ void Console::set_completion( std::function<unsigned char( EditLine*, int )> com
 	s_Completion = completion;
 }
 
+void Console::set_clientdata( void* data )
+{
+    el_set( m_Editline, EL_CLIENTDATA, data );
+}
+
 string Console::get_line()
 {
 	int count;

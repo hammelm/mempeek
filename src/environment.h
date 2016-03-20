@@ -67,6 +67,7 @@ public:
 
 	const var* get( std::string name );
 
+	std::set< std::string > get_autocompletion( std::string prefix );
 	std::set< std::string > get_struct_members( std::string name );
 
     bool map_memory( void* phys_addr, size_t size, std::string device );
@@ -119,6 +120,8 @@ public:
     void commit_subroutine();
     void abort_subroutine();
 
+    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
+
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 
 private:
@@ -152,6 +155,8 @@ public:
     Environment::var* alloc_global( std::string name );
     Environment::var* alloc_ref( std::string name, Environment::var* var );
     Environment::var* alloc_local( std::string name );
+
+    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
     std::set< std::string > get_struct_members( std::string name );
 

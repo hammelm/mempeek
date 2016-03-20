@@ -40,6 +40,9 @@
 #include <string.h>
 #include <signal.h>
 
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 using namespace std;
 
 
@@ -104,6 +107,106 @@ static void print_usage( const char* name )
             "    -v          Print version\n"
             "    -h          Print usage\n"
          << flush;
+}
+
+static unsigned char completion( EditLine* el, int ch )
+{
+    // init
+    const LineInfo* li = el_line( el );
+    string line( li->buffer, li->cursor );
+
+    // retrieve environment
+    Environment* env;
+    el_get( el, EL_CLIENTDATA, &env );
+
+    // find current token
+    size_t pos = line.find_last_of( " \t[(+-*/%&|^~!=<>," );
+    if( pos == string::npos ) pos = 0;
+    else pos++;
+
+    // get all matching variables
+    string prefix = line.substr( pos, string::npos );
+    set< string > completion = env->get_autocompletion( prefix );
+
+    if( completion.size() == 0 ) return CC_NORM;
+
+    // find common prefix of all matches
+    string first = *completion.begin();
+    string last = *completion.rbegin();
+    string common = "";
+
+    for( size_t i = prefix.length(); i < first.length() && i < last.length(); i++ ) {
+        if( first[i] != last[i] ) break;
+        common += first[i];
+    }
+
+    // append completion to command line
+    bool has_completion_error = false;
+    if( completion.size() == 1 ) common += ' ';
+    if( common.length() > 0 ) {
+        if( el_insertstr( el, common.c_str() ) != 0 ) has_completion_error = true;
+    }
+
+    // show all matches
+    bool needs_redisplay = false;
+    if( completion.size() > 1  && common.size() == 0 )
+    {
+        // calculate field length
+        size_t len = 0;
+        for( auto var: completion ) len = max( len, var.length() );
+        len = (len / 8 + 1) * 8;
+
+        // calculate display matrix size
+        size_t cols = 1;
+        size_t rows = completion.size();
+
+        struct winsize ws;
+        if( ioctl( STDOUT_FILENO, TIOCGWINSZ, &ws ) != -1 ) {
+            cols = ws.ws_col / len;
+            if( cols < 1 ) {
+                rows = completion.size();
+                cols = 1;
+            }
+            else if( cols < completion.size() ) {
+                rows = (completion.size() + cols - 1) / cols;
+                cols = (completion.size() + rows - 1) / rows;
+            }
+            else {
+                rows = 1;
+                cols = completion.size();
+            }
+        }
+        cout << "\nws: " << ws.ws_col << 'x' << ws.ws_row << endl;
+        cout << "len: " << len << endl;
+        cout << "completion: " << cols << 'x' << rows << endl;
+
+        // print completions
+        set< string >::iterator *iters = new set< string >::iterator[ cols ];
+        iters[0] = completion.begin();
+        for( size_t i = 1; i < cols; i++ ) {
+            iters[ i ] = iters[ i - 1 ];
+            for( size_t j = 0; j < rows; j++ ) iters[i]++;
+        }
+
+        for( size_t i = 0; i < rows; i++ ) {
+            for( size_t j = 0; j < cols; j++ ) {
+                if( iters[j] != completion.end() ) {
+                    string var = *iters[j]++;
+                    if( j == 0 ) cout << endl;
+                    cout << var;
+                    if( j < cols - 1 ) cout << string( len - var.length(), ' ' );
+                }
+            }
+        }
+        cout << endl;
+
+        delete[] iters;
+        needs_redisplay = true;
+    }
+
+    if( has_completion_error ) return CC_ERROR;
+    if( needs_redisplay ) return CC_REDISPLAY;
+    else return CC_REFRESH;
 }
 
 int main( int argc, char** argv )
@@ -185,6 +288,8 @@ int main( int argc, char** argv )
 
         if( is_interactive || !has_commands ) {
             Console console( "mempeek", "~/.mempeek_history" );
+            console.set_clientdata( &env );
+            console.set_completion( completion );
             if( !has_commands ) print_release_info();
             for(;;) {
                 string line = console.get_line();
