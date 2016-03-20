@@ -89,13 +89,14 @@ template< size_t NUM_ARGS >
 class ASTNodeBuiltin : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeBuiltin> ptr;
+    typedef uint64_t args_t[NUM_ARGS];
 
-    ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( uint64_t args[NUM_ARGS] ) > builtin );
+    ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin );
 
     uint64_t execute() override;
 
 private:
-    std::function< uint64_t( uint64_t args[NUM_ARGS] ) > m_Builtin;
+    std::function< uint64_t( const args_t& ) > m_Builtin;
 };
 
 
@@ -530,19 +531,26 @@ inline Environment::var* ASTNodeAssign::get_var()
 //////////////////////////////////////////////////////////////////////////////
 
 template< size_t NUM_ARGS >
-inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( uint64_t args[NUM_ARGS] ) > builtin )
+inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin )
  : ASTNode( yylloc ),
    m_Builtin( builtin )
-{}
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+#endif
+}
 
 template< size_t NUM_ARGS >
 uint64_t inline ASTNodeBuiltin< NUM_ARGS >::execute()
 {
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+#endif
+
     assert( get_children().size() == NUM_ARGS );
 
     uint64_t args[ NUM_ARGS ];
-    for( size_t i = 0; i < NUM_ARGS; i++ )
-        args[i] = get_children()[i]->execute();
+    for( size_t i = 0; i < NUM_ARGS; i++ ) args[i] = get_children()[i]->execute();
     return m_Builtin( args );
 }
 
