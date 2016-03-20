@@ -325,7 +325,7 @@ arithmetic and conversion functions are available:
         ffloor( a )         returns largest integer not greater than a
         fceil( a )          returns smallest integer not less than a
 
-IEEE 754 encoding preserves the ordering of the floating point values, therefore the usual
+IEEE 754 encoding preserves the ordering of floating point values, therefore the usual
 integer comparison operators can be used to compare floating point values.
 
 other commands
