@@ -102,11 +102,74 @@ static ASTNode::ptr fsqrt( const yylloc_t& location )
     });
 }
 
+static ASTNode::ptr fexp( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = exp( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
 static ASTNode::ptr flog( const yylloc_t& location )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
         double d1 = *(double*)(args + 0);
         double d2 = log( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr fsin( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = sin( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr fcos( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = cos( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr ftan( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = tan( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr fasin( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = asin( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr facos( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = acos( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
+static ASTNode::ptr fatan( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( uint64_t args[1] ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = atan( d1 );
         return *(uint64_t*)&d2;
     });
 }
@@ -163,7 +226,14 @@ BuiltinManager::BuiltinManager()
     m_Builtins[ "fdiv" ] = make_pair< size_t, nodecreator_t >( 2, fdiv );
     m_Builtins[ "fsqrt" ] = make_pair< size_t, nodecreator_t >( 1, fsqrt );
     m_Builtins[ "flog" ] = make_pair< size_t, nodecreator_t >( 1, flog );
+    m_Builtins[ "fexp" ] = make_pair< size_t, nodecreator_t >( 1, fexp );
     m_Builtins[ "fpow" ] = make_pair< size_t, nodecreator_t >( 2, fpow );
+    m_Builtins[ "fsin" ] = make_pair< size_t, nodecreator_t >( 1, fsin );
+    m_Builtins[ "fcos" ] = make_pair< size_t, nodecreator_t >( 1, fcos );
+    m_Builtins[ "ftan" ] = make_pair< size_t, nodecreator_t >( 1, ftan );
+    m_Builtins[ "fasin" ] = make_pair< size_t, nodecreator_t >( 1, fasin );
+    m_Builtins[ "facos" ] = make_pair< size_t, nodecreator_t >( 1, facos );
+    m_Builtins[ "fatan" ] = make_pair< size_t, nodecreator_t >( 1, fatan );
     m_Builtins[ "fabs" ] = make_pair< size_t, nodecreator_t >( 1, fabs_ );
     m_Builtins[ "ffloor" ] = make_pair< size_t, nodecreator_t >( 1, ffloor );
     m_Builtins[ "fceil" ] = make_pair< size_t, nodecreator_t >( 1, fceil );
