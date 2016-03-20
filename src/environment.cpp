@@ -182,7 +182,11 @@ void Environment::enter_subroutine_context( const yylloc_t& location, std::strin
 {
     assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr );
 
-    if( is_function && m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    if( is_function ) {
+        if( m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+        if( m_FunctionManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    }
+    else if( m_ProcedureManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
 
     m_SubroutineContext = is_function ? m_FunctionManager : m_ProcedureManager;
 
