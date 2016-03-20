@@ -45,6 +45,7 @@ public:
 
 	void set_prompt( std::string prompt );
 	void set_completion( std::function<unsigned char( EditLine*, int )> completion );
+	void set_clientdata( void* data );
 
 	std::string get_line();
 
