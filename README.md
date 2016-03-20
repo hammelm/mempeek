@@ -82,6 +82,10 @@ upper bits are cut off (poke and print) or set to zero (peek).
 Numerical values can be specified as decimal numbers, hexadecimal numbers starting with the
 prefix "0x" or binary number starting with the prefix "0b".
 
+Numerical values containing a decimal point or exponential values (e.g. 3.14, .5 or 1e-6)
+are interpreted as floating point numbers and are converted to a 64 bit integer value
+representing the IEEE 754 double precision encoding of the floating point number.
+
 expressions
 -----------
 
@@ -208,14 +212,14 @@ output
 
 Print the result of evaluating *expression* to the console, or print a string. When several
 expressions or strings are given, they are concatenated into one line. The modifiers can be
-"hex", "dec", "bin" or "neg". When a modifier is given, all subsequent expression results
-are printed as hexadecimal, unsigned decimal, binary or signed decimal number. Each
-modifier can be used with an optional suffix ":8", ":16", ":32" or ":64" which specifies
-the number of bits of the result to be displayed. Several modifiers can be used within the
-same print command. The default modifier for each print command is "hex" with the default
-bit size of the system. The print command does add a newline at the end of an output line.
-The last parameter of the print command can be the modifier "noendl" which suppresses the
-newline.
+"hex", "dec", "bin", "neg" or "float". When a modifier is given, all subsequent expression
+results are printed as hexadecimal, unsigned decimal, binary, signed decimal or floating
+point number. Each modifier except "float" can be used with an optional suffix ":8", ":16",
+ ":32" or ":64" which specifies the number of bits of the result to be displayed. Several
+modifiers can be used within the same print command. The default modifier for each print
+command is "hex" with the default bit size of the system. The print command does add a
+newline at the end of an output line. The last parameter of the print command can be the
+modifier "noendl" which suppresses the newline.
 
 mapping physical memory
 -----------------------
@@ -293,6 +297,36 @@ was defined outside of the function. The keyword "static" can be used to define 
 which is only visible within the function and remains unchanged between function calls.
 The result of *expression* is used as initial value for the variable when the "static"
 keyword is executed for the first time.
+
+floating point numbers
+----------------------
+
+Floating point calculations in mempeek can be done using a set of builtin functions which
+interpret their arguments as IEEE 754 double precision floating point values. The following
+arithmetic and conversion functions are available:
+
+        int2float( i )      convert the integer i to a floating point number
+        float2int( f )      convert the floating point number f to an integer
+        fadd( a, b )        calculate a + b
+        fsub( a, b )        calculate a - b
+        fmul( a, b )        calculate a * b
+        fdiv( a, b )        calculate a / b
+        fsqrt( a )          calculate square root of a
+        fpow( a, b )        calculate a ^ b
+        flog( a )           calculate natural logarithm of a
+        fexp( a )           calculate e ^ a
+        fsin( a )           calculate sin( a )
+        fcos( a )           calculate cos( a )
+        ftan( a )           calculate tan( a )
+        fasin( a )          calculate arcsin( a )
+        facos( a )          calculate arccos( a )
+        fatan( a )          calculate arctan( a )
+        fabs( a )           calculate | a |
+        ffloor( a )         returns largest integer not greater than a
+        fceil( a )          returns smallest integer not less than a
+
+IEEE 754 encoding preserves the ordering of the floating point values, therefore the usual
+integer comparison operators can be used to compare floating point values.
 
 other commands
 --------------
