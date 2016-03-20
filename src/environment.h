@@ -122,6 +122,7 @@ public:
 
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
+    bool has_subroutine( std::string name );
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 
 private:
@@ -336,6 +337,17 @@ inline void Environment::clear_terminate()
 inline bool Environment::is_terminated()
 {
     return s_IsTerminated == 1;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class SubroutineManager inline functions
+//////////////////////////////////////////////////////////////////////////////
+
+inline bool SubroutineManager::has_subroutine( std::string name )
+{
+    auto iter = m_Subroutines.find( name );
+    return iter != m_Subroutines.end();
 }
 
 

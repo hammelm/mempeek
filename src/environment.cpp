@@ -177,6 +177,9 @@ void Environment::enter_subroutine_context( const yylloc_t& location, std::strin
 {
     assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr );
 
+    if( is_function && m_FunctionManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    if( !is_function && m_ProcedureManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+
     m_SubroutineContext = is_function ? m_FunctionManager : m_ProcedureManager;
 
     m_LocalVars = m_SubroutineContext->begin_subroutine( location, name, is_function );
@@ -254,8 +257,6 @@ SubroutineManager::~SubroutineManager()
 VarStorage* SubroutineManager::begin_subroutine( const yylloc_t& location, std::string name, bool is_function )
 {
     assert( m_PendingSubroutine == nullptr );
-
-    if( m_Subroutines.find( name ) != m_Subroutines.end() ) throw ASTExceptionNamingConflict( location, name );
 
     m_PendingName = name;
     m_PendingSubroutine = new subroutine_t;
