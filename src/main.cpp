@@ -176,9 +176,6 @@ static unsigned char completion( EditLine* el, int ch )
                 cols = completion.size();
             }
         }
-        cout << "\nws: " << ws.ws_col << 'x' << ws.ws_row << endl;
-        cout << "len: " << len << endl;
-        cout << "completion: " << cols << 'x' << rows << endl;
 
         // print completions
         set< string >::iterator *iters = new set< string >::iterator[ cols ];
