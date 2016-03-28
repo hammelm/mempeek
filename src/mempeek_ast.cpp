@@ -559,6 +559,13 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 		break;
 	}
 
+	case MOD_FLOAT: {
+	    assert( (m_Modifier & MOD_SIZEMASK) == MOD_64BIT );
+	    double d = *(double*)&value;
+	    out << d;
+	    break;
+	}
+
 	}
 }
 
@@ -1064,10 +1071,10 @@ uint64_t ASTNodeVar::execute()
 // class ASTNodeConstant implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeConstant::ASTNodeConstant( const yylloc_t& yylloc, std::string str )
+ASTNodeConstant::ASTNodeConstant( const yylloc_t& yylloc, std::string str, bool is_float )
  : ASTNode( yylloc )
 {
-	m_Value = parse_int( str );
+	m_Value = is_float ? parse_float( str ) : parse_int( str );
 
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeConstant value=" << m_Value << endl;
@@ -1124,4 +1131,13 @@ uint64_t ASTNodeConstant::parse_int( string str )
     stream >> dec >> value;
     if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
     else return 0;
+}
+
+uint64_t ASTNodeConstant::parse_float( string str )
+{
+    double d;
+    istringstream stream( str );
+    stream >> d;
+    if( stream.fail() || stream.bad() || !(stream.eof() || (stream >> ws).eof()) ) return 0;
+    else return *(uint64_t*)&d;
 }

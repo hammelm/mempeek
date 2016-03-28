@@ -35,6 +35,7 @@
 #include <memory>
 
 #include <stdint.h>
+#include <assert.h>
 
 #ifdef ASTDEBUG
 #include <iostream>
@@ -77,6 +78,25 @@ private:
 
 	ASTNode( const ASTNode& ) = delete;
 	ASTNode& operator=( const ASTNode& ) = delete;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBuiltin
+//////////////////////////////////////////////////////////////////////////////
+
+template< size_t NUM_ARGS >
+class ASTNodeBuiltin : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeBuiltin> ptr;
+    typedef uint64_t args_t[NUM_ARGS];
+
+    ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin );
+
+    uint64_t execute() override;
+
+private:
+    std::function< uint64_t( const args_t& ) > m_Builtin;
 };
 
 
@@ -277,6 +297,7 @@ public:
 		MOD_HEX = 0x02,
 		MOD_BIN = 0x03,
 		MOD_NEG = 0x04,
+		MOD_FLOAT = 0x05,
 
 		MOD_8BIT = 0x10,
 		MOD_16BIT = 0x20,
@@ -442,13 +463,14 @@ class ASTNodeConstant : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeConstant> ptr;
 
-	ASTNodeConstant( const yylloc_t& yylloc, std::string str );
+	ASTNodeConstant( const yylloc_t& yylloc, std::string str, bool is_float = false );
     ASTNodeConstant( const yylloc_t& yylloc, uint64_t value );
 
 	uint64_t execute() override;
 
 private:
     static uint64_t parse_int( std::string str );
+    static uint64_t parse_float( std::string str );
 
     uint64_t m_Value;
 };
@@ -501,6 +523,35 @@ inline void ASTNode::set_constant()
 inline Environment::var* ASTNodeAssign::get_var()
 {
     return m_Var;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeBuiltin template functions
+//////////////////////////////////////////////////////////////////////////////
+
+template< size_t NUM_ARGS >
+inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin )
+ : ASTNode( yylloc ),
+   m_Builtin( builtin )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+#endif
+}
+
+template< size_t NUM_ARGS >
+uint64_t inline ASTNodeBuiltin< NUM_ARGS >::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+#endif
+
+    assert( get_children().size() == NUM_ARGS );
+
+    uint64_t args[ NUM_ARGS ];
+    for( size_t i = 0; i < NUM_ARGS; i++ ) args[i] = get_children()[i]->execute();
+    return m_Builtin( args );
 }
 
 

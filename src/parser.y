@@ -57,7 +57,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_IF T_THEN T_ELSE T_ENDIF
 %token T_WHILE T_DO T_ENDWHILE
 %token T_FOR T_TO T_STEP T_ENDFOR
-%token T_PRINT T_DEC T_HEX T_BIN T_NEG T_NOENDL
+%token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_NOENDL
 %token T_SLEEP
 %token T_BREAK T_QUIT
 
@@ -68,7 +68,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 
 %token T_8BIT T_16BIT T_32BIT T_64BIT
 
-%token T_IDENTIFIER T_CONSTANT T_STRING
+%token T_IDENTIFIER T_CONSTANT T_FCONST T_STRING
 
 %token T_END_OF_STATEMENT
 
@@ -216,11 +216,15 @@ print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.
            ;
 
 print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.token = ASTNodePrint::MOD_HEX | ASTNodePrint::get_default_size(); }
+           | print_args print_float                     { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_64BIT; }
            | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::get_default_size(); }
            | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
            | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.node, $$.token ) ); }
            | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
            ;
+
+print_float : T_FLOAT                                   { $$.token = ASTNodePrint::MOD_FLOAT; }
+            ;
 
 print_format : T_DEC                                    { $$.token = ASTNodePrint::MOD_DEC; }
              | T_HEX                                    { $$.token = ASTNodePrint::MOD_HEX; }
@@ -281,6 +285,7 @@ unary_expr : T_MINUS atomic_expr                        { $$.node = make_shared<
            ;
 
 atomic_expr : T_CONSTANT                                { $$.node = make_shared<ASTNodeConstant>( @$, $1.value ); }
+            | T_FCONST                                  { $$.node = make_shared<ASTNodeConstant>( @$, $1.value, true ); }
             | identifier                                { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
