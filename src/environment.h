@@ -28,30 +28,27 @@
 
 #include "mempeek_parser.h"
 #include "builtins.h"
+#include "subroutines.h"
+#include "variables.h"
 #include "mmap.h"
 
 #include <string>
-#include <utility>
 #include <map>
 #include <set>
-#include <stack>
 #include <vector>
 #include <memory>
-
-#include <stdint.h>
 
 
 //////////////////////////////////////////////////////////////////////////////
 // class Environment
 //////////////////////////////////////////////////////////////////////////////
 
-class SubroutineManager;
-class VarStorage;
 class ASTNode;
 
 class Environment {
 public:
-	class var;
+
+    typedef VarManager::var var;
 
 	Environment();
 	~Environment();
@@ -90,7 +87,7 @@ public:
     static bool is_terminated();
 
 private:
-    VarStorage* m_GlobalVars;
+    VarManager* m_GlobalVars;
 
 	std::map< void*, MMap* > m_Mappings;
 
@@ -100,187 +97,11 @@ private:
 	SubroutineManager* m_FunctionManager;
 
 	SubroutineManager* m_SubroutineContext = nullptr;
-    VarStorage* m_LocalVars = nullptr;
+    VarManager* m_LocalVars = nullptr;
 
 	std::vector< std::string > m_IncludePaths;
 
     static volatile sig_atomic_t s_IsTerminated;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class SubroutineManager
-//////////////////////////////////////////////////////////////////////////////
-
-class SubroutineManager {
-public:
-    SubroutineManager( Environment* env );
-    ~SubroutineManager();
-
-    VarStorage* begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
-    void set_param( std::string name );
-    void set_body( std::shared_ptr<ASTNode> body );
-    void commit_subroutine();
-    void abort_subroutine();
-
-    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
-
-    bool has_subroutine( std::string name );
-    std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
-
-private:
-    typedef struct {
-        VarStorage* vars;
-        std::vector< Environment::var* > params;
-        std::shared_ptr<ASTNode> body;
-        Environment::var* retval = nullptr;
-        yylloc_t location;
-    } subroutine_t;
-
-    Environment* m_Environment;
-
-    std::map< std::string, subroutine_t* > m_Subroutines;
-
-    std::string m_PendingName;
-    subroutine_t* m_PendingSubroutine = nullptr;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage {
-public:
-    VarStorage();
-    ~VarStorage();
-
-    Environment::var* alloc_def( std::string name );
-    Environment::var* alloc_global( std::string name );
-    Environment::var* alloc_ref( std::string name, Environment::var* var );
-    Environment::var* alloc_local( std::string name );
-
-    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
-
-    std::set< std::string > get_struct_members( std::string name );
-
-    const Environment::var* get( std::string name );
-
-    void push();
-    void pop();
-
-private:
-    class defvar;
-    class structvar;
-    class globalvar;
-    class localvar;
-    class refvar;
-
-    std::map< std::string, Environment::var* > m_Vars;
-
-    uint64_t* m_Storage = nullptr;
-    size_t m_StorageSize = 0;
-    std::stack< uint64_t* > m_Stack;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class Environment::var
-//////////////////////////////////////////////////////////////////////////////
-
-class  Environment::var {
-public:
-	virtual ~var();
-
-	virtual bool is_def() const;
-    virtual bool is_local() const;
-
-	virtual uint64_t get() const = 0;
-	virtual void set( uint64_t value ) = 0;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::defvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::defvar : public Environment::var {
-public:
-    bool is_def() const override;
-
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    uint64_t m_Value = 0;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::structvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::structvar : public Environment::var {
-public:
-    structvar( const Environment::var* base );
-
-    bool is_def() const override;
-
-    uint64_t get() const override;
-    void set( uint64_t offset ) override;
-
-private:
-    uint64_t m_Offset = 0;
-    const Environment::var* m_Base;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::globalvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::globalvar : public Environment::var {
-public:
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    uint64_t m_Value = 0;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::localvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::localvar : public Environment::var {
-public:
-    localvar( uint64_t*& storage, size_t offset );
-
-    bool is_local() const override;
-
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    uint64_t*& m_Storage;
-    size_t m_Offset;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::refvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::refvar : public Environment::var {
-public:
-    refvar( Environment::var* var );
-
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    Environment::var* m_Var;
 };
 
 
@@ -340,45 +161,6 @@ inline void Environment::clear_terminate()
 inline bool Environment::is_terminated()
 {
     return s_IsTerminated == 1;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class SubroutineManager inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline bool SubroutineManager::has_subroutine( std::string name )
-{
-    auto iter = m_Subroutines.find( name );
-    return iter != m_Subroutines.end();
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline const Environment::var* VarStorage::get( std::string name )
-{
-    auto iter = m_Vars.find( name );
-    if( iter == m_Vars.end() ) return nullptr;
-    else return iter->second;
-}
-
-inline void VarStorage::push()
-{
-    if( m_StorageSize > 0 )
-        m_Stack.push( m_Storage );
-        m_Storage = new uint64_t[ m_StorageSize ];
-}
-
-inline void VarStorage::pop()
-{
-    if( !m_Stack.empty() ) {
-        delete[] m_Storage;
-        m_Storage = m_Stack.top();
-        m_Stack.pop();
-    }
 }
 
 
