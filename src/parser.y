@@ -63,7 +63,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 
 %token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR 
 %token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
-%token T_LT T_GT T_LE T_GE T_EQ T_NE
+%token T_LT T_GT T_LE T_GE T_EQ T_NE T_SLT T_SGT T_SLE T_SGE
 %token T_ASSIGN
 
 %token T_8BIT T_16BIT T_32BIT T_64BIT
@@ -256,6 +256,10 @@ comp_expr : add_expr T_LT add_expr                      { $$.node = make_shared<
           | add_expr T_GE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
           | add_expr T_EQ add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
           | add_expr T_NE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+          | add_expr T_SLT add_expr                     { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+          | add_expr T_SGT add_expr                     { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+          | add_expr T_SLE add_expr                     { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+          | add_expr T_SGE add_expr                     { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
           | add_expr                                    { $$.node = $1.node; }
           ;
 

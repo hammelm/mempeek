@@ -949,6 +949,10 @@ uint64_t ASTNodeBinaryOperator::execute()
 	case T_GE: return (r0 >= r1) ? 0xffffffffffffffff : 0;
 	case T_EQ: return (r0 == r1) ? 0xffffffffffffffff : 0;
 	case T_NE: return (r0 != r1) ? 0xffffffffffffffff : 0;
+    case T_SLT: return ((int64_t)r0 < (int64_t)r1) ? 0xffffffffffffffff : 0;
+    case T_SGT: return ((int64_t)r0 > (int64_t)r1) ? 0xffffffffffffffff : 0;
+    case T_SLE: return ((int64_t)r0 <= (int64_t)r1) ? 0xffffffffffffffff : 0;
+    case T_SGE: return ((int64_t)r0 >= (int64_t)r1) ? 0xffffffffffffffff : 0;
 	case T_BIT_AND: return r0 & r1;
 	case T_BIT_XOR: return r0 ^ r1;
 	case T_BIT_OR: return r0 | r1;

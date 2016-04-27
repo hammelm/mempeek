@@ -116,6 +116,11 @@
 "=="                    TOKEN( T_EQ )
 "!="                    TOKEN( T_NE )
 
+"-<"                    TOKEN( T_SLT )
+"->"                    TOKEN( T_SGT )
+"-<="                   TOKEN( T_SLE )
+"->="                   TOKEN( T_SGE )
+
 "."                     TOKEN( '.' )
 ","                     TOKEN( ',' )
 "["                     TOKEN( '[' )
