@@ -30,7 +30,11 @@
 #include <vector>
 #include <functional>
 
+#ifdef USE_EDITLINE
 #include <histedit.h>
+#else
+typedef void EditLine;
+#endif
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -53,18 +57,21 @@ public:
 	tokens_t get_tokens();
 
 private:
-	void init( std::string name, std::string histfile, size_t histsize );
+    static char* s_Prompt;
 
-	static char* get_prompt( EditLine* );
-	static unsigned char completion_callback( EditLine* el, int ch );
+#ifdef USE_EDITLINE
 
 	std::string m_Histfile;
 
-	static char* s_Prompt;
-	static std::function<unsigned char( EditLine*, int )> s_Completion;
-
 	History* m_History;
 	EditLine* m_Editline;
+
+    static std::function<unsigned char( EditLine*, int )> s_Completion;
+
+    static char* get_prompt( EditLine* );
+    static unsigned char completion_callback( EditLine* el, int ch );
+
+#endif
 };
 
 
@@ -73,15 +80,8 @@ private:
 //////////////////////////////////////////////////////////////////////////////
 
 inline Console::Console( std::string name, size_t histsize )
-{
-	init( name, "", histsize );
-}
-
-
-inline Console::Console( std::string name, std::string histfile, size_t histsize )
-{
-	init( name, histfile, histsize );
-}
+ : Console( name, "", histsize )
+{}
 
 
 #endif // __console_h__

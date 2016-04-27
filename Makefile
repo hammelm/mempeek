@@ -5,7 +5,7 @@ BISON = bison
 OBJS = main.o console.o mmap.o lexer.o parser.o environment.o mempeek_ast.o mempeek_exceptions.o builtins.o
 GENERATED = lexer.cpp parser.cpp
 
-DEFINES = 
+DEFINES = -DUSE_EDITLINE
 INCLUDES = -Isrc -Igenerated
 CFLAGS = -std=c++11 -g
 LIBS = -ledit
