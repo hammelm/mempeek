@@ -64,11 +64,7 @@ VarManager* SubroutineManager::begin_subroutine( const yylloc_t& location, std::
     m_PendingSubroutine = new subroutine_t;
     m_PendingSubroutine->vars = new VarManager;
     m_PendingSubroutine->location = location;
-
-    if( is_function ) {
-        m_PendingSubroutine->retval =  m_PendingSubroutine->vars->alloc_local( "return" );
-        assert( m_PendingSubroutine->retval );
-    }
+    m_PendingSubroutine->is_function = is_function;
 
     return m_PendingSubroutine->vars;
 }
@@ -93,6 +89,11 @@ void SubroutineManager::set_body( std::shared_ptr<ASTNode> body )
 void SubroutineManager::commit_subroutine()
 {
     assert( m_PendingSubroutine );
+
+    if( m_PendingSubroutine->is_function ) {
+        m_PendingSubroutine->retval =  m_PendingSubroutine->vars->get( "return" );
+        if( !m_PendingSubroutine->retval ) throw ASTExceptionNoReturnValue( m_PendingSubroutine->location );
+    }
 
     m_Subroutines[ m_PendingName ] = m_PendingSubroutine;
 

@@ -117,6 +117,15 @@ public:
 	}
 };
 
+class ASTExceptionNoReturnValue : public ASTCompileException {
+public:
+    ASTExceptionNoReturnValue( const yylloc_t& location )
+    {
+        loc( location );
+        msg( "no return value" );
+    }
+};
+
 class ASTExceptionMappingFailure : public ASTCompileException {
 public:
 	ASTExceptionMappingFailure( const yylloc_t& location, uint64_t address,

@@ -63,7 +63,8 @@ private:
         VarManager* vars;
         std::vector< VarManager::var* > params;
         std::shared_ptr<ASTNode> body;
-        VarManager::var* retval = nullptr;
+        const VarManager::var* retval = nullptr;
+        bool is_function;
         yylloc_t location;
     } subroutine_t;
 

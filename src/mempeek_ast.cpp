@@ -123,7 +123,7 @@ uint64_t ASTNodeBlock::execute()
 //////////////////////////////////////////////////////////////////////////////
 
 ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarManager* vars,
-                                      std::vector< Environment::var* >& params, Environment::var* retval )
+                                      std::vector< Environment::var* >& params, const Environment::var* retval )
  : ASTNode( yylloc ),
    m_LocalVars( vars ),
    m_Params( params ),
