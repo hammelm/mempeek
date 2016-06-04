@@ -197,6 +197,34 @@ public:
 
 };
 
+class ASTExceptionOutOfBounds : public ASTRuntimeException {
+public:
+    ASTExceptionOutOfBounds( uint64_t index, uint64_t size )
+    {
+        msg( "array index $0 does not match array size $1", index, size );
+    }
+
+    ASTExceptionOutOfBounds( const yylloc_t& location, const ASTExceptionOutOfBounds& ex )
+    {
+        clone( ex );
+        loc( location );
+    }
+};
+
+class ASTExceptionOutOfMemory : public ASTRuntimeException {
+public:
+    ASTExceptionOutOfMemory( uint64_t size )
+    {
+        msg( "failed to allocate array of size $0" );
+    }
+
+    ASTExceptionOutOfMemory( const yylloc_t& location, const ASTExceptionOutOfMemory& ex )
+    {
+        clone( ex );
+        loc( location );
+    }
+};
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodeException template functions

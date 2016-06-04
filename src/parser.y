@@ -1,16 +1,16 @@
 /*  Copyright (c) 2015, Martin Hammel
     All rights reserved.
-    
+
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
-    
+
     * Redistributions of source code must retain the above copyright notice, this
       list of conditions and the following disclaimer.
-    
+
     * Redistributions in binary form must reproduce the above copyright notice,
       this list of conditions and the following disclaimer in the documentation
       and/or other materials provided with the distribution.
-    
+
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
     AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
     IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -47,6 +47,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %lex-param { yyscan_t scanner }
 
 %token T_DEF T_FROM
+%token T_DIM
 %token T_MAP
 %token T_DEFPROC T_ENDPROC
 %token T_DEFFUNC T_ENDFUNC
@@ -61,7 +62,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_SLEEP
 %token T_BREAK T_QUIT
 
-%token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR 
+%token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR
 %token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
 %token T_LT T_GT T_LE T_GE T_EQ T_NE
 %token T_ASSIGN
@@ -101,7 +102,8 @@ toplevel_statement : statement                          { $$.node = $1.node; }
                    ;
 
 statement : %empty                                          { $$.node = nullptr; }
-          | assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node; } 
+          | dim_stmt T_END_OF_STATEMENT                     { $$.node = $1.node; }
+          | assign_stmt T_END_OF_STATEMENT                  { $$.node = $1.node; }
           | poke_stmt T_END_OF_STATEMENT                    { $$.node = $1.node; }
           | print_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
           | sleep_stmt T_END_OF_STATEMENT                   { $$.node = $1.node; }
@@ -137,12 +139,16 @@ proc_params : %empty
             | proc_params expression                    { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $2.node ); }
             ;
 
-func_def : T_DEFFUNC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, true ); } 
+func_def : T_DEFFUNC arrayfunc_def plain_identifier     { env->enter_subroutine_context( @1, $3.value, true ); }
                '(' func_args ')' T_END_OF_STATEMENT
                subroutine_block
            T_ENDFUNC                                    { env->commit_subroutine_context(); }
            T_END_OF_STATEMENT                           { $$.node = nullptr; }
          ;
+
+arrayfunc_def : %empty                                  { $$.value = ""; }
+              | '[' ']'                                 { $$.value = "[]"; }
+              ;
 
 func_args : %empty
           | plain_identifier                            { env->set_subroutine_param( $1.value ); }
@@ -165,7 +171,7 @@ if_def : T_IF expression T_THEN                         { $$.node = $2.node; }
 
 else_def : T_ELSE statement                                             { $$.node = $2.node; }
          | T_ELSE T_END_OF_STATEMENT block T_ENDIF T_END_OF_STATEMENT   { $$.node = $3.node; }
-         ; 
+         ;
 
 while_block : T_WHILE expression T_DO statement         { $$.node = make_shared<ASTNodeWhile>( @$, $2.node, $4.node ); }
             | T_WHILE expression T_DO T_END_OF_STATEMENT
@@ -184,10 +190,15 @@ for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO         
         ;
 
 assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node ); }
+            | plain_identifier '[' expression ']'
+              T_ASSIGN expression                       { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $6.node /*, $3.node*/ ); }
 
 def_stmt : T_DEF plain_identifier expression                            { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
          | T_DEF struct_identifier expression                           { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
          | T_DEF plain_identifier expression T_FROM plain_identifier    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node, $5.value ); }
+         ;
+
+dim_stmt : T_DIM plain_identifier '[' expression ']'    { $$.node = make_shared<ASTNodeDim>( @$, env, $2.value, $4.node ); }
          ;
 
 map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node ); }
@@ -241,40 +252,40 @@ print_size : T_8BIT                                     { $$.token = ASTNodePrin
 sleep_stmt : T_SLEEP expression                         { $$.node = make_shared<ASTNodeSleep>( @$, $2.node ); }
            ;
 
-expression : expression T_LOG_OR and_expr               { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-           | expression T_LOG_XOR and_expr              { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+expression : expression T_LOG_OR and_expr               { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+           | expression T_LOG_XOR and_expr              { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
            | and_expr                                   { $$.node = $1.node; }
            ;
 
-and_expr : and_expr T_LOG_AND comp_expr                 { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+and_expr : and_expr T_LOG_AND comp_expr                 { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | comp_expr                                    { $$.node = $1.node; }
          ;
 
-comp_expr : add_expr T_LT add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-          | add_expr T_GT add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-          | add_expr T_LE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-          | add_expr T_GE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-          | add_expr T_EQ add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-          | add_expr T_NE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+comp_expr : add_expr T_LT add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+          | add_expr T_GT add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+          | add_expr T_LE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+          | add_expr T_GE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+          | add_expr T_EQ add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+          | add_expr T_NE add_expr                      { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
           | add_expr                                    { $$.node = $1.node; }
           ;
 
-add_expr : add_expr T_PLUS mul_expr                     { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-         | add_expr T_MINUS mul_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-         | add_expr T_BIT_OR mul_expr                   { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-         | add_expr T_BIT_XOR mul_expr                  { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+add_expr : add_expr T_PLUS mul_expr                     { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+         | add_expr T_MINUS mul_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+         | add_expr T_BIT_OR mul_expr                   { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+         | add_expr T_BIT_XOR mul_expr                  { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | mul_expr                                     { $$.node = $1.node; }
          ;
 
-mul_expr : mul_expr T_MUL shift_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+mul_expr : mul_expr T_MUL shift_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | mul_expr T_DIV shift_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | mul_expr T_MOD shift_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | mul_expr T_BIT_AND shift_expr                { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | shift_expr                                   { $$.node = $1.node; }
-         ; 
+         ;
 
-shift_expr : shift_expr T_LSHIFT unary_expr             { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
-           | shift_expr T_RSHIFT unary_expr             { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
+shift_expr : shift_expr T_LSHIFT unary_expr             { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+           | shift_expr T_RSHIFT unary_expr             { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
            | unary_expr                                 { $$.node = $1.node; }
            ;
 
@@ -286,7 +297,7 @@ unary_expr : T_MINUS atomic_expr                        { $$.node = make_shared<
 
 atomic_expr : T_CONSTANT                                { $$.node = make_shared<ASTNodeConstant>( @$, $1.value ); }
             | T_FCONST                                  { $$.node = make_shared<ASTNodeConstant>( @$, $1.value, true ); }
-            | identifier                                { $$.node = $1.node; }
+            | var_identifier                            { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
             | plain_identifier '(' func_params ')'      { $$.node = env->get_function( @1, $1.value, $3.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
@@ -296,17 +307,14 @@ peek_token : T_PEEK                                     { $$.token = Environment
            | T_PEEK size_suffix                         { $$.token = $2.token; }
            ;
 
-identifier : index_identifier                           { $$.node = $1.node; }
-           | index_identifier size_suffix               { $$.node = make_shared<ASTNodeRestriction>( @$, $1.node, $2.token ); }
-           ;
+var_identifier : plain_identifier                       { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
+               | struct_identifier                      { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
+               | array_identifier                       { $$.node = $1.node; }
+               ;
 
-index_identifier : base_identifier                      { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
-                 | base_identifier '[' expression ']'   { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value, $3.node ); }
+array_identifier : plain_identifier '[' '?' ']'          { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
+                 | plain_identifier '[' expression ']'   { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value, $3.node ); }
                  ;
-
-base_identifier : struct_identifier                     { $$.value = $1.value; }
-                | plain_identifier                      { $$.value = $1.value; }
-                ;
 
 struct_identifier : T_IDENTIFIER '.' T_IDENTIFIER       { $$.value = $1.value + '.' + $3.value; }
                   ;

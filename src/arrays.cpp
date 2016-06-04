@@ -1,0 +1,224 @@
+/*  Copyright (c) 2016, Martin Hammel
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, this
+      list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+    AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+    FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+    DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+    OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#include "arrays.h"
+
+#include "mempeek_exceptions.h"
+
+#include <algorithm>
+
+using namespace std;
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ArrayManager implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ArrayManager::ArrayManager()
+{}
+
+ArrayManager::~ArrayManager()
+{
+    for( auto value: m_Arrays ) delete value.second;
+
+    while( !m_Stack.empty() ) pop();
+    release_storage();
+}
+
+ArrayManager::array* ArrayManager::alloc_global( std::string name )
+{
+    auto iter = m_Arrays.find( name );
+
+    if( iter == m_Arrays.end() ) {
+        ArrayManager::array* array = new ArrayManager::globalarray();
+        iter = m_Arrays.insert( make_pair( name, array ) ).first;
+    }
+
+    return iter->second;
+}
+
+ArrayManager::array* ArrayManager::alloc_ref( std::string name, ArrayManager::array* array )
+{
+    if( m_Arrays.find( name ) != m_Arrays.end() ) return nullptr;
+
+    ArrayManager::array* ref = new ArrayManager::refarray( array );
+    m_Arrays[ name ] = ref;
+    return ref;
+}
+
+ArrayManager::array* ArrayManager::alloc_local( std::string name )
+{
+    auto iter = m_Arrays.find( name );
+
+    if( iter == m_Arrays.end() ) {
+        ArrayManager::array* array = new ArrayManager::localarray( m_Storage, m_StorageSize++ );
+        iter = m_Arrays.insert( make_pair( name, array ) ).first;
+    }
+
+    return iter->second;
+}
+
+void ArrayManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
+{
+    for( auto iter = m_Arrays.lower_bound( prefix ); iter != m_Arrays.end(); iter++ ) {
+        if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
+        completions.insert( iter->first );
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ArrayManager::array implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ArrayManager::array::~array()
+{
+}
+
+bool ArrayManager::array::is_local() const
+{
+    return false;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ArrayManager::globalarray implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ArrayManager::globalarray::~globalarray()
+{
+    if( m_Array ) delete[] m_Array;
+}
+
+uint64_t ArrayManager::globalarray::get( uint64_t index ) const
+{
+    if( index >= m_Size ) throw ASTExceptionOutOfBounds( index, m_Size );
+    return m_Array[ index ];
+}
+
+void ArrayManager::globalarray::set( uint64_t index, uint64_t value )
+{
+    if( index >= m_Size ) throw ASTExceptionOutOfBounds( index, m_Size );
+    m_Array[ index ] = value;
+}
+
+void ArrayManager::globalarray::resize( uint64_t size )
+{
+    if( size == 0 ) {
+        if( m_Array ) delete[] m_Array;
+        m_Array = nullptr;
+        m_Size = 0;
+    }
+    else {
+        uint64_t* array = new(std::nothrow) uint64_t[size];
+        if( array == nullptr ) throw ASTExceptionOutOfMemory( size );
+
+        if( m_Array ) {
+            copy( m_Array, m_Array + min( size, m_Size ), array );
+            delete[] m_Array;
+        }
+
+        m_Array = array;
+        m_Size = size;
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ArrayManager::localarray implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ArrayManager::localarray::localarray( ArrayManager::arraydata_t*& storage, size_t offset )
+ : m_Storage( storage ),
+   m_Offset( offset )
+{}
+
+bool ArrayManager::localarray::is_local() const
+{
+    return true;
+}
+
+uint64_t ArrayManager::localarray::get( uint64_t index ) const
+{
+    ArrayManager::arraydata_t& arraydata = m_Storage[ m_Offset ];
+
+    if( index >= arraydata.size ) throw ASTExceptionOutOfBounds( index, arraydata.size );
+    return arraydata.array[ index ];
+}
+
+void ArrayManager::localarray::set( uint64_t index, uint64_t value )
+{
+    ArrayManager::arraydata_t& arraydata = m_Storage[ m_Offset ];
+
+    if( index >= arraydata.size ) throw ASTExceptionOutOfBounds( index, arraydata.size );
+    arraydata.array[ index ] = value;
+}
+
+void ArrayManager::localarray::resize( uint64_t size )
+{
+    ArrayManager::arraydata_t& arraydata = m_Storage[ m_Offset ];
+
+    if( size == 0 ) {
+        if( arraydata.array ) delete[] arraydata.array;
+        arraydata.array = nullptr;
+        arraydata.size = 0;
+    }
+    else {
+        uint64_t* array = new(std::nothrow) uint64_t[size];
+        if( array == nullptr ) throw ASTExceptionOutOfMemory( size );
+
+        if( arraydata.array ) {
+            copy( arraydata.array, arraydata.array + min( size, arraydata.size ), array );
+            delete[] arraydata.array;
+        }
+
+        arraydata.array = array;
+        arraydata.size = size;
+    }
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ArrayManager::refarray implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ArrayManager::refarray::refarray( ArrayManager::array* array)
+ : m_Array( array )
+{}
+
+uint64_t ArrayManager::refarray::get( uint64_t index ) const
+{
+    return m_Array->get( index );
+}
+
+void ArrayManager::refarray::set( uint64_t index, uint64_t value )
+{
+    m_Array->set( index, value );
+}
+
+void ArrayManager::refarray::resize( uint64_t size )
+{
+    m_Array->resize( size );
+}

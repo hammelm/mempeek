@@ -760,6 +760,35 @@ uint64_t ASTNodeDef::execute()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeDim implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeDim::ASTNodeDim( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr size )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeDim name=" << name << " size=[" << expression << "]" << endl;
+#endif
+
+//    Environment::array* array = env->alloc_array( name );
+//    if( !array ) throw ASTExceptionNamingConflict( get_location(), name );
+//
+//    add_child( size );
+}
+
+uint64_t ASTNodeDim::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeDim" << endl;
+#endif
+
+    // FIXME: to be implemented
+
+    return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeMap implementation
 //////////////////////////////////////////////////////////////////////////////
 

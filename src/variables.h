@@ -187,9 +187,10 @@ inline const VarManager::var* VarManager::get( std::string name )
 
 inline void VarManager::push()
 {
-    if( m_StorageSize > 0 )
+    if( m_StorageSize > 0 ) {
         m_Stack.push( m_Storage );
         m_Storage = new uint64_t[ m_StorageSize ];
+    }
 }
 
 inline void VarManager::pop()

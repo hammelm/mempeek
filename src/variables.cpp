@@ -29,6 +29,104 @@ using namespace std;
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class VarManager implementation
+//////////////////////////////////////////////////////////////////////////////
+
+VarManager::VarManager()
+{}
+
+VarManager::~VarManager()
+{
+    for( auto value: m_Vars ) delete value.second;
+
+    if( m_Storage ) delete[] m_Storage;
+    while( !m_Stack.empty() ) {
+        delete[] m_Stack.top();
+        m_Stack.pop();
+    }
+}
+
+VarManager::var* VarManager::alloc_def( std::string name )
+{
+    auto iter = m_Vars.find( name );
+
+    if( iter == m_Vars.end() ) {
+        size_t dot = name.find( '.' );
+
+        if( dot == string::npos ) {
+            VarManager::var* var = new VarManager::defvar();
+            iter = m_Vars.insert( make_pair( name, var ) ).first;
+        }
+        else {
+            auto base = m_Vars.find( name.substr( 0, dot ) );
+            if( base == m_Vars.end() ) return nullptr;
+
+            VarManager::var* var = new VarManager::structvar( base->second );
+            iter = m_Vars.insert( make_pair( name, var ) ).first;
+        }
+    }
+    else if( !iter->second->is_def() ) return nullptr;
+
+    return iter->second;
+}
+
+VarManager::var* VarManager::alloc_global( std::string name )
+{
+    auto iter = m_Vars.find( name );
+
+    if( iter == m_Vars.end() ) {
+        VarManager::var* var = new VarManager::globalvar();
+        iter = m_Vars.insert( make_pair( name, var ) ).first;
+    }
+    else if( iter->second->is_def() ) return nullptr;
+
+    return iter->second;
+}
+
+VarManager::var* VarManager::alloc_ref( std::string name, VarManager::var* var )
+{
+    if( m_Vars.find( name ) != m_Vars.end() ) return nullptr;
+
+    VarManager::var* ref = new VarManager::refvar( var );
+    m_Vars[ name ] = ref;
+    return ref;
+}
+
+VarManager::var* VarManager::alloc_local( std::string name )
+{
+    auto iter = m_Vars.find( name );
+
+    if( iter == m_Vars.end() ) {
+        VarManager::var* var = new VarManager::localvar( m_Storage, m_StorageSize++ );
+        iter = m_Vars.insert( make_pair( name, var ) ).first;
+    }
+    else if( iter->second->is_def() ) return nullptr;
+
+    return iter->second;
+}
+
+void VarManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
+{
+    for( auto iter = m_Vars.lower_bound( prefix ); iter != m_Vars.end(); iter++ ) {
+        if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
+        completions.insert( iter->first );
+    }
+}
+
+std::set< std::string > VarManager::get_struct_members( std::string name )
+{
+    set< string > members;
+
+    for( auto iter = m_Vars.lower_bound( name + '.' ); iter != m_Vars.end(); iter++  ) {
+        if( iter->first.substr( 0, name.length() + 1 ) != name + '.' ) break;
+        members.insert( iter->first.substr( name.length() + 1, string::npos ) );
+    }
+
+    return members;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class VarManager::var implementation
 //////////////////////////////////////////////////////////////////////////////
 
