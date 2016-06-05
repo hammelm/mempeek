@@ -28,6 +28,7 @@
 
 #include "mempeek_parser.h"
 #include "variables.h"
+#include "arrays.h"
 
 #include <string>
 #include <map>
@@ -47,11 +48,14 @@ public:
     SubroutineManager( Environment* env );
     ~SubroutineManager();
 
-    VarManager* begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
+    void begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
     void set_param( std::string name );
     void set_body( std::shared_ptr<ASTNode> body );
     void commit_subroutine();
     void abort_subroutine();
+
+    VarManager* get_var_manager();
+    ArrayManager* get_array_manager();
 
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
@@ -61,6 +65,7 @@ public:
 private:
     typedef struct {
         VarManager* vars;
+        ArrayManager* arrays;
         std::vector< VarManager::var* > params;
         std::shared_ptr<ASTNode> body;
         const VarManager::var* retval = nullptr;
@@ -85,6 +90,16 @@ inline bool SubroutineManager::has_subroutine( std::string name )
 {
     auto iter = m_Subroutines.find( name );
     return iter != m_Subroutines.end();
+}
+
+inline VarManager* SubroutineManager::get_var_manager()
+{
+    return m_PendingSubroutine ? m_PendingSubroutine->vars : nullptr;
+}
+
+inline ArrayManager* SubroutineManager::get_array_manager()
+{
+    return m_PendingSubroutine ? m_PendingSubroutine->arrays : nullptr;
 }
 
 

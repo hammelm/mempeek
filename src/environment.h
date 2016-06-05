@@ -30,6 +30,7 @@
 #include "builtins.h"
 #include "subroutines.h"
 #include "variables.h"
+#include "arrays.h"
 #include "mmap.h"
 
 #include <string>
@@ -49,6 +50,7 @@ class Environment {
 public:
 
     typedef VarManager::var var;
+    typedef ArrayManager::array array;
 
 	Environment();
 	~Environment();
@@ -58,12 +60,17 @@ public:
 
     void add_include_path( std::string path );
 
-	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
-    var* alloc_global( std::string name );
-    var* alloc_static( std::string name );
+	var* alloc_def_var( std::string name );
+    var* alloc_global_var( std::string name );
+    var* alloc_static_var( std::string name );
 
-	const var* get( std::string name );
+	array* alloc_array( std::string name );
+    array* alloc_global_array( std::string name );
+    array* alloc_static_array( std::string name );
+
+	const var* get_var( std::string name );
+	const array* get_array( std::string name );
 
 	std::set< std::string > get_autocompletion( std::string prefix );
 	std::set< std::string > get_struct_members( std::string name );
@@ -88,6 +95,7 @@ public:
 
 private:
     VarManager* m_GlobalVars;
+    ArrayManager* m_GlobalArrays;
 
 	std::map< void*, MMap* > m_Mappings;
 
@@ -98,6 +106,7 @@ private:
 
 	SubroutineManager* m_SubroutineContext = nullptr;
     VarManager* m_LocalVars = nullptr;
+    ArrayManager* m_LocalArrays = nullptr;
 
 	std::vector< std::string > m_IncludePaths;
 
@@ -109,7 +118,7 @@ private:
 // class Environment inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline Environment::var* Environment::alloc_def( std::string name )
+inline Environment::var* Environment::alloc_def_var( std::string name )
 {
     return m_GlobalVars->alloc_def( name );
 }
@@ -124,7 +133,7 @@ inline Environment::var* Environment::alloc_var( std::string name )
     else return m_GlobalVars->alloc_global( name );
 }
 
-inline Environment::var* Environment::alloc_global( std::string name )
+inline Environment::var* Environment::alloc_global_var( std::string name )
 {
     Environment::var* var = m_GlobalVars->alloc_global( name );
 
@@ -132,10 +141,30 @@ inline Environment::var* Environment::alloc_global( std::string name )
     else return var;
 }
 
-inline Environment::var* Environment::alloc_static( std::string name )
+inline Environment::var* Environment::alloc_static_var( std::string name )
 {
     if( m_LocalVars ) return m_LocalVars->alloc_global( name );
     else return m_GlobalVars->alloc_global( name );
+}
+
+inline Environment::array* Environment::alloc_array( std::string name )
+{
+    if( m_LocalArrays ) return m_LocalArrays->alloc_local( name );
+    else return m_GlobalArrays->alloc_global( name );
+}
+
+inline Environment::array* Environment::alloc_global_array( std::string name )
+{
+    Environment::array* array = m_GlobalArrays->alloc_global( name );
+
+    if( array && m_LocalArrays ) return m_LocalArrays->alloc_ref( name, array );
+    else return array;
+}
+
+inline Environment::array* Environment::alloc_static_array( std::string name )
+{
+    if( m_LocalArrays ) return m_LocalArrays->alloc_global( name );
+    else return m_GlobalArrays->alloc_global( name );
 }
 
 inline std::set< std::string > Environment::get_struct_members( std::string name )

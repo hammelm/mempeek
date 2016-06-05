@@ -45,16 +45,18 @@ SubroutineManager::~SubroutineManager()
 {
     if( m_PendingSubroutine ) {
         delete m_PendingSubroutine->vars;
+        delete m_PendingSubroutine->arrays;
         delete m_PendingSubroutine;
     }
 
     for( auto value: m_Subroutines ) {
         delete value.second->vars;
+        delete value.second->arrays;
         delete value.second;
     }
 }
 
-VarManager* SubroutineManager::begin_subroutine( const yylloc_t& location, std::string name, bool is_function )
+void SubroutineManager::begin_subroutine( const yylloc_t& location, std::string name, bool is_function )
 {
     assert( m_PendingSubroutine == nullptr );
 
@@ -63,10 +65,9 @@ VarManager* SubroutineManager::begin_subroutine( const yylloc_t& location, std::
     m_PendingName = name;
     m_PendingSubroutine = new subroutine_t;
     m_PendingSubroutine->vars = new VarManager;
+    m_PendingSubroutine->arrays = new ArrayManager;
     m_PendingSubroutine->location = location;
     m_PendingSubroutine->is_function = is_function;
-
-    return m_PendingSubroutine->vars;
 }
 
 void SubroutineManager::set_param( std::string name )

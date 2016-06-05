@@ -102,6 +102,20 @@ bool ArrayManager::array::is_local() const
     return false;
 }
 
+uint64_t* ArrayManager::array::realloc( uint64_t* old_array, uint64_t old_size, uint64_t new_size )
+{
+    uint64_t* new_array = new(std::nothrow) uint64_t[new_size];
+    if( !new_array ) throw ASTExceptionOutOfMemory( new_size );
+
+    if( new_size < old_size ) copy( old_array, old_array + new_size, new_array );
+    else {
+        copy( old_array, old_array + old_size, new_array );
+        fill( new_array + old_size, new_array + new_size, 0 );
+    }
+
+    return new_array;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class ArrayManager::globalarray implementation
@@ -124,6 +138,11 @@ void ArrayManager::globalarray::set( uint64_t index, uint64_t value )
     m_Array[ index ] = value;
 }
 
+uint64_t ArrayManager::globalarray::get_size() const
+{
+    return m_Size;
+}
+
 void ArrayManager::globalarray::resize( uint64_t size )
 {
     if( size == 0 ) {
@@ -132,14 +151,8 @@ void ArrayManager::globalarray::resize( uint64_t size )
         m_Size = 0;
     }
     else {
-        uint64_t* array = new(std::nothrow) uint64_t[size];
-        if( array == nullptr ) throw ASTExceptionOutOfMemory( size );
-
-        if( m_Array ) {
-            copy( m_Array, m_Array + min( size, m_Size ), array );
-            delete[] m_Array;
-        }
-
+        uint64_t* array = realloc( m_Array, m_Size, size );
+        if( m_Array ) delete[] m_Array;
         m_Array = array;
         m_Size = size;
     }
@@ -176,6 +189,13 @@ void ArrayManager::localarray::set( uint64_t index, uint64_t value )
     arraydata.array[ index ] = value;
 }
 
+uint64_t ArrayManager::localarray::get_size() const
+{
+    ArrayManager::arraydata_t& arraydata = m_Storage[ m_Offset ];
+
+    return arraydata.size;
+}
+
 void ArrayManager::localarray::resize( uint64_t size )
 {
     ArrayManager::arraydata_t& arraydata = m_Storage[ m_Offset ];
@@ -186,14 +206,8 @@ void ArrayManager::localarray::resize( uint64_t size )
         arraydata.size = 0;
     }
     else {
-        uint64_t* array = new(std::nothrow) uint64_t[size];
-        if( array == nullptr ) throw ASTExceptionOutOfMemory( size );
-
-        if( arraydata.array ) {
-            copy( arraydata.array, arraydata.array + min( size, arraydata.size ), array );
-            delete[] arraydata.array;
-        }
-
+        uint64_t* array = realloc( arraydata.array, arraydata.size, size );
+        if( arraydata.array ) delete[] arraydata.array;
         arraydata.array = array;
         arraydata.size = size;
     }
@@ -216,6 +230,11 @@ uint64_t ArrayManager::refarray::get( uint64_t index ) const
 void ArrayManager::refarray::set( uint64_t index, uint64_t value )
 {
     m_Array->set( index, value );
+}
+
+uint64_t ArrayManager::refarray::get_size() const
+{
+    return m_Array->get_size();
 }
 
 void ArrayManager::refarray::resize( uint64_t size )

@@ -92,7 +92,12 @@ public:
     virtual uint64_t get( uint64_t index ) const = 0;
     virtual void set( uint64_t index, uint64_t value ) = 0;
 
+    virtual uint64_t get_size() const = 0;
+
     virtual void resize( uint64_t size ) = 0;
+
+protected:
+    static uint64_t* realloc( uint64_t* old_array, uint64_t old_size, uint64_t new_size );
 };
 
 
@@ -106,6 +111,8 @@ public:
 
     uint64_t get( uint64_t index ) const override;
     void set( uint64_t index, uint64_t value ) override;
+
+    virtual uint64_t get_size() const override;
 
     virtual void resize( uint64_t size ) override;
 
@@ -128,6 +135,8 @@ public:
     uint64_t get( uint64_t index ) const override;
     void set( uint64_t index, uint64_t value ) override;
 
+    virtual uint64_t get_size() const override;
+
     virtual void resize( uint64_t size ) override;
 
 private:
@@ -146,6 +155,8 @@ public:
 
     uint64_t get( uint64_t index ) const override;
     void set( uint64_t index, uint64_t value ) override;
+
+    virtual uint64_t get_size() const override;
 
     virtual void resize( uint64_t size ) override;
 

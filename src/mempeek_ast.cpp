@@ -626,11 +626,26 @@ ASTNodeAssign::ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::str
 	cerr << "AST[" << this << "]: creating ASTNodeAssign name=" << name << " expression=[" << expression << "]" << endl;
 #endif
 
-	m_Var = env->alloc_var( name );
+	m_LValue.var = env->alloc_var( name );
 
 	add_child( expression );
 
-	if( !m_Var ) throw ASTExceptionNamingConflict( get_location(), name );
+	if( !m_LValue.var ) throw ASTExceptionNamingConflict( get_location(), name );
+}
+
+ASTNodeAssign::ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index, ASTNode::ptr expression )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodeAssign name=" << name << " index=[" << index <<"] expression=[" << expression << "]" << endl;
+#endif
+
+	m_LValue.array = env->alloc_array( name );
+
+    add_child( index );
+	add_child( expression );
+
+	if( !m_LValue.array ) throw ASTExceptionNamingConflict( get_location(), name );
 }
 
 uint64_t ASTNodeAssign::execute()
@@ -639,10 +654,22 @@ uint64_t ASTNodeAssign::execute()
 	cerr << "AST[" << this << "]: executing ASTNodeAssign" << endl;
 #endif
 
-	uint64_t value = get_children()[0]->execute();
-	if( m_Var ) m_Var->set( value );
+    if( get_children().size() == 1 ) {
+        uint64_t value = get_children()[0]->execute();
+        if( m_LValue.var ) m_LValue.var->set( value );
+    }
+    else {
+        uint64_t index = get_children()[0]->execute();
+        uint64_t value = get_children()[1]->execute();
+        if( m_LValue.array ) m_LValue.array->set( index, value );
+    }
 
 	return 0;
+}
+
+Environment::var* ASTNodeAssign::get_var()
+{
+    return ( get_children().size() == 1 ) ? m_LValue.var : nullptr;
 }
 
 
@@ -658,7 +685,7 @@ ASTNodeStatic::ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::str
     cerr << "AST[" << this << "]: creating ASTNodeStatic name=" << name << " expression=[" << expression << "]" << endl;
 #endif
 
-    m_Var = env->alloc_static( name );
+    m_Var = env->alloc_static_var( name );
 
     if( expression->is_constant() ) {
         try {
@@ -705,7 +732,7 @@ ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string na
     try {
         const uint64_t value = expression->execute();
 
-        Environment::var* def = env->alloc_def( name );
+        Environment::var* def = env->alloc_def_var( name );
         if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
         def->set( value );
     }
@@ -726,18 +753,18 @@ ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string na
     try {
         const uint64_t value = expression->execute();
 
-        Environment::var* def = env->alloc_def( name );
+        Environment::var* def = env->alloc_def_var( name );
         if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
         def->set( value );
 
-        const Environment::var* from_base = env->get( from );
+        const Environment::var* from_base = env->get_var( from );
         if( !from_base || !from_base->is_def() ) throw ASTExceptionNamingConflict( get_location(), from );
 
         const uint64_t from_value = from_base->get();
 
         for( string member: env->get_struct_members( from ) ) {
-            Environment::var* dst = env->alloc_def( name + '.' + member );
-            const Environment::var* src = env->get( from + '.' + member );
+            Environment::var* dst = env->alloc_def_var( name + '.' + member );
+            const Environment::var* src = env->get_var( from + '.' + member );
 
             dst->set( src->get() - from_value );
         }
@@ -770,10 +797,10 @@ ASTNodeDim::ASTNodeDim( const yylloc_t& yylloc, Environment* env, std::string na
     cerr << "AST[" << this << "]: creating ASTNodeDim name=" << name << " size=[" << expression << "]" << endl;
 #endif
 
-//    Environment::array* array = env->alloc_array( name );
-//    if( !array ) throw ASTExceptionNamingConflict( get_location(), name );
-//
-//    add_child( size );
+    m_Array = env->alloc_array( name );
+    if( !m_Array ) throw ASTExceptionNamingConflict( get_location(), name );
+
+    add_child( size );
 }
 
 uint64_t ASTNodeDim::execute()
@@ -782,7 +809,8 @@ uint64_t ASTNodeDim::execute()
     cerr << "AST[" << this << "]: executing ASTNodeDim" << endl;
 #endif
 
-    // FIXME: to be implemented
+    uint64_t size = get_children()[0]->execute();
+    m_Array->resize( size );
 
     return 0;
 }
@@ -1059,27 +1087,11 @@ ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string na
 	cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << endl;
 #endif
 
-	m_Var = env->get( name );
+	m_Var = env->get_var( name );
 
     if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
 
     if( m_Var->is_def() ) set_constant();
-}
-
-ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index )
- : ASTNode( yylloc )
-{
-#ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << " index=[" << index << "]" << endl;
-#endif
-
-	m_Var = env->get( name );
-
-	add_child( index );
-
-    if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
-
-    if( m_Var->is_def() && index->is_constant() ) set_constant();
 }
 
 uint64_t ASTNodeVar::execute()
@@ -1088,11 +1100,51 @@ uint64_t ASTNodeVar::execute()
 	cerr << "AST[" << this << "]: executing ASTNodeVar" << endl;
 #endif
 
-	uint64_t offset = 0;
-	if( get_children().size() > 0 ) offset = get_children()[0]->execute();
-
-	if( m_Var ) return m_Var->get() + offset;
+	if( m_Var ) return m_Var->get();
 	else return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArray implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeArray::ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeArray name=" << name << endl;
+#endif
+
+    m_Array = env->get_array( name );
+
+    if( !m_Array ) throw ASTExceptionUndefinedVar( get_location(), name );
+}
+
+ASTNodeArray::ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeArray name=" << name << " index=[" << index << "]" << endl;
+#endif
+
+    m_Array = env->get_array( name );
+
+    add_child( index );
+
+    if( !m_Array ) throw ASTExceptionUndefinedVar( get_location(), name );
+}
+
+uint64_t ASTNodeArray::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeArray" << endl;
+#endif
+
+    if( get_children().size() == 0 ) return m_Array->get_size();
+
+    uint64_t index = get_children()[0]->execute();
+    return m_Array ? m_Array->get( index ) : 0;
 }
 
 

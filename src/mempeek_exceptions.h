@@ -165,6 +165,7 @@ public:
     }
 };
 
+
 //////////////////////////////////////////////////////////////////////////////
 // ASTNode runtime exceptions
 //////////////////////////////////////////////////////////////////////////////
@@ -215,7 +216,7 @@ class ASTExceptionOutOfMemory : public ASTRuntimeException {
 public:
     ASTExceptionOutOfMemory( uint64_t size )
     {
-        msg( "failed to allocate array of size $0" );
+        msg( "failed to allocate array of size $0", size );
     }
 
     ASTExceptionOutOfMemory( const yylloc_t& location, const ASTExceptionOutOfMemory& ex )

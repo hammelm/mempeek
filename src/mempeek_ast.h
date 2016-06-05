@@ -166,13 +166,17 @@ public:
     typedef std::shared_ptr<ASTNodeAssign> ptr;
 
     ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
+    ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index, ASTNode::ptr expression );
 
     uint64_t execute() override;
 
     Environment::var* get_var();
 
 private:
-    Environment::var* m_Var;
+    union {
+        Environment::var* var;
+        Environment::array* array;
+    } m_LValue;
 };
 
 
@@ -364,6 +368,9 @@ public:
     ASTNodeDim( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr size );
 
     uint64_t execute() override;
+
+private:
+    Environment::array* m_Array;
 };
 
 
@@ -460,12 +467,29 @@ public:
     typedef std::shared_ptr<ASTNodeVar> ptr;
 
 	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name );
-	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
 
 	uint64_t execute() override;
 
 private:
 	const Environment::var* m_Var;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArray
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeArray : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeArray> ptr;
+
+    ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
+
+    uint64_t execute() override;
+
+private:
+    const Environment::array* m_Array;
 };
 
 
@@ -527,16 +551,6 @@ inline const ASTNode::nodelist_t& ASTNode::get_children()
 inline void ASTNode::set_constant()
 {
     m_IsConstant = true;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class ASTNodeAssign inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline Environment::var* ASTNodeAssign::get_var()
-{
-    return m_Var;
 }
 
 

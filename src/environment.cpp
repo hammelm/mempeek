@@ -43,6 +43,7 @@ volatile sig_atomic_t Environment::s_IsTerminated = 0;
 Environment::Environment()
 {
     m_GlobalVars = new VarManager;
+    m_GlobalArrays = new ArrayManager;
 
     m_BuiltinManager = new BuiltinManager;
 
@@ -59,6 +60,7 @@ Environment::~Environment()
 
 	delete m_BuiltinManager;
 
+    delete m_GlobalArrays;
 	delete m_GlobalVars;
 }
 
@@ -110,6 +112,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
             m_SubroutineContext->abort_subroutine();
             m_SubroutineContext = nullptr;
             m_LocalVars = nullptr;
+            m_LocalArrays = nullptr;
         }
 
         throw;
@@ -123,7 +126,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     return yyroot;
 }
 
-const Environment::var* Environment::get( std::string name )
+const Environment::var* Environment::get_var( std::string name )
 {
     if( m_LocalVars ) {
         const Environment::var* var = m_LocalVars->get( name );
@@ -136,6 +139,16 @@ const Environment::var* Environment::get( std::string name )
     else return m_GlobalVars->get( name );
 }
 
+const Environment::array* Environment::get_array( std::string name )
+{
+    if( m_LocalArrays ) {
+        const Environment::array* array = m_LocalArrays->get( name );
+        if( array ) return array;
+    }
+
+    return m_GlobalArrays->get( name );
+}
+
 std::set< std::string > Environment::get_autocompletion( std::string prefix )
 {
     set< string > completions;
@@ -146,6 +159,9 @@ std::set< std::string > Environment::get_autocompletion( std::string prefix )
 
     m_GlobalVars->get_autocompletion( completions, prefix );
     if( m_LocalVars ) m_LocalVars->get_autocompletion( completions, prefix );
+
+    m_GlobalArrays->get_autocompletion( completions, prefix );
+    if( m_LocalArrays ) m_LocalArrays->get_autocompletion( completions, prefix );
 
     return completions;
 }
@@ -178,7 +194,7 @@ MMap* Environment::get_mapping( void* phys_addr, size_t size )
 
 void Environment::enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function )
 {
-    assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr );
+    assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr && m_LocalArrays == nullptr );
 
     if( is_function ) {
         if( m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
@@ -188,7 +204,9 @@ void Environment::enter_subroutine_context( const yylloc_t& location, std::strin
 
     m_SubroutineContext = is_function ? m_FunctionManager : m_ProcedureManager;
 
-    m_LocalVars = m_SubroutineContext->begin_subroutine( location, name, is_function );
+    m_SubroutineContext->begin_subroutine( location, name, is_function );
+    m_LocalVars = m_SubroutineContext->get_var_manager();
+    m_LocalArrays = m_SubroutineContext->get_array_manager();
 }
 
 void Environment::set_subroutine_param( std::string name )
@@ -213,6 +231,7 @@ void Environment::commit_subroutine_context( )
 
     m_SubroutineContext = nullptr;
     m_LocalVars = nullptr;
+    m_LocalArrays = nullptr;
 }
 
 std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
