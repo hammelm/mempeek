@@ -113,13 +113,19 @@ statement : %empty                                          { $$.node = nullptr;
           | if_block                                        { $$.node = $1.node; }
           | while_block                                     { $$.node = $1.node; }
           | for_block                                       { $$.node = $1.node; }
-          | plain_identifier proc_params T_END_OF_STATEMENT { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
+          | plain_identifier space_list T_END_OF_STATEMENT  { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
           ;
 
 subroutine_statement : statement                                    { $$.node = $1.node; }
                      | T_GLOBAL plain_identifier T_END_OF_STATEMENT { if( !env->alloc_global_var( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+                     | T_GLOBAL plain_identifier '[' ']'
+                       T_END_OF_STATEMENT                           { if( !env->alloc_global_array( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
                      | T_STATIC plain_identifier
-                       T_ASSIGN expression T_END_OF_STATEMENT       { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node ); }
+                       T_ASSIGN expression T_END_OF_STATEMENT       { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, true ); }
+                     | T_STATIC plain_identifier
+                       '[' expression ']' T_END_OF_STATEMENT        { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, false ); }
+                     | T_STATIC plain_identifier '[' ']' T_ASSIGN
+                       '[' comma_list ']' T_END_OF_STATEMENT        { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value ); for( auto expr: $7.nodelist ) $$.node->add_child( expr ); }
                      ;
 
 proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, false ); }
@@ -133,11 +139,6 @@ proc_args : %empty
           | plain_identifier                            { env->set_subroutine_param( $1.value ); }
           | proc_args plain_identifier                  { env->set_subroutine_param( $2.value ); }
           ;
-
-proc_params : %empty
-            | expression                                { $$.nodelist.push_back( $1.node ); }
-            | proc_params expression                    { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $2.node ); }
-            ;
 
 func_def : T_DEFFUNC arrayfunc_def plain_identifier     { env->enter_subroutine_context( @1, $3.value, true ); }
                '(' func_args ')' T_END_OF_STATEMENT
@@ -155,10 +156,15 @@ func_args : %empty
           | func_args ',' plain_identifier              { env->set_subroutine_param( $3.value ); }
           ;
 
-func_params : %empty
-            | expression                                { $$.nodelist.push_back( $1.node ); }
-            | func_params ',' expression                { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
-            ;
+comma_list : %empty
+           | expression                                 { $$.nodelist.push_back( $1.node ); }
+           | comma_list ',' expression                  { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
+           ;
+
+space_list : %empty
+           | expression                                 { $$.nodelist.push_back( $1.node ); }
+           | space_list expression                      { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $2.node ); }
+           ;
 
 if_block : if_def statement                                             { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node ); }
          | if_def statement else_def                                    { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node, $3.node ); }
@@ -192,6 +198,9 @@ for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO         
 assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node ); }
             | plain_identifier '[' expression ']'
               T_ASSIGN expression                       { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node, $6.node ); }
+            | plain_identifier '[' ']'
+              T_ASSIGN '[' comma_list ']'               { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value ); for( auto expr: $6.nodelist ) $$.node->add_child( expr ); }
+            ;
 
 def_stmt : T_DEF plain_identifier expression                            { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
          | T_DEF struct_identifier expression                           { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
@@ -300,7 +309,7 @@ atomic_expr : T_CONSTANT                                { $$.node = make_shared<
             | var_identifier                            { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
-            | plain_identifier '(' func_params ')'      { $$.node = env->get_function( @1, $1.value, $3.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
+            | plain_identifier '(' comma_list ')'       { $$.node = env->get_function( @1, $1.value, $3.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
             ;
 
 peek_token : T_PEEK                                     { $$.token = Environment::get_default_size(); }
@@ -312,8 +321,8 @@ var_identifier : plain_identifier                       { $$.node = make_shared<
                | array_identifier                       { $$.node = $1.node; }
                ;
 
-array_identifier : plain_identifier '[' '?' ']'          { $$.node = make_shared<ASTNodeArray>( @$, env, $1.value ); }
-                 | plain_identifier '[' expression ']'   { $$.node = make_shared<ASTNodeArray>( @$, env, $1.value, $3.node ); }
+array_identifier : plain_identifier '[' '?' ']'         { $$.node = make_shared<ASTNodeArray>( @$, env, $1.value ); }
+                 | plain_identifier '[' expression ']'  { $$.node = make_shared<ASTNodeArray>( @$, env, $1.value, $3.node ); }
                  ;
 
 struct_identifier : T_IDENTIFIER '.' T_IDENTIFIER       { $$.value = $1.value + '.' + $3.value; }

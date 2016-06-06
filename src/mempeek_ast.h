@@ -165,6 +165,7 @@ class ASTNodeAssign : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeAssign> ptr;
 
+    ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name );
     ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
     ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index, ASTNode::ptr expression );
 
@@ -173,6 +174,8 @@ public:
     Environment::var* get_var();
 
 private:
+    enum { VAR, ARRAY, ARRAYLIST } m_Type;
+
     union {
         Environment::var* var;
         Environment::array* array;
@@ -188,15 +191,19 @@ class ASTNodeStatic : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeStatic> ptr;
 
-    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
+    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name,
+                   ASTNode::ptr expression, bool is_var );
 
     uint64_t execute() override;
 
-    Environment::var* get_var();
-
 private:
-    bool m_IsInitialized;
-    Environment::var* m_Var;
+    enum { VAR, ARRAY, EMPTY_ARRAY, INITIALIZED }  m_Status;
+
+    union {
+        Environment::var* var;
+        Environment::array* array;
+    } m_Data;
 };
 
 
