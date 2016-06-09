@@ -55,6 +55,7 @@
 "endproc"               TOKEN( T_ENDPROC )
 "deffunc"               TOKEN( T_DEFFUNC )
 "endfunc"               TOKEN( T_ENDFUNC )
+"drop"                  TOKEN( T_DROP )
 "exit"                  TOKEN( T_EXIT )
 "global"                TOKEN( T_GLOBAL )
 "static"                TOKEN( T_STATIC )
@@ -116,6 +117,11 @@
 ">="                    TOKEN( T_GE )
 "=="                    TOKEN( T_EQ )
 "!="                    TOKEN( T_NE )
+
+"-<"                    TOKEN( T_SLT )
+"->"                    TOKEN( T_SGT )
+"-<="                   TOKEN( T_SLE )
+"->="                   TOKEN( T_SGE )
 
 "."                     TOKEN( '.' )
 ","                     TOKEN( ',' )

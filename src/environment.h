@@ -87,6 +87,9 @@ public:
 	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
     std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 
+    bool drop_procedure( std::string name );
+    bool drop_function( std::string name );
+
     static int get_default_size();
 
     static void set_terminate();
@@ -175,6 +178,16 @@ inline std::set< std::string > Environment::get_struct_members( std::string name
 inline void Environment::add_include_path( std::string path )
 {
     m_IncludePaths.push_back( path );
+}
+
+inline bool Environment::drop_procedure( std::string name )
+{
+    return m_ProcedureManager->drop_subroutine( name );
+}
+
+inline bool Environment::drop_function( std::string name )
+{
+    return m_FunctionManager->drop_subroutine( name );
 }
 
 inline void Environment::set_terminate()

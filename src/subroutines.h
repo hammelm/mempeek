@@ -54,6 +54,8 @@ public:
     void commit_subroutine();
     void abort_subroutine();
 
+    bool drop_subroutine( std::string name );
+
     VarManager* get_var_manager();
     ArrayManager* get_array_manager();
 

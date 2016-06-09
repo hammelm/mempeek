@@ -6,7 +6,7 @@ OBJS = main.o console.o mmap.o lexer.o parser.o environment.o mempeek_ast.o memp
        builtins.o subroutines.o variables.o arrays.o
 GENERATED = lexer.cpp parser.cpp
 
-DEFINES = 
+DEFINES = -DUSE_EDITLINE
 INCLUDES = -Isrc -Igenerated
 CFLAGS = -std=c++11 -g
 LIBS = -ledit

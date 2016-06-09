@@ -109,6 +109,8 @@ static void print_usage( const char* name )
          << flush;
 }
 
+#ifdef USE_EDITLINE
+
 static unsigned char completion( EditLine* el, int ch )
 {
     // init
@@ -206,6 +208,8 @@ static unsigned char completion( EditLine* el, int ch )
     else return CC_REFRESH;
 }
 
+#endif
+
 int main( int argc, char** argv )
 {
 #if defined( YYDEBUG ) && YYDEBUG != 0
@@ -285,8 +289,10 @@ int main( int argc, char** argv )
 
         if( is_interactive || !has_commands ) {
             Console console( "mempeek", "~/.mempeek_history" );
+#ifdef USE_EDITLINE
             console.set_clientdata( &env );
             console.set_completion( completion );
+#endif
             if( !has_commands ) print_release_info();
             for(;;) {
                 string line = console.get_line();

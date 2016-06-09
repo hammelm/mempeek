@@ -128,6 +128,14 @@ Comparison operators (comparisons evaluate to the values 0 for false and -1 for 
         <expr1> == <expr2>      true if <expr1> is equal to <expr2>
         <expr1> != <expr2>      true if <expr1> is not equal to <expr2>
 
+Comparison operators for signed integers. These operators are identical to the previous
+operators, but they treat their arguments as signed integers in two's complement.
+
+        <expr1> -< <expr2>       true if <expr1> is lower than <expr2>
+        <expr1> -> <expr2>       true if <expr1> is greater than <expr2>
+        <expr1> -<= <expr2>      true if <expr1> is lower than or equal to <expr2>
+        <expr1> ->= <expr2>      true if <expr1> is greater than or equal to <expr2>
+
 index operator (can be applied on variables or definition variables):
 
         <name>[<expression>]    evaluates to value of <name> + result of <expression>
@@ -144,7 +152,7 @@ the operators have the following precedences, with higher precedence listed firs
         2:  * / % &
         3:  + - | ^
         4:  << >>
-        5:  < <= > >= == !=
+        5:  < <= > >= == != -< -<= -> ->=
         6:  &&
         7:  || ^^
 
@@ -298,6 +306,13 @@ which is only visible within the function and remains unchanged between function
 The result of *expression* is used as initial value for the variable when the "static"
 keyword is executed for the first time.
 
+        drop procedure
+        drop function()
+
+Functions and procedures cannot be redefined once they exist, but it is possible to remove
+an existing function or procedure with the "drop" command where *procedure* is the name of
+the procedure to be removed, and *function* is the name of the function to be removed.
+ 
 floating point numbers
 ----------------------
 
@@ -325,8 +340,9 @@ arithmetic and conversion functions are available:
         ffloor( a )         returns largest integer not greater than a
         fceil( a )          returns smallest integer not less than a
 
-IEEE 754 encoding preserves the ordering of floating point values, therefore the usual
-integer comparison operators can be used to compare floating point values.
+IEEE 754 encoding preserves the ordering of floating point values when treated as integer
+values in two's complement. Therefore the signed integer comparison operators can be used
+to compare floating point values.
 
 other commands
 --------------

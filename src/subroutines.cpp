@@ -111,6 +111,19 @@ void SubroutineManager::abort_subroutine()
     m_PendingSubroutine = nullptr;
 }
 
+bool SubroutineManager::drop_subroutine( std::string name )
+{
+    auto iter = m_Subroutines.find( name );
+    if( iter == m_Subroutines.end() ) return false;
+
+    delete iter->second->vars;
+    delete iter->second;
+
+    m_Subroutines.erase( iter );
+
+    return true;
+}
+
 void SubroutineManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
 {
     for( auto iter = m_Subroutines.lower_bound( prefix ); iter != m_Subroutines.end(); iter++ ) {

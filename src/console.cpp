@@ -26,16 +26,19 @@
 #include "console.h"
 
 #include <sstream>
-#include <fstream>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
+#ifdef USE_EDITLINE
+#include <fstream>
 #include <sys/types.h>
 #include <unistd.h>
 #include <pwd.h>
+#else
+#include <iostream>
+#endif
 
 using namespace std;
 
@@ -45,15 +48,15 @@ using namespace std;
 //////////////////////////////////////////////////////////////////////////////
 
 char* Console::s_Prompt = nullptr;
-std::function<unsigned char( EditLine*, int )> Console::s_Completion = nullptr;
 
 
-void Console::init( string name, string histfile, size_t histsize )
+Console::Console( string name, string histfile, size_t histsize )
 {
 	// only one instance of Console is allowed
 	if( s_Prompt ) abort();
 	s_Prompt = strcpy( new char[3], "> " );
 
+#ifdef USE_EDITLINE
 	// create histfile name
 	m_Histfile = histfile;
 	if( histfile.length() > 0 && histfile[0] == '~' )  {
@@ -90,10 +93,15 @@ void Console::init( string name, string histfile, size_t histsize )
 	el_set( m_Editline, EL_HIST, history, m_History );
 	el_set( m_Editline, EL_ADDFN, "ed-complete", "", completion_callback );
 	el_set( m_Editline, EL_BIND, "^I", "ed-complete", nullptr );
+#else
+	(void)histfile;
+	(void)histsize;
+#endif
 }
 
 Console::~Console()
 {
+#ifdef USE_EDITLINE
 	// save history
 	if( m_Histfile.length() > 0 ) {
 		ofstream histfile( m_Histfile.c_str(), ios::trunc );
@@ -108,6 +116,7 @@ Console::~Console()
 	// cleanup
 	el_end( m_Editline );
 	history_end( m_History );
+#endif
 
 	delete[] s_Prompt;
 	s_Prompt = nullptr;
@@ -121,16 +130,25 @@ void Console::set_prompt( string prompt )
 
 void Console::set_completion( std::function<unsigned char( EditLine*, int )> completion )
 {
+#ifdef USE_EDITLINE
 	s_Completion = completion;
+#else
+	(void)completion;
+#endif
 }
 
 void Console::set_clientdata( void* data )
 {
+#ifdef USE_EDITLINE
     el_set( m_Editline, EL_CLIENTDATA, data );
+#else
+    (void)data;
+#endif
 }
 
 string Console::get_line()
 {
+#ifdef USE_EDITLINE
 	int count;
 	const char* line = el_gets( m_Editline, &count );
 
@@ -146,6 +164,14 @@ string Console::get_line()
 	}
 
 	return "";
+#else
+    cout << s_Prompt << flush;
+    string ret = "";
+    getline( cin, ret );
+    ret += '\n';
+
+    return ret;
+#endif
 }
 
 Console::tokens_t Console::get_tokens()
@@ -162,6 +188,10 @@ Console::tokens_t Console::get_tokens()
 	}
 }
 
+#ifdef USE_EDITLINE
+
+std::function<unsigned char( EditLine*, int )> Console::s_Completion = nullptr;
+
 char* Console::get_prompt( EditLine* )
 {
 	return s_Prompt;
@@ -172,3 +202,5 @@ unsigned char Console::completion_callback( EditLine* el, int ch )
 	if( s_Completion ) return s_Completion( el, ch );
 	else return CC_NORM;
 }
+
+#endif

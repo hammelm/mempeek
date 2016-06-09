@@ -41,7 +41,7 @@ static ASTNode::ptr int2float( const yylloc_t& location )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = args[0];
-        return *(uint64_t*)&d1;
+        return *(int64_t*)&d1;
     });
 }
 

@@ -145,6 +145,9 @@ uint64_t ASTNodeSubroutine::execute()
     uint64_t ret = 0;
 
     try {
+        ASTNode::ptr body = m_Body.lock();
+        if( !body ) throw ASTExceptionDroppedSubroutine( get_location() );
+
         vector<uint64_t> values( m_Params.size() );
 
         for( size_t i = 0; i < m_Params.size(); i++ ) values[i] = get_children()[i]->execute();
@@ -154,7 +157,7 @@ uint64_t ASTNodeSubroutine::execute()
 
         for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( values[i] );
 
-        ASTNode::ptr(m_Body)->execute();
+        body->execute();
     }
     catch( ASTExceptionExit& ) {
         // nothing to do
@@ -1081,6 +1084,10 @@ uint64_t ASTNodeBinaryOperator::execute()
 	case T_GE: return (r0 >= r1) ? 0xffffffffffffffff : 0;
 	case T_EQ: return (r0 == r1) ? 0xffffffffffffffff : 0;
 	case T_NE: return (r0 != r1) ? 0xffffffffffffffff : 0;
+    case T_SLT: return ((int64_t)r0 < (int64_t)r1) ? 0xffffffffffffffff : 0;
+    case T_SGT: return ((int64_t)r0 > (int64_t)r1) ? 0xffffffffffffffff : 0;
+    case T_SLE: return ((int64_t)r0 <= (int64_t)r1) ? 0xffffffffffffffff : 0;
+    case T_SGE: return ((int64_t)r0 >= (int64_t)r1) ? 0xffffffffffffffff : 0;
 	case T_BIT_AND: return r0 & r1;
 	case T_BIT_XOR: return r0 ^ r1;
 	case T_BIT_OR: return r0 | r1;
