@@ -145,6 +145,9 @@ uint64_t ASTNodeSubroutine::execute()
     uint64_t ret = 0;
 
     try {
+        ASTNode::ptr body = m_Body.lock();
+        if( !body ) throw ASTExceptionDroppedSubroutine( get_location() );
+
         vector<uint64_t> values( m_Params.size() );
 
         for( size_t i = 0; i < m_Params.size(); i++ ) values[i] = get_children()[i]->execute();
@@ -154,7 +157,7 @@ uint64_t ASTNodeSubroutine::execute()
 
         for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( values[i] );
 
-        ASTNode::ptr(m_Body)->execute();
+        body->execute();
     }
     catch( ASTExceptionExit& ) {
         // nothing to do

@@ -306,6 +306,13 @@ which is only visible within the function and remains unchanged between function
 The result of *expression* is used as initial value for the variable when the "static"
 keyword is executed for the first time.
 
+        drop procedure
+        drop function()
+
+Functions and procedures cannot be redefined once they exist, but it is possible to remove
+an existing function or procedure with the "drop" command where *procedure* is the name of
+the procedure to be removed, and *function* is the name of the function to be removed.
+ 
 floating point numbers
 ----------------------
 

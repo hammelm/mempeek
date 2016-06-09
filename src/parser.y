@@ -50,6 +50,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_MAP
 %token T_DEFPROC T_ENDPROC
 %token T_DEFFUNC T_ENDFUNC
+%token T_DROP
 %token T_EXIT T_GLOBAL T_STATIC
 %token T_IMPORT
 %token T_PEEK
@@ -98,6 +99,7 @@ toplevel_statement : statement                          { $$.node = $1.node; }
                    | import_stmt T_END_OF_STATEMENT     { $$.node = $1.node; }
                    | proc_def
                    | func_def
+                   | drop_stmt T_END_OF_STATEMENT
                    ;
 
 statement : %empty                                          { $$.node = nullptr; }
@@ -193,6 +195,10 @@ def_stmt : T_DEF plain_identifier expression                            { $$.nod
 map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node ); }
          | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
+
+drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedure( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+          | T_DROP plain_identifier '(' ')'             { if( !env->drop_function( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+          ;
 
 import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ) ); }
             ;

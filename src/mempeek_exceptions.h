@@ -188,6 +188,15 @@ public:
 
 };
 
+class ASTExceptionDroppedSubroutine : public ASTRuntimeException {
+public:
+    ASTExceptionDroppedSubroutine( const yylloc_t& location )
+    {
+        loc( location );
+        msg( "calling dropped subroutine" );
+    }
+};
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodeException template functions
