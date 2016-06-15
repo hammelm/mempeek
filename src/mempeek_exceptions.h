@@ -200,9 +200,15 @@ public:
 
 class ASTExceptionOutOfBounds : public ASTRuntimeException {
 public:
+    ASTExceptionOutOfBounds( const yylloc_t& location, uint64_t index, uint64_t size )
+     : ASTExceptionOutOfBounds( index, size )
+    {
+        loc( location );
+    }
+
     ASTExceptionOutOfBounds( uint64_t index, uint64_t size )
     {
-        msg( "array index $0 does not match array size $1", index, size );
+        msg( "index $0 does not match size $1", index, size );
     }
 
     ASTExceptionOutOfBounds( const yylloc_t& location, const ASTExceptionOutOfBounds& ex )

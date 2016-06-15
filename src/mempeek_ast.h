@@ -358,6 +358,7 @@ public:
     typedef std::shared_ptr<ASTNodeDef> ptr;
 
 	ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr address );
+    ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr range, ASTNode::ptr address, int size );
 	ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr address, std::string from );
 
 	uint64_t execute() override;
@@ -474,6 +475,7 @@ public:
     typedef std::shared_ptr<ASTNodeVar> ptr;
 
 	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name );
+	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
 
 	uint64_t execute() override;
 

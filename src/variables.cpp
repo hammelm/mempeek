@@ -25,6 +25,11 @@
 
 #include "variables.h"
 
+#include "environment.h"
+#include "parser.h"
+
+#include <assert.h>
+
 using namespace std;
 
 
@@ -143,6 +148,32 @@ bool VarManager::var::is_local() const
     return false;
 }
 
+void VarManager::var::set_range( uint64_t range )
+{
+    // nothing to do
+}
+
+uint64_t VarManager::var::get_range() const
+{
+    return 0;
+}
+
+void VarManager::var::set_size( size_t range )
+{
+    // nothing to do
+}
+
+size_t VarManager::var::get_size() const
+{
+    switch( Environment::get_default_size() ) {
+    case T_8BIT: return 1;
+    case T_16BIT: return 2;
+    case T_32BIT: return 4;
+    case T_64BIT: return 8;
+    default: assert(false);
+    }
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class VarManager::defvar implementation
@@ -185,6 +216,26 @@ uint64_t VarManager::structvar::get() const
 void VarManager::structvar::set( uint64_t offset )
 {
     m_Offset = offset;
+}
+
+void VarManager::structvar::set_range( uint64_t range )
+{
+    m_Range = range;
+}
+
+uint64_t VarManager::structvar::get_range() const
+{
+    return m_Range;
+}
+
+void VarManager::structvar::set_size( size_t size )
+{
+    m_Size = size;
+}
+
+uint64_t VarManager::structvar::get_size() const
+{
+    return m_Size;
 }
 
 

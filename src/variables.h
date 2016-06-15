@@ -85,6 +85,12 @@ public:
     virtual bool is_def() const;
     virtual bool is_local() const;
 
+    virtual void set_range( uint64_t range );
+    virtual uint64_t get_range() const;
+
+    virtual size_t get_size() const;
+    virtual void set_size( size_t );
+
     virtual uint64_t get() const = 0;
     virtual void set( uint64_t value ) = 0;
 };
@@ -116,11 +122,19 @@ public:
 
     bool is_def() const override;
 
+    void set_range( uint64_t range ) override;
+    uint64_t get_range() const override;
+
+    size_t get_size() const override;
+    void set_size( size_t ) override;
+
     uint64_t get() const override;
     void set( uint64_t offset ) override;
 
 private:
     uint64_t m_Offset = 0;
+    uint64_t m_Range = 0;
+    size_t m_Size;
     const VarManager::var* m_Base;
 };
 

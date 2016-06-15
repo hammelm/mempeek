@@ -819,6 +819,44 @@ ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string na
     }
 }
 
+ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr range_expr, ASTNode::ptr value_expr, int size )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " range=[" << size << "] expression=[" << expression << "] size=" << endl;
+    switch( size ) {
+    case T_8BIT: cerr << "1" << endl; break;
+    case T_16BIT: cerr << "2" << endl; break;
+    case T_32BIT: cerr << "4" << endl; break;
+    case T_64BIT: cerr << "8" << endl; break;
+    default: cerr << "ERR" << endl; break;
+    }
+#endif
+
+    if( !range_expr->is_constant() ) throw ASTExceptionNonconstExpression( range_expr->get_location() );
+    if( !value_expr->is_constant() ) throw ASTExceptionNonconstExpression( value_expr->get_location() );
+
+    try {
+        const uint64_t range = range_expr->execute();
+        const uint64_t value = value_expr->execute();
+
+        Environment::var* def = env->alloc_def_var( name );
+        if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
+        def->set( value );
+        def->set_range( range );
+
+        switch( size ) {
+        case T_8BIT: def->set_size(1); break;
+        case T_16BIT: def->set_size(2); break;
+        case T_32BIT: def->set_size(4); break;
+        case T_64BIT: def->set_size(8); break;
+        }
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
+    }
+}
+
 ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression, std::string from )
  : ASTNode( yylloc )
 {
@@ -1176,14 +1214,36 @@ ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string na
     if( m_Var->is_def() ) set_constant();
 }
 
+ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << endl;
+#endif
+
+    m_Var = env->get_var( name );
+
+    if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
+    if( !m_Var->is_def() ) ASTExceptionNonconstExpression( get_location() );
+
+    add_child( index );
+}
+
 uint64_t ASTNodeVar::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeVar" << endl;
 #endif
 
-	if( m_Var ) return m_Var->get();
-	else return 0;
+	if( !m_Var ) return 0;
+
+	uint64_t value = m_Var->get();
+	if( !m_Var->is_def() || get_children().size() == 0 ) return value;
+
+	uint64_t index = get_children()[0]->execute();
+	if( index >= m_Var->get_range() ) throw ASTExceptionOutOfBounds( get_location(), index, m_Var->get_range() );
+
+	return value + m_Var->get_size() * index;
 }
 
 

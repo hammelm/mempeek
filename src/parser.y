@@ -204,9 +204,11 @@ assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<
               T_ASSIGN '[' comma_list ']'               { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value ); for( auto expr: $6.nodelist ) $$.node->add_child( expr ); }
             ;
 
-def_stmt : T_DEF plain_identifier expression                            { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
-         | T_DEF struct_identifier expression                           { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
-         | T_DEF plain_identifier expression T_FROM plain_identifier    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node, $5.value ); }
+def_stmt : T_DEF plain_identifier expression                                    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
+         | T_DEF struct_identifier expression                                   { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
+         | T_DEF struct_identifier '{' expression '}' expression                { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $4.node, $6.node, Environment::get_default_size() ); }
+         | T_DEF struct_identifier size_suffix '{' expression '}' expression    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $5.node, $7.node, $3.token ); }
+         | T_DEF plain_identifier expression T_FROM plain_identifier            { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node, $5.value ); }
          ;
 
 dim_stmt : T_DIM plain_identifier '[' expression ']'    { $$.node = make_shared<ASTNodeDim>( @$, env, $2.value, $4.node ); }
@@ -328,6 +330,7 @@ peek_token : T_PEEK                                     { $$.token = Environment
 
 var_identifier : plain_identifier                       { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
                | struct_identifier                      { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
+               | struct_identifier '{' expression '}'   { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value, $3.node ); }
                | array_identifier                       { $$.node = $1.node; }
                ;
 
