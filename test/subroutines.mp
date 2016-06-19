@@ -4,10 +4,11 @@
 # output:
 # 24
 # 120
+# 420 2226
 # 0 0 0
 # 1 1
 # 2 2 2
-# 3 3 
+# 3 3
 # 4 4 4
 # 5 quit
 #
@@ -24,11 +25,24 @@ endproc
 decprint fac(4)
 decprint fac(5)
 
+y := 10
+z := 20
+deffunc f( x )
+    global y
+	static z := x + y
+    return := x + y + z
+    z := z + 1
+endfunc
+
+print dec f( z * 10 ) noendl
+y := 15
+print " " dec f( z * 100 )
+
 defproc exittest i
   print dec i noendl
   if i == 1 then exit
   if i == 3 then break
-  if i == 5 then 
+  if i == 5 then
     print " quit"
     quit
   endif

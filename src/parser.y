@@ -78,6 +78,11 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 
 %%
 
+
+/*****************************************************************************
+ * blocks and statements
+ ****************************************************************************/
+
 start : toplevel_block                                  { yyroot = $1.node; }
       ;
 
@@ -118,17 +123,15 @@ statement : %empty                                          { $$.node = nullptr;
           | plain_identifier proc_args T_END_OF_STATEMENT   { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
           ;
 
-subroutine_statement : statement                                    { $$.node = $1.node; }
-                     | T_GLOBAL plain_identifier T_END_OF_STATEMENT { if( !env->alloc_global_var( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
-                     | T_GLOBAL plain_identifier '[' ']'
-                       T_END_OF_STATEMENT                           { if( !env->alloc_global_array( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
-                     | T_STATIC plain_identifier
-                       T_ASSIGN expression T_END_OF_STATEMENT       { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, true ); }
-                     | T_STATIC plain_identifier
-                       '[' expression ']' T_END_OF_STATEMENT        { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, false ); }
-                     | T_STATIC plain_identifier '[' ']' T_ASSIGN
-                       '[' comma_list ']' T_END_OF_STATEMENT        { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value ); for( auto expr: $7.nodelist ) $$.node->add_child( expr ); }
+subroutine_statement : statement                        { $$.node = $1.node; }
+                     | global_stmt                      { $$.node = $1.node; }
+                     | static_stmt                      { $$.node = $1.node; }
                      ;
+
+
+/*****************************************************************************
+ * procedure and function definitions
+ ****************************************************************************/
 
 proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, false ); }
                proc_arg_decl T_END_OF_STATEMENT
@@ -136,13 +139,6 @@ proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_
            T_ENDPROC                                    { env->commit_subroutine_context(); }
            T_END_OF_STATEMENT                           { $$.node = nullptr; }
          ;
-
-proc_arg_decl : %empty
-              | plain_identifier                        { env->set_subroutine_param( $1.value ); }
-              | plain_identifier '[' ']'                { env->set_subroutine_param( $1.value, true ); }
-              | proc_arg_decl plain_identifier          { env->set_subroutine_param( $2.value ); }
-              | proc_arg_decl plain_identifier '[' ']'  { env->set_subroutine_param( $2.value, true ); }
-              ;
 
 func_def : T_DEFFUNC arrayfunc_def plain_identifier     { env->enter_subroutine_context( @1, $3.value, true ); }
                '(' func_arg_decl ')' T_END_OF_STATEMENT
@@ -155,24 +151,19 @@ arrayfunc_def : %empty                                  { $$.token = 0; }
               | '[' ']'                                 { $$.token = 1; }
               ;
 
+proc_arg_decl : %empty
+              | plain_identifier                        { env->set_subroutine_param( $1.value ); }
+              | plain_identifier '[' ']'                { env->set_subroutine_param( $1.value, true ); }
+              | proc_arg_decl plain_identifier          { env->set_subroutine_param( $2.value ); }
+              | proc_arg_decl plain_identifier '[' ']'  { env->set_subroutine_param( $2.value, true ); }
+              ;
+
 func_arg_decl : %empty
               | plain_identifier                            { env->set_subroutine_param( $1.value ); }
               | plain_identifier '[' ']'                    { env->set_subroutine_param( $1.value, true ); }
               | func_arg_decl ',' plain_identifier          { env->set_subroutine_param( $3.value ); }
               | func_arg_decl ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
               ;
-
-comma_list : %empty
-           | expression                                 { $$.nodelist.push_back( $1.node ); }
-           | comma_list ',' expression                  { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
-           ;
-
-func_args : %empty
-          | expression                                  { $$.nodelist.push_back( $1.node ); }
-          | plain_identifier '[' ']'                    { $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $1.value ) ); }
-          | func_args ',' expression                    { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
-          | func_args ',' plain_identifier '[' ']'      { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $3.value ) ); }
-          ;
 
 proc_args : %empty
           | expression                                  { $$.nodelist.push_back( $1.node ); }
@@ -181,13 +172,41 @@ proc_args : %empty
           | proc_args plain_identifier '[' ']'          { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $2.value ) ); }
           ;
 
+func_args : %empty
+          | expression                                  { $$.nodelist.push_back( $1.node ); }
+          | plain_identifier '[' ']'                    { $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $1.value ) ); }
+          | func_args ',' expression                    { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
+          | func_args ',' plain_identifier '[' ']'      { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $3.value ) ); }
+          ;
+
+global_stmt : T_GLOBAL plain_identifier T_END_OF_STATEMENT          { if( !env->alloc_global_var( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+            | T_GLOBAL plain_identifier '[' ']' T_END_OF_STATEMENT  { if( !env->alloc_global_array( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+            ;
+
+static_stmt : T_STATIC plain_identifier
+              T_ASSIGN expression T_END_OF_STATEMENT            { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, true ); }
+            | T_STATIC plain_identifier '[' expression ']'
+              T_END_OF_STATEMENT                                { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, false ); }
+            | T_STATIC plain_identifier '[' ']'
+              T_ASSIGN '[' comma_list ']' T_END_OF_STATEMENT    { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value ); for( auto expr: $7.nodelist ) $$.node->add_child( expr ); }
+            ;
+
+drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedure( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+          | T_DROP plain_identifier '(' ')'             { if( !env->drop_function( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
+          ;
+
+
+/*****************************************************************************
+ * flow control structures
+ ****************************************************************************/
+
 if_block : if_def statement                                             { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node ); }
          | if_def statement else_def                                    { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node, $3.node ); }
          | if_def T_END_OF_STATEMENT block T_ENDIF T_END_OF_STATEMENT   { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $3.node ); }
          | if_def T_END_OF_STATEMENT block else_def                     { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $3.node, $4.node ); }
          ;
 
-if_def : T_IF expression T_THEN                         { $$.node = $2.node; }
+if_def : T_IF expression T_THEN                                         { $$.node = $2.node; }
        ;
 
 else_def : T_ELSE statement                                             { $$.node = $2.node; }
@@ -210,6 +229,11 @@ for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO         
         | T_FOR plain_identifier T_FROM expression T_TO expression T_STEP expression T_DO   { $$.node = make_shared<ASTNodeFor>( @$, make_shared<ASTNodeAssign>( @2, env, $2.value, $4.node ), $6.node, $8.node ); }
         ;
 
+
+/*****************************************************************************
+ * variables and arrays
+ ****************************************************************************/
+
 assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node ); }
             | plain_identifier '[' expression ']'
               T_ASSIGN expression                       { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node, $6.node ); }
@@ -227,13 +251,19 @@ def_stmt : T_DEF plain_identifier expression                                    
 dim_stmt : T_DIM plain_identifier '[' expression ']'    { $$.node = make_shared<ASTNodeDim>( @$, env, $2.value, $4.node ); }
          ;
 
+comma_list : %empty
+           | expression                                 { $$.nodelist.push_back( $1.node ); }
+           | comma_list ',' expression                  { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
+           ;
+
+
+/*****************************************************************************
+ * special functions
+ ****************************************************************************/
+
 map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node ); }
          | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
-
-drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedure( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
-          | T_DROP plain_identifier '(' ')'             { if( !env->drop_function( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
-          ;
 
 import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ) ); }
             ;
@@ -281,6 +311,11 @@ print_size : T_8BIT                                     { $$.token = ASTNodePrin
 
 sleep_stmt : T_SLEEP expression                         { $$.node = make_shared<ASTNodeSleep>( @$, $2.node ); }
            ;
+
+
+/*****************************************************************************
+ * expressions
+ ****************************************************************************/
 
 expression : expression T_LOG_OR and_expr               { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
            | expression T_LOG_XOR and_expr              { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
