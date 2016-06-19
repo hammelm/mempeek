@@ -59,11 +59,11 @@ ArrayManager::array* ArrayManager::alloc_global( std::string name )
     return iter->second;
 }
 
-ArrayManager::array* ArrayManager::alloc_ref( std::string name, ArrayManager::array* array )
+ArrayManager::refarray* ArrayManager::alloc_ref( std::string name, ArrayManager::array* array )
 {
     if( m_Arrays.find( name ) != m_Arrays.end() ) return nullptr;
 
-    ArrayManager::array* ref = new ArrayManager::refarray( array );
+    ArrayManager::refarray* ref = new ArrayManager::refarray( array );
     m_Arrays[ name ] = ref;
     return ref;
 }
@@ -240,4 +240,9 @@ uint64_t ArrayManager::refarray::get_size() const
 void ArrayManager::refarray::resize( uint64_t size )
 {
     m_Array->resize( size );
+}
+
+void ArrayManager::refarray::set_ref( ArrayManager::array* array )
+{
+    m_Array = array;
 }

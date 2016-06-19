@@ -139,10 +139,10 @@ const Environment::var* Environment::get_var( std::string name )
     else return m_GlobalVars->get( name );
 }
 
-const Environment::array* Environment::get_array( std::string name )
+Environment::array* Environment::get_array( std::string name )
 {
     if( m_LocalArrays ) {
-        const Environment::array* array = m_LocalArrays->get( name );
+        Environment::array* array = m_LocalArrays->get( name );
         if( array ) return array;
     }
 
@@ -209,11 +209,11 @@ void Environment::enter_subroutine_context( const yylloc_t& location, std::strin
     m_LocalArrays = m_SubroutineContext->get_array_manager();
 }
 
-void Environment::set_subroutine_param( std::string name )
+void Environment::set_subroutine_param( std::string name, bool is_array )
 {
     assert( m_SubroutineContext );
 
-    m_SubroutineContext->set_param( name );
+    m_SubroutineContext->set_param( name, is_array );
 }
 
 void Environment::set_subroutine_body( std::shared_ptr<ASTNode> body  )

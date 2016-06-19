@@ -75,14 +75,28 @@ void SubroutineManager::begin_subroutine( const yylloc_t& location, std::string 
     }
 }
 
-void SubroutineManager::set_param( std::string name )
+void SubroutineManager::set_param( std::string name, bool is_array )
 {
     assert( m_PendingSubroutine );
 
-    Environment::var* var = m_Environment->alloc_var( name );
-    if( !var ) throw ASTExceptionNamingConflict( m_PendingSubroutine->location, name );
+    if( is_array ) {
+        Environment::refarray* array = m_Environment->alloc_ref_array( name, nullptr );
+        if( !array ) throw ASTExceptionNamingConflict( m_PendingSubroutine->location, name );
 
-    m_PendingSubroutine->params.push_back( var );
+        param_t param;
+        param.is_array = true;
+        param.param.array = array;
+        m_PendingSubroutine->params.push_back( param );
+    }
+    else {
+        Environment::var* var = m_Environment->alloc_var( name );
+        if( !var ) throw ASTExceptionNamingConflict( m_PendingSubroutine->location, name );
+
+        param_t param;
+        param.is_array = false;
+        param.param.var = var;
+        m_PendingSubroutine->params.push_back( param );
+    }
 }
 
 void SubroutineManager::set_body( std::shared_ptr<ASTNode> body )

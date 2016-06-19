@@ -28,6 +28,7 @@
 
 #include "mempeek_parser.h"
 #include "environment.h"
+#include "subroutines.h"
 
 #include <ostream>
 #include <string>
@@ -58,6 +59,7 @@ public:
 	void add_child( ASTNode::ptr node );
 
 	virtual uint64_t execute() = 0;
+    virtual uint64_t execute( Environment::array*& array );
 
 	bool is_constant();
 	virtual ASTNode::ptr clone_to_const();
@@ -140,14 +142,14 @@ public:
     typedef std::shared_ptr<ASTNodeSubroutine> ptr;
 
     ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarManager* vars,
-                       std::vector< Environment::var* >& params, const Environment::var* retval = nullptr );
+                       std::vector< SubroutineManager::param_t >& params, const Environment::var* retval = nullptr );
 
     uint64_t execute() override;
 
 private:
     VarManager* m_LocalVars;
 
-    std::vector< Environment::var* > m_Params;
+    std::vector< SubroutineManager::param_t > m_Params;
     const Environment::var* m_Retval;
 
     // use weak_ptr for subroutine body to break circular references of recursive
@@ -496,9 +498,10 @@ public:
     ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
 
     uint64_t execute() override;
+    uint64_t execute( Environment::array*& array ) override;
 
 private:
-    const Environment::array* m_Array;
+    Environment::array* m_Array;
 };
 
 

@@ -49,7 +49,7 @@ public:
     ~SubroutineManager();
 
     void begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
-    void set_param( std::string name );
+    void set_param( std::string name, bool is_array );
     void set_body( std::shared_ptr<ASTNode> body );
     void commit_subroutine();
     void abort_subroutine();
@@ -64,11 +64,20 @@ public:
     bool has_subroutine( std::string name );
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
 
+    typedef struct {
+        bool is_array;
+        union {
+            VarManager::var* var;
+            ArrayManager::refarray* array;
+        } param;
+    } param_t;
+
+
 private:
     typedef struct {
         VarManager* vars;
         ArrayManager* arrays;
-        std::vector< VarManager::var* > params;
+        std::vector< param_t > params;
         std::shared_ptr<ASTNode> body;
         const VarManager::var* retval = nullptr;
         bool is_function;

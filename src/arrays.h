@@ -42,17 +42,18 @@
 class ArrayManager {
 public:
     class array;
+    class refarray;
 
     ArrayManager();
     ~ArrayManager();
 
     ArrayManager::array* alloc_global( std::string name );
-    ArrayManager::array* alloc_ref( std::string name, ArrayManager::array* array );
+    ArrayManager::refarray* alloc_ref( std::string name, ArrayManager::array* array );
     ArrayManager::array* alloc_local( std::string name );
 
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
-    const ArrayManager::array* get( std::string name );
+    ArrayManager::array* get( std::string name );
 
     void push();
     void pop();
@@ -60,7 +61,6 @@ public:
 private:
     class globalarray;
     class localarray;
-    class refarray;
 
     friend class ArrayManager::refarray;
 
@@ -160,6 +160,8 @@ public:
 
     virtual void resize( uint64_t size ) override;
 
+    void set_ref( ArrayManager::array* array );
+
 private:
     ArrayManager::array* m_Array;
 };
@@ -169,7 +171,7 @@ private:
 // class ArrayManager inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline const ArrayManager::array* ArrayManager::get( std::string name )
+inline ArrayManager::array* ArrayManager::get( std::string name )
 {
     auto iter = m_Arrays.find( name );
     if( iter == m_Arrays.end() ) return nullptr;

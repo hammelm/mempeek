@@ -115,7 +115,7 @@ statement : %empty                                          { $$.node = nullptr;
           | if_block                                        { $$.node = $1.node; }
           | while_block                                     { $$.node = $1.node; }
           | for_block                                       { $$.node = $1.node; }
-          | plain_identifier space_list T_END_OF_STATEMENT  { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
+          | plain_identifier proc_args T_END_OF_STATEMENT   { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
           ;
 
 subroutine_statement : statement                                    { $$.node = $1.node; }
@@ -131,42 +131,55 @@ subroutine_statement : statement                                    { $$.node = 
                      ;
 
 proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, false ); }
-               proc_args T_END_OF_STATEMENT
+               proc_arg_decl T_END_OF_STATEMENT
                subroutine_block
            T_ENDPROC                                    { env->commit_subroutine_context(); }
            T_END_OF_STATEMENT                           { $$.node = nullptr; }
          ;
 
-proc_args : %empty
-          | plain_identifier                            { env->set_subroutine_param( $1.value ); }
-          | proc_args plain_identifier                  { env->set_subroutine_param( $2.value ); }
-          ;
+proc_arg_decl : %empty
+              | plain_identifier                        { env->set_subroutine_param( $1.value ); }
+              | plain_identifier '[' ']'                { env->set_subroutine_param( $1.value, true ); }
+              | proc_arg_decl plain_identifier          { env->set_subroutine_param( $2.value ); }
+              | proc_arg_decl plain_identifier '[' ']'  { env->set_subroutine_param( $2.value, true ); }
+              ;
 
 func_def : T_DEFFUNC arrayfunc_def plain_identifier     { env->enter_subroutine_context( @1, $3.value, true ); }
-               '(' func_args ')' T_END_OF_STATEMENT
+               '(' func_arg_decl ')' T_END_OF_STATEMENT
                subroutine_block
            T_ENDFUNC                                    { env->commit_subroutine_context(); }
            T_END_OF_STATEMENT                           { $$.node = nullptr; }
          ;
 
-arrayfunc_def : %empty                                  { $$.value = ""; }
-              | '[' ']'                                 { $$.value = "[]"; }
+arrayfunc_def : %empty                                  { $$.token = 0; }
+              | '[' ']'                                 { $$.token = 1; }
               ;
 
-func_args : %empty
-          | plain_identifier                            { env->set_subroutine_param( $1.value ); }
-          | func_args ',' plain_identifier              { env->set_subroutine_param( $3.value ); }
-          ;
+func_arg_decl : %empty
+              | plain_identifier                            { env->set_subroutine_param( $1.value ); }
+              | plain_identifier '[' ']'                    { env->set_subroutine_param( $1.value, true ); }
+              | func_arg_decl ',' plain_identifier          { env->set_subroutine_param( $3.value ); }
+              | func_arg_decl ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
+              ;
 
 comma_list : %empty
            | expression                                 { $$.nodelist.push_back( $1.node ); }
            | comma_list ',' expression                  { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
            ;
 
-space_list : %empty
-           | expression                                 { $$.nodelist.push_back( $1.node ); }
-           | space_list expression                      { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $2.node ); }
-           ;
+func_args : %empty
+          | expression                                  { $$.nodelist.push_back( $1.node ); }
+          | plain_identifier '[' ']'                    { $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $1.value ) ); }
+          | func_args ',' expression                    { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
+          | func_args ',' plain_identifier '[' ']'      { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $3.value ) ); }
+          ;
+
+proc_args : %empty
+          | expression                                  { $$.nodelist.push_back( $1.node ); }
+          | plain_identifier '[' ']'                    { $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $1.value ) ); }
+          | proc_args expression                        { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $2.node ); }
+          | proc_args plain_identifier '[' ']'          { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $2.value ) ); }
+          ;
 
 if_block : if_def statement                                             { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node ); }
          | if_def statement else_def                                    { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node, $3.node ); }
@@ -321,7 +334,7 @@ atomic_expr : T_CONSTANT                                { $$.node = make_shared<
             | var_identifier                            { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
-            | plain_identifier '(' comma_list ')'       { $$.node = env->get_function( @1, $1.value, $3.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
+            | plain_identifier '(' func_args ')'        { $$.node = env->get_function( @1, $1.value, $3.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
             ;
 
 peek_token : T_PEEK                                     { $$.token = Environment::get_default_size(); }

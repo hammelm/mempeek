@@ -56,6 +56,12 @@ ASTNode::~ASTNode()
 #endif
 }
 
+uint64_t ASTNode::execute( Environment::array*& array )
+{
+    array = nullptr;
+    return execute();
+}
+
 ASTNode::ptr ASTNode::clone_to_const()
 {
     return nullptr;
@@ -123,7 +129,7 @@ uint64_t ASTNodeBlock::execute()
 //////////////////////////////////////////////////////////////////////////////
 
 ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarManager* vars,
-                                      std::vector< Environment::var* >& params, const Environment::var* retval )
+                                      std::vector< SubroutineManager::param_t >& params, const Environment::var* retval )
  : ASTNode( yylloc ),
    m_LocalVars( vars ),
    m_Params( params ),
@@ -148,14 +154,25 @@ uint64_t ASTNodeSubroutine::execute()
         ASTNode::ptr body = m_Body.lock();
         if( !body ) throw ASTExceptionDroppedSubroutine( get_location() );
 
-        vector<uint64_t> values( m_Params.size() );
+        typedef union {
+            uint64_t value;
+            Environment::array* array;
+        } param_t;
 
-        for( size_t i = 0; i < m_Params.size(); i++ ) values[i] = get_children()[i]->execute();
+        vector<param_t> params( m_Params.size() );
+
+        for( size_t i = 0; i < m_Params.size(); i++ ) {
+            if( m_Params[i].is_array ) get_children()[i]->execute( params[i].array );
+            else params[i].value = get_children()[i]->execute();
+        }
 
         m_LocalVars->push();
         is_pushed = true;
 
-        for( size_t i = 0; i < m_Params.size(); i++ ) m_Params[i]->set( values[i] );
+        for( size_t i = 0; i < m_Params.size(); i++ ) {
+            if( m_Params[i].is_array ) m_Params[i].param.array->set_ref( params[i].array );
+            else m_Params[i].param.var->set( params[i].value );
+        }
 
         body->execute();
     }
@@ -1287,6 +1304,12 @@ uint64_t ASTNodeArray::execute()
 
     uint64_t index = get_children()[0]->execute();
     return m_Array ? m_Array->get( index ) : 0;
+}
+
+uint64_t ASTNodeArray::execute( Environment::array*& array )
+{
+    array = m_Array;
+    return execute();
 }
 
 

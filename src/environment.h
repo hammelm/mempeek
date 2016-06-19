@@ -51,6 +51,7 @@ public:
 
     typedef VarManager::var var;
     typedef ArrayManager::array array;
+    typedef ArrayManager::refarray refarray;
 
 	Environment();
 	~Environment();
@@ -68,9 +69,10 @@ public:
 	array* alloc_array( std::string name );
     array* alloc_global_array( std::string name );
     array* alloc_static_array( std::string name );
+    refarray* alloc_ref_array( std::string name, Environment::array* array );
 
 	const var* get_var( std::string name );
-	const array* get_array( std::string name );
+	array* get_array( std::string name );
 
 	std::set< std::string > get_autocompletion( std::string prefix );
 	std::set< std::string > get_struct_members( std::string name );
@@ -80,7 +82,7 @@ public:
 	MMap* get_mapping( void* phys_addr, size_t size );
 
 	void enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function );
-    void set_subroutine_param( std::string name );
+    void set_subroutine_param( std::string name, bool is_array = false );
     void set_subroutine_body( std::shared_ptr<ASTNode> body );
 	void commit_subroutine_context();
 
@@ -168,6 +170,12 @@ inline Environment::array* Environment::alloc_static_array( std::string name )
 {
     if( m_LocalArrays ) return m_LocalArrays->alloc_global( name );
     else return m_GlobalArrays->alloc_global( name );
+}
+
+inline Environment::refarray* Environment::alloc_ref_array( std::string name, Environment::array* array )
+{
+    if( m_LocalArrays ) return m_LocalArrays->alloc_ref( name, array );
+    else return m_GlobalArrays->alloc_ref( name, array );
 }
 
 inline std::set< std::string > Environment::get_struct_members( std::string name )
