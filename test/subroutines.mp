@@ -28,10 +28,10 @@ decprint fac(5)
 y := 10
 z := 20
 deffunc f( x )
-    global y
-	static z := x + y
-    return := x + y + z
-    z := z + 1
+  global y
+  static z := x + y
+  return := x + y + z
+  z := z + 1
 endfunc
 
 print dec f( z * 10 ) noendl

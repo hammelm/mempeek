@@ -233,7 +233,7 @@ void VarManager::structvar::set_size( size_t size )
     m_Size = size;
 }
 
-uint64_t VarManager::structvar::get_size() const
+size_t VarManager::structvar::get_size() const
 {
     return m_Size;
 }
