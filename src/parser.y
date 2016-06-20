@@ -197,7 +197,7 @@ drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedu
 
 
 /*****************************************************************************
- * flow control structures
+ * control flow structures
  ****************************************************************************/
 
 if_block : if_def statement                                             { $$.node = make_shared<ASTNodeIf>( @$, $1.node, $2.node ); }

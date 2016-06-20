@@ -141,13 +141,16 @@ class ASTNodeSubroutine : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSubroutine> ptr;
 
-    ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarManager* vars,
-                       std::vector< SubroutineManager::param_t >& params, const Environment::var* retval = nullptr );
+    ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body,
+                       VarManager* vars, ArrayManager* arrays,
+                       std::vector< SubroutineManager::param_t >& params,
+                       const Environment::var* retval = nullptr );
 
     uint64_t execute() override;
 
 private:
     VarManager* m_LocalVars;
+    ArrayManager* m_LocalArrays;
 
     std::vector< SubroutineManager::param_t > m_Params;
     const Environment::var* m_Retval;

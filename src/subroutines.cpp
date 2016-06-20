@@ -80,7 +80,7 @@ void SubroutineManager::set_param( std::string name, bool is_array )
     assert( m_PendingSubroutine );
 
     if( is_array ) {
-        Environment::refarray* array = m_Environment->alloc_ref_array( name, nullptr );
+        Environment::refarray* array = m_Environment->alloc_ref_array( name );
         if( !array ) throw ASTExceptionNamingConflict( m_PendingSubroutine->location, name );
 
         param_t param;
@@ -159,7 +159,9 @@ std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& loca
 
     if( subroutine->params.size() != params.size() ) throw ASTExceptionSyntaxError( location );
 
-    ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->body, subroutine->vars, subroutine->params, subroutine->retval );
+    ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->body,
+                                                        subroutine->vars, subroutine->arrays,
+                                                        subroutine->params, subroutine->retval );
 
     for( auto param: params ) node->add_child( param );
 

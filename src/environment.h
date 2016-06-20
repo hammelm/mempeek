@@ -69,7 +69,7 @@ public:
 	array* alloc_array( std::string name );
     array* alloc_global_array( std::string name );
     array* alloc_static_array( std::string name );
-    refarray* alloc_ref_array( std::string name, Environment::array* array );
+    refarray* alloc_ref_array( std::string name );
 
 	const var* get_var( std::string name );
 	array* get_array( std::string name );
@@ -142,7 +142,7 @@ inline Environment::var* Environment::alloc_global_var( std::string name )
 {
     Environment::var* var = m_GlobalVars->alloc_global( name );
 
-    if( var && m_LocalVars ) return m_LocalVars->alloc_ref( name, var );
+    if( var && m_LocalVars ) return m_LocalVars->alloc_delegate( name, var );
     else return var;
 }
 
@@ -162,7 +162,7 @@ inline Environment::array* Environment::alloc_global_array( std::string name )
 {
     Environment::array* array = m_GlobalArrays->alloc_global( name );
 
-    if( array && m_LocalArrays ) return m_LocalArrays->alloc_ref( name, array );
+    if( array && m_LocalArrays ) return m_LocalArrays->alloc_delegate( name, array );
     else return array;
 }
 
@@ -172,10 +172,10 @@ inline Environment::array* Environment::alloc_static_array( std::string name )
     else return m_GlobalArrays->alloc_global( name );
 }
 
-inline Environment::refarray* Environment::alloc_ref_array( std::string name, Environment::array* array )
+inline Environment::refarray* Environment::alloc_ref_array( std::string name )
 {
-    if( m_LocalArrays ) return m_LocalArrays->alloc_ref( name, array );
-    else return m_GlobalArrays->alloc_ref( name, array );
+    if( m_LocalArrays ) return m_LocalArrays->alloc_ref( name );
+    else return m_GlobalArrays->alloc_ref( name );
 }
 
 inline std::set< std::string > Environment::get_struct_members( std::string name )

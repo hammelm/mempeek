@@ -88,11 +88,11 @@ VarManager::var* VarManager::alloc_global( std::string name )
     return iter->second;
 }
 
-VarManager::var* VarManager::alloc_ref( std::string name, VarManager::var* var )
+VarManager::var* VarManager::alloc_delegate( std::string name, VarManager::var* var )
 {
     if( m_Vars.find( name ) != m_Vars.end() ) return nullptr;
 
-    VarManager::var* ref = new VarManager::refvar( var );
+    VarManager::var* ref = new VarManager::delegatevar( var );
     m_Vars[ name ] = ref;
     return ref;
 }
@@ -280,19 +280,19 @@ void VarManager::localvar::set( uint64_t value )
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class VarManager::refvar implementation
+// class VarManager::delegatevar implementation
 //////////////////////////////////////////////////////////////////////////////
 
-VarManager::refvar::refvar( VarManager::var* var)
+VarManager::delegatevar::delegatevar( VarManager::var* var)
  : m_Var( var )
 {}
 
-uint64_t VarManager::refvar::get() const
+uint64_t VarManager::delegatevar::get() const
 {
     return m_Var->get();
 }
 
-void VarManager::refvar::set( uint64_t value )
+void VarManager::delegatevar::set( uint64_t value )
 {
     m_Var->set( value );
 }

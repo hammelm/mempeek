@@ -47,7 +47,7 @@ public:
 
     VarManager::var* alloc_def( std::string name );
     VarManager::var* alloc_global( std::string name );
-    VarManager::var* alloc_ref( std::string name, VarManager::var* var );
+    VarManager::var* alloc_delegate( std::string name, VarManager::var* var );
     VarManager::var* alloc_local( std::string name );
 
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
@@ -64,7 +64,7 @@ private:
     class structvar;
     class globalvar;
     class localvar;
-    class refvar;
+    class delegatevar;
 
     std::map< std::string, VarManager::var* > m_Vars;
 
@@ -173,12 +173,12 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class VarManager::refvar
+// class VarManager::delegatevar
 //////////////////////////////////////////////////////////////////////////////
 
-class VarManager::refvar : public VarManager::var {
+class VarManager::delegatevar : public VarManager::var {
 public:
-    refvar( VarManager::var* var );
+    delegatevar( VarManager::var* var );
 
     uint64_t get() const override;
     void set( uint64_t value ) override;

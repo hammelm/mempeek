@@ -48,7 +48,8 @@ public:
     ~ArrayManager();
 
     ArrayManager::array* alloc_global( std::string name );
-    ArrayManager::refarray* alloc_ref( std::string name, ArrayManager::array* array );
+    ArrayManager::array* alloc_delegate( std::string name, ArrayManager::array* array );
+    ArrayManager::refarray* alloc_ref( std::string name );
     ArrayManager::array* alloc_local( std::string name );
 
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
@@ -61,8 +62,9 @@ public:
 private:
     class globalarray;
     class localarray;
+    class delegatearray;
 
-    friend class ArrayManager::refarray;
+    friend class ArrayManager::array;
 
     void release_storage();
 
@@ -97,6 +99,12 @@ public:
     virtual void resize( uint64_t size ) = 0;
 
 protected:
+    typedef ArrayManager::arraydata_t data_t;
+
+    virtual data_t* get_data() = 0;
+
+    static data_t* get_data_from_sibling( array* array );
+
     static uint64_t* realloc( uint64_t* old_array, uint64_t old_size, uint64_t new_size );
 };
 
@@ -116,9 +124,11 @@ public:
 
     virtual void resize( uint64_t size ) override;
 
+protected:
+    virtual data_t* get_data() override;
+
 private:
-    uint64_t* m_Array = nullptr;
-    uint64_t m_Size = 0;
+    data_t m_Data;
 };
 
 
@@ -139,9 +149,35 @@ public:
 
     virtual void resize( uint64_t size ) override;
 
+protected:
+    virtual data_t* get_data() override;
+
 private:
-    ArrayManager::arraydata_t*& m_Storage;
+    data_t*& m_Storage;
     size_t m_Offset;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ArrayManager::delegatearray
+//////////////////////////////////////////////////////////////////////////////
+
+class ArrayManager::delegatearray : public ArrayManager::array {
+public:
+    delegatearray( ArrayManager::array* array );
+
+    uint64_t get( uint64_t index ) const override;
+    void set( uint64_t index, uint64_t value ) override;
+
+    virtual uint64_t get_size() const override;
+
+    virtual void resize( uint64_t size ) override;
+
+protected:
+    virtual data_t* get_data() override;
+
+private:
+    ArrayManager::array* m_Array;
 };
 
 
@@ -151,7 +187,7 @@ private:
 
 class ArrayManager::refarray : public ArrayManager::array {
 public:
-    refarray( ArrayManager::array* array );
+    refarray();
 
     uint64_t get( uint64_t index ) const override;
     void set( uint64_t index, uint64_t value ) override;
@@ -162,8 +198,11 @@ public:
 
     void set_ref( ArrayManager::array* array );
 
+protected:
+    virtual data_t* get_data() override;
+
 private:
-    ArrayManager::array* m_Array;
+    data_t* m_Data;
 };
 
 
