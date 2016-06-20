@@ -278,7 +278,7 @@ uint64_t ASTNodeWhile::execute()
 	    try {
 	        block->execute();
 	    }
-	    catch( ASTNodeBreak& ) {
+	    catch( ASTExceptionBreak& ) {
 	        break;
 	    }
 	}
@@ -332,7 +332,7 @@ uint64_t ASTNodeFor::execute()
         try {
             block->execute();
         }
-        catch( ASTNodeBreak& ) {
+        catch( ASTExceptionBreak& ) {
             break;
         }
     }
