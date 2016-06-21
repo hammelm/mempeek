@@ -134,7 +134,7 @@ public:
 private:
     uint64_t m_Offset = 0;
     uint64_t m_Range = 0;
-    size_t m_Size;
+    size_t m_Size = 0;
     const VarManager::var* m_Base;
 };
 

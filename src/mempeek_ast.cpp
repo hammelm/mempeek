@@ -908,6 +908,8 @@ ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string na
             const Environment::var* src = env->get_var( from + '.' + member );
 
             dst->set( src->get() - from_value );
+            dst->set_range( src->get_range() );
+            dst->set_size( src->get_size() );
         }
     }
     catch( const ASTExceptionDivisionByZero& ex ) {
@@ -1239,36 +1241,66 @@ ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string na
     if( m_Var->is_def() ) set_constant();
 }
 
-ASTNodeVar::ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index )
- : ASTNode( yylloc )
-{
-#ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeVar name=" << name << endl;
-#endif
-
-    m_Var = env->get_var( name );
-
-    if( !m_Var ) throw ASTExceptionUndefinedVar( get_location(), name );
-    if( !m_Var->is_def() ) ASTExceptionNonconstExpression( get_location() );
-
-    add_child( index );
-}
-
 uint64_t ASTNodeVar::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodeVar" << endl;
 #endif
 
-	if( !m_Var ) return 0;
+	if( m_Var ) return m_Var->get();
+	else return 0;
+}
 
-	uint64_t value = m_Var->get();
-	if( !m_Var->is_def() || get_children().size() == 0 ) return value;
 
-	uint64_t index = get_children()[0]->execute();
-	if( index >= m_Var->get_range() ) throw ASTExceptionOutOfBounds( get_location(), index, m_Var->get_range() );
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeRange implementation
+//////////////////////////////////////////////////////////////////////////////
 
-	return value + m_Var->get_size() * index;
+ASTNodeRange::ASTNodeRange( const yylloc_t& yylloc, Environment* env, std::string name )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeRange name=" << name << endl;
+#endif
+
+    m_Var = env->get_var( name );
+
+    if( !m_Var || !m_Var->is_def() ) throw ASTExceptionUndefinedVar( get_location(), name );
+
+    set_constant();
+}
+
+ASTNodeRange::ASTNodeRange( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeRange name=" << name << " index=[" << index << "]" << endl;
+#endif
+
+    m_Var = env->get_var( name );
+
+    if( !m_Var || !m_Var->is_def() ) throw ASTExceptionUndefinedVar( get_location(), name );
+
+    add_child( index );
+    if( index->is_constant() ) set_constant();
+}
+
+uint64_t ASTNodeRange::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeRange" << endl;
+#endif
+
+    if( !m_Var ) return 0;
+
+    uint64_t range = m_Var->get_range();
+    if( get_children().size() == 0 ) return range;
+
+    uint64_t index = get_children()[0]->execute();
+    if( index >= range ) throw ASTExceptionOutOfBounds( get_location(), index, range );
+
+    uint64_t value = m_Var->get();
+    return value + m_Var->get_size() * index;
 }
 
 

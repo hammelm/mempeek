@@ -378,7 +378,8 @@ peek_token : T_PEEK                                     { $$.token = Environment
 
 var_identifier : plain_identifier                       { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
                | struct_identifier                      { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value ); }
-               | struct_identifier '{' expression '}'   { $$.node = make_shared<ASTNodeVar>( @$, env, $1.value, $3.node ); }
+               | struct_identifier '{' '?' '}'          { $$.node = make_shared<ASTNodeRange>( @$, env, $1.value ); }
+               | struct_identifier '{' expression '}'   { $$.node = make_shared<ASTNodeRange>( @$, env, $1.value, $3.node ); }
                | array_identifier                       { $$.node = $1.node; }
                ;
 

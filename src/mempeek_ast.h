@@ -480,12 +480,29 @@ public:
     typedef std::shared_ptr<ASTNodeVar> ptr;
 
 	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name );
-	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
 
 	uint64_t execute() override;
 
 private:
 	const Environment::var* m_Var;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeRange
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeRange : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeRange> ptr;
+
+    ASTNodeRange( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeRange( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
+
+    uint64_t execute() override;
+
+private:
+    const Environment::var* m_Var;
 };
 
 
