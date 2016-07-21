@@ -29,6 +29,7 @@
 #include "mempeek_parser.h"
 #include "builtins.h"
 #include "mmap.h"
+#include "md5.h"
 
 #include <string>
 #include <utility>
@@ -60,6 +61,8 @@ public:
     std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file );
 
     void add_include_path( std::string path );
+
+    bool check_once( std::string path );
 
 	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
@@ -106,6 +109,7 @@ private:
     VarStorage* m_LocalVars = nullptr;
 
 	std::vector< std::string > m_IncludePaths;
+	std::set< MD5 > m_ImportedFiles;
 
     static volatile sig_atomic_t s_IsTerminated;
 };

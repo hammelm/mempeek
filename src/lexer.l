@@ -84,6 +84,8 @@
 "sleep"                 TOKEN( T_SLEEP )
 "break"                 TOKEN( T_BREAK )
 "quit"                  TOKEN( T_QUIT )
+"pragma"                TOKEN( T_PRAGMA )
+"once"                  TOKEN( T_ONCE )
 
 ":8"                    TOKEN( T_8BIT )
 ":16"                   TOKEN( T_16BIT )

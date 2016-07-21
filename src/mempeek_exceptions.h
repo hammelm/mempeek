@@ -84,6 +84,7 @@ class ASTExceptionExit : public ASTControlflowException {};
 class ASTExceptionBreak : public ASTControlflowException {};
 class ASTExceptionQuit : public ASTControlflowException {};
 class ASTExceptionTerminate : public ASTControlflowException {};
+class ASTExceptionIncludeGuard : public ASTControlflowException {};
 
 
 //////////////////////////////////////////////////////////////////////////////

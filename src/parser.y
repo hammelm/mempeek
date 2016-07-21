@@ -36,6 +36,7 @@
 using namespace std;
 
 int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
+const char* yyget_extra( yyscan_t );
 
 void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
 
@@ -61,6 +62,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_NOENDL
 %token T_SLEEP
 %token T_BREAK T_QUIT
+%token T_PRAGMA T_ONCE
 
 %token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR 
 %token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
@@ -78,7 +80,12 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %%
 
 start : toplevel_block                                  { yyroot = $1.node; }
+      | pragma_block toplevel_block                     { yyroot = $2.node; }
       ;
+
+pragma_block : pragma_stmt T_END_OF_STATEMENT
+             | pragma_block pragma_stmt T_END_OF_STATEMENT
+             ;
 
 toplevel_block : toplevel_statement                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.node->add_child( $1.node ); }
                | toplevel_block toplevel_statement      { $$.node = $1.node; $$.node->add_child( $2.node ); }
@@ -92,6 +99,9 @@ subroutine_block :                                          { $$.node = make_sha
                    subroutine_statement                     { $$.node = $1.node; $$.node->add_child( $2.node ); }
                  | subroutine_block subroutine_statement    { $$.node = $1.node; $$.node->add_child( $2.node ); }
                  ;
+
+pragma_stmt : T_PRAGMA T_ONCE                           { if( !env->check_once( yyget_extra( scanner ) ) ) throw ASTExceptionIncludeGuard(); }
+            ;
 
 toplevel_statement : statement                          { $$.node = $1.node; }
                    | map_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }

@@ -25,6 +25,7 @@
 
 #include "environment.h"
 
+#include "md5.h"
 #include "mempeek_ast.h"
 #include "mempeek_exceptions.h"
 #include "parser.h"
@@ -74,6 +75,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
 {
     ASTNode::ptr yyroot = nullptr;
     FILE* file = nullptr;
+    string filename = str;
 
     if( is_file ) {
         file = fopen( str, "r" );
@@ -82,7 +84,10 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
                 if( path.length() > 0 && path.back() != '/' ) path += '/';
                 path += str;
                 file = fopen( path.c_str(), "r" );
-                if( file ) break;
+                if( file ) {
+                    filename = path;
+                    break;
+                }
             }
         }
 
@@ -91,7 +96,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
 
     yyscan_t scanner;
     yylex_init( &scanner );
-    yyset_extra( is_file ? str : "", scanner );
+    yyset_extra( is_file ? filename.c_str() : "", scanner );
 
     YY_BUFFER_STATE lex_buffer;
     if( file ) lex_buffer = yy_create_buffer( file, YY_BUF_SIZE, scanner );
@@ -102,11 +107,25 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     try {
         yyparse( scanner, this, yyroot );
     }
+    catch( ASTExceptionIncludeGuard ) {
+        yy_delete_buffer( lex_buffer, scanner );
+        yylex_destroy( scanner );
+
+        if( file  ) fclose( file );
+
+        return make_shared<ASTNodeBlock>( location );
+    }
     catch( ... ) {
         yy_delete_buffer( lex_buffer, scanner );
         yylex_destroy( scanner );
 
-        if( is_file  ) fclose( file );
+        if( is_file  ) {
+            fclose( file );
+
+            MD5 md5;
+            md5.load( filename.c_str() );
+            m_ImportedFiles.erase( md5 );
+        }
 
         if( m_SubroutineContext ) {
             m_SubroutineContext->abort_subroutine();
@@ -123,6 +142,20 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     if( file  ) fclose( file );
 
     return yyroot;
+}
+
+bool Environment::check_once( std::string path )
+{
+    if( path == "" ) return true;
+
+    MD5 md5;
+    md5.load( path.c_str() );
+
+    if( m_ImportedFiles.find( md5 ) == m_ImportedFiles.end() ) {
+        m_ImportedFiles.insert( md5 );
+        return true;
+    }
+    else return false;
 }
 
 const Environment::var* Environment::get( std::string name )
