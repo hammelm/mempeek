@@ -497,9 +497,9 @@ uint64_t ASTNodePrint::execute()
 	return 0;
 }
 
-int ASTNodePrint::get_default_size()
+int ASTNodePrint::size_to_mod( int size )
 {
-	switch( Environment::get_default_size() ) {
+	switch( size ) {
 	case T_16BIT: return MOD_16BIT;
 	case T_32BIT: return MOD_32BIT;
 	case T_64BIT: return MOD_64BIT;
@@ -1081,7 +1081,7 @@ uint64_t ASTNodeVar::execute()
 ASTNodeConstant::ASTNodeConstant( const yylloc_t& yylloc, std::string str, bool is_float )
  : ASTNode( yylloc )
 {
-	m_Value = is_float ? parse_float( str ) : parse_int( str );
+	m_Value = is_float ? Environment::parse_float( str ) : Environment::parse_int( str );
 
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeConstant value=" << m_Value << endl;
@@ -1110,41 +1110,3 @@ uint64_t ASTNodeConstant::execute()
 
 	return m_Value;
 };
-
-uint64_t ASTNodeConstant::parse_int( string str )
-{
-    uint64_t value = 0;
-
-    if( str.length() > 2 )
-    {
-        if( str[0] == '0' && str[1] == 'b' ) {
-            for( size_t i = 2; i < str.length(); i++ ) {
-                value <<= 1;
-                if( str[i] == '1' ) value |= 1;
-                else if( str[i] != '0' ) return 0;
-            }
-            return value;
-        }
-
-        if( str[0] == '0' && str[1] == 'x' ) {
-            istringstream stream( str );
-            stream >> hex >> value;
-            if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-            else return 0;
-        }
-    }
-
-    istringstream stream( str );
-    stream >> dec >> value;
-    if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-    else return 0;
-}
-
-uint64_t ASTNodeConstant::parse_float( string str )
-{
-    double d;
-    istringstream stream( str );
-    stream >> d;
-    if( stream.fail() || stream.bad() || !(stream.eof() || (stream >> ws).eof()) ) return 0;
-    else return *(uint64_t*)&d;
-}

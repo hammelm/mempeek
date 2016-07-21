@@ -90,10 +90,21 @@ public:
     bool drop_function( std::string name );
 
     static int get_default_size();
+    static bool set_default_size( int size );
+    static void push_default_size();
+    static void pop_default_size();
+
+    static int get_default_modifier();
+    static bool set_default_modifier( int modifier );
+    static void push_default_modifier();
+    static void pop_default_modifier();
 
     static void set_terminate();
     static void clear_terminate();
     static bool is_terminated();
+
+    static uint64_t parse_int( std::string str );
+    static uint64_t parse_float( std::string str );
 
 private:
     VarStorage* m_GlobalVars;
@@ -110,6 +121,12 @@ private:
 
 	std::vector< std::string > m_IncludePaths;
 	std::set< MD5 > m_ImportedFiles;
+
+	static int s_DefaultSize;
+	static std::stack<int> s_DefaultSizeStack;
+
+    static int s_DefaultModifier;
+    static std::stack<int> s_DefaultModifierStack;
 
     static volatile sig_atomic_t s_IsTerminated;
 };
@@ -359,6 +376,52 @@ inline void Environment::clear_terminate()
 inline bool Environment::is_terminated()
 {
     return s_IsTerminated == 1;
+}
+
+inline int Environment::get_default_size()
+{
+    return s_DefaultSize;
+}
+
+inline bool Environment::set_default_size( int size )
+{
+    switch( size ) {
+    case 8:
+    case 16:
+    case 32:
+    case 64:
+        s_DefaultSize = size;
+        return true;
+
+    default:
+        return false;
+    }
+}
+
+inline void Environment::push_default_size()
+{
+    s_DefaultSizeStack.push( s_DefaultSize );
+}
+
+inline void Environment::pop_default_size()
+{
+    s_DefaultSize = s_DefaultSizeStack.top();
+    s_DefaultSizeStack.pop();
+}
+inline int Environment::get_default_modifier()
+{
+    return s_DefaultModifier;
+}
+
+inline void Environment::push_default_modifier()
+{
+    s_DefaultModifierStack.push( s_DefaultModifier );
+}
+
+inline void Environment::pop_default_modifier()
+{
+    s_DefaultModifier = s_DefaultModifierStack.top();
+    s_DefaultModifierStack.pop();
 }
 
 

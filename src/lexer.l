@@ -86,6 +86,7 @@
 "quit"                  TOKEN( T_QUIT )
 "pragma"                TOKEN( T_PRAGMA )
 "once"                  TOKEN( T_ONCE )
+"wordsize"              TOKEN( T_WORDSIZE )
 
 ":8"                    TOKEN( T_8BIT )
 ":16"                   TOKEN( T_16BIT )

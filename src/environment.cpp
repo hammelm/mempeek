@@ -40,6 +40,12 @@ using namespace std;
 // class Environment implementation
 //////////////////////////////////////////////////////////////////////////////
 
+int Environment::s_DefaultSize = (sizeof(void*) == 8) ? T_64BIT : ((sizeof(void*) == 2) ? T_16BIT : T_32BIT);
+std::stack<int> Environment::s_DefaultSizeStack;
+
+int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ((sizeof(void*) == 8) ? ASTNodePrint::MOD_64BIT : ((sizeof(void*) == 2) ? ASTNodePrint::MOD_16BIT : ASTNodePrint::MOD_32BIT));
+std::stack<int> Environment::s_DefaultModifierStack;
+
 volatile sig_atomic_t Environment::s_IsTerminated = 0;
 
 
@@ -104,6 +110,11 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
 
     yy_switch_to_buffer( lex_buffer, scanner );
 
+    if( is_file ) {
+        push_default_size();
+        push_default_modifier();
+    }
+
     try {
         yyparse( scanner, this, yyroot );
     }
@@ -111,7 +122,12 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
         yy_delete_buffer( lex_buffer, scanner );
         yylex_destroy( scanner );
 
-        if( file  ) fclose( file );
+        if( is_file ) {
+            pop_default_size();
+            pop_default_modifier();
+
+            fclose( file );
+        }
 
         return make_shared<ASTNodeBlock>( location );
     }
@@ -120,6 +136,9 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
         yylex_destroy( scanner );
 
         if( is_file  ) {
+            pop_default_size();
+            pop_default_modifier();
+
             fclose( file );
 
             MD5 md5;
@@ -139,7 +158,12 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     yy_delete_buffer( lex_buffer, scanner );
     yylex_destroy( scanner );
 
-    if( file  ) fclose( file );
+    if( is_file ) {
+        pop_default_size();
+        pop_default_modifier();
+
+        fclose( file );
+    }
 
     return yyroot;
 }
@@ -267,12 +291,70 @@ std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, st
     return node;
 }
 
-int Environment::get_default_size()
+uint64_t Environment::parse_int( string str )
 {
-    switch( sizeof(void*) ) {
-    case 2: return T_16BIT;
-    case 8: return T_64BIT;
-    default: return T_32BIT;
+    uint64_t value = 0;
+
+    if( str.length() > 2 )
+    {
+        if( str[0] == '0' && str[1] == 'b' ) {
+            for( size_t i = 2; i < str.length(); i++ ) {
+                value <<= 1;
+                if( str[i] == '1' ) value |= 1;
+                else if( str[i] != '0' ) return 0;
+            }
+            return value;
+        }
+
+        if( str[0] == '0' && str[1] == 'x' ) {
+            istringstream stream( str );
+            stream >> hex >> value;
+            if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
+            else return 0;
+        }
+    }
+
+    istringstream stream( str );
+    stream >> dec >> value;
+    if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
+    else return 0;
+}
+
+uint64_t Environment::parse_float( string str )
+{
+    double d;
+    istringstream stream( str );
+    stream >> d;
+    if( stream.fail() || stream.bad() || !(stream.eof() || (stream >> ws).eof()) ) return 0;
+    else return *(uint64_t*)&d;
+}
+
+bool Environment::set_default_modifier( int modifier )
+{
+    switch( modifier & ASTNodePrint::MOD_TYPEMASK ) {
+    case ASTNodePrint::MOD_FLOAT:
+        if( (modifier & ASTNodePrint::MOD_SIZEMASK) != ASTNodePrint::MOD_64BIT ) return false;
+        s_DefaultModifier = modifier;
+        return true;
+
+    case ASTNodePrint::MOD_BIN:
+    case ASTNodePrint::MOD_DEC:
+    case ASTNodePrint::MOD_HEX:
+    case ASTNodePrint::MOD_NEG:
+        switch( modifier & ASTNodePrint::MOD_SIZEMASK ) {
+        case ASTNodePrint::MOD_8BIT:
+        case ASTNodePrint::MOD_16BIT:
+        case ASTNodePrint::MOD_32BIT:
+        case ASTNodePrint::MOD_64BIT:
+            s_DefaultModifier = modifier;
+            return true;
+
+        default:
+            return false;
+        }
+
+    default:
+        return false;
     }
 }
 

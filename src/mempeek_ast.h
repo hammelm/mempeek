@@ -314,7 +314,7 @@ public:
 
 	uint64_t execute() override;
 
-	static int get_default_size();
+	static int size_to_mod( int size );
 
 private:
 	void print_value( std::ostream& out, uint64_t value );
@@ -469,9 +469,6 @@ public:
 	uint64_t execute() override;
 
 private:
-    static uint64_t parse_int( std::string str );
-    static uint64_t parse_float( std::string str );
-
     uint64_t m_Value;
 };
 
