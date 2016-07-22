@@ -25,8 +25,7 @@ clean:
 	rm -rf obj
 	rm -rf generated
 
-bin/mempeek: | bin buildinfo
-bin/mempeek: $(addprefix obj/, $(OBJS))
+bin/mempeek: $(addprefix obj/, $(OBJS)) | bin buildinfo
 	$(GXX) -o $@ $^ generated/buildinfo.c $(LIBS)
 
 obj/%.o: %.cpp | obj buildinfo $(addprefix generated/, $(GENERATED))

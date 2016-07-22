@@ -320,6 +320,29 @@ uint64_t Environment::parse_float( string str )
     else return *(uint64_t*)&d;
 }
 
+bool Environment::set_default_size( int size )
+{
+    switch( size ) {
+    case 8:
+        s_DefaultSize = T_8BIT;
+        return true;
+
+    case 16: s_DefaultSize = T_16BIT;
+        return true;
+
+    case 32:
+        s_DefaultSize = T_32BIT;
+        return true;
+
+    case 64:
+        s_DefaultSize = T_64BIT;
+        return true;
+
+    default:
+        return false;
+    }
+}
+
 bool Environment::set_default_modifier( int modifier )
 {
     switch( modifier & ASTNodePrint::MOD_TYPEMASK ) {

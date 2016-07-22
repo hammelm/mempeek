@@ -383,21 +383,6 @@ inline int Environment::get_default_size()
     return s_DefaultSize;
 }
 
-inline bool Environment::set_default_size( int size )
-{
-    switch( size ) {
-    case 8:
-    case 16:
-    case 32:
-    case 64:
-        s_DefaultSize = size;
-        return true;
-
-    default:
-        return false;
-    }
-}
-
 inline void Environment::push_default_size()
 {
     s_DefaultSizeStack.push( s_DefaultSize );
