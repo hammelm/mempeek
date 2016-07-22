@@ -199,7 +199,7 @@ map_stmt : T_MAP expression expression                  { $$.node = make_shared<
          ;
 
 pragma_stmt : T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
-            | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::size_to_mod( env->get_default_size() ) ); }
+            | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::MOD_WORDSIZE ); }
             | T_PRAGMA T_PRINT print_format print_size  { env->set_default_modifier( $3.token | $4.token ); }
             | T_PRAGMA T_WORDSIZE T_CONSTANT            { if( !env->set_default_size( env->parse_int( $3.value ) ) ) throw ASTExceptionSyntaxError( @3 ); }
             ;
