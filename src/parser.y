@@ -118,12 +118,6 @@ statement : %empty                                          { $$.node = nullptr;
           | plain_identifier proc_params T_END_OF_STATEMENT { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
           ;
 
-pragma_stmt : T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
-            | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::size_to_mod( env->get_default_size() ) ); }
-            | T_PRAGMA T_PRINT print_format print_size  { env->set_default_modifier( $3.token | $4.token ); }
-            | T_PRAGMA T_WORDSIZE T_CONSTANT            { if( !env->set_default_size( env->parse_int( $3.value ) ) ) throw ASTExceptionSyntaxError( @3 ); }
-            ;
-
 subroutine_statement : statement                                    { $$.node = $1.node; }
                      | T_GLOBAL plain_identifier T_END_OF_STATEMENT { if( !env->alloc_global( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
                      | T_STATIC plain_identifier
@@ -203,6 +197,12 @@ def_stmt : T_DEF plain_identifier expression                            { $$.nod
 map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node ); }
          | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
+
+pragma_stmt : T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
+            | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::size_to_mod( env->get_default_size() ) ); }
+            | T_PRAGMA T_PRINT print_format print_size  { env->set_default_modifier( $3.token | $4.token ); }
+            | T_PRAGMA T_WORDSIZE T_CONSTANT            { if( !env->set_default_size( env->parse_int( $3.value ) ) ) throw ASTExceptionSyntaxError( @3 ); }
+            ;
 
 drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedure( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
           | T_DROP plain_identifier '(' ')'             { if( !env->drop_function( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
