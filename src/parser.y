@@ -36,7 +36,6 @@
 using namespace std;
 
 int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
-const char* yyget_extra( yyscan_t );
 
 void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
 
@@ -53,7 +52,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_DEFFUNC T_ENDFUNC
 %token T_DROP
 %token T_EXIT T_GLOBAL T_STATIC
-%token T_IMPORT
+%token T_IMPORT T_RUN
 %token T_PEEK
 %token T_POKE T_MASK
 %token T_IF T_THEN T_ELSE T_ENDIF
@@ -62,7 +61,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_NOENDL
 %token T_SLEEP
 %token T_BREAK T_QUIT
-%token T_PRAGMA T_ONCE T_WORDSIZE
+%token T_PRAGMA T_WORDSIZE
 
 %token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR 
 %token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
@@ -80,8 +79,6 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %%
 
 start : toplevel_block                                  { yyroot = $1.node; }
-      | T_PRAGMA T_ONCE T_END_OF_STATEMENT              { if( !env->check_once( yyget_extra( scanner ) ) ) throw ASTExceptionIncludeGuard(); }
-        toplevel_block                                  { yyroot = $5.node; }
       ;
 
 toplevel_block : toplevel_statement                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.node->add_child( $1.node ); }
@@ -211,7 +208,8 @@ drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedu
           | T_DROP plain_identifier '(' ')'             { if( !env->drop_function( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
           ;
 
-import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ) ); }
+import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), true ); }
+            | T_RUN T_STRING                            { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), false ); }
             ;
 
 poke_stmt : poke_token expression expression                        { $$.node = make_shared<ASTNodePoke>( @$, env, $2.node, $3.node, $1.token ); }

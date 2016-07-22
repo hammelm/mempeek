@@ -71,13 +71,13 @@ Environment::~Environment()
 	delete m_GlobalVars;
 }
 
-std::shared_ptr<ASTNode> Environment::parse( const char* str, bool is_file )
+std::shared_ptr<ASTNode> Environment::parse( const char* str, bool is_file, bool run_once )
 {
     yylloc_t location = { "", 0, 0 };
-    return parse( location, str, is_file );
+    return parse( location, str, is_file, run_once );
 }
 
-std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const char* str, bool is_file )
+std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const char* str, bool is_file, bool run_once )
 {
     ASTNode::ptr yyroot = nullptr;
     FILE* file = nullptr;
@@ -98,6 +98,8 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
         }
 
         if( !file ) throw ASTExceptionFileNotFound( location, str );
+
+        if( run_once && !check_once( filename ) ) return nullptr;
     }
 
     yyscan_t scanner;
@@ -118,19 +120,6 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     try {
         yyparse( scanner, this, yyroot );
     }
-    catch( ASTExceptionIncludeGuard ) {
-        yy_delete_buffer( lex_buffer, scanner );
-        yylex_destroy( scanner );
-
-        if( is_file ) {
-            pop_default_size();
-            pop_default_modifier();
-
-            fclose( file );
-        }
-
-        return make_shared<ASTNodeBlock>( location );
-    }
     catch( ... ) {
         yy_delete_buffer( lex_buffer, scanner );
         yylex_destroy( scanner );
@@ -141,9 +130,11 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
 
             fclose( file );
 
-            MD5 md5;
-            md5.load( filename.c_str() );
-            m_ImportedFiles.erase( md5 );
+            if( run_once ) {
+                MD5 md5;
+                md5.load( filename.c_str() );
+                m_ImportedFiles.erase( md5 );
+            }
         }
 
         if( m_SubroutineContext ) {

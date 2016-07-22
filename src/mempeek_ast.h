@@ -376,7 +376,7 @@ class ASTNodeImport : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeImport> ptr;
 
-	ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file );
+	ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file, bool run_once );
 
 	uint64_t execute() override;
 };

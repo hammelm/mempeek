@@ -59,7 +59,7 @@ static void parse( Environment* env, const char* str, bool is_file )
     signal( SIGTERM, signal_handler );
 
     try {
-        ASTNode::ptr yyroot = env->parse( str, is_file );
+        ASTNode::ptr yyroot = env->parse( str, is_file, false );
 
 #ifdef ASTDEBUG
 		cerr << "executing ASTNode[" << yyroot << "]" << endl;

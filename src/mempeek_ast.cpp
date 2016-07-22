@@ -828,14 +828,14 @@ uint64_t ASTNodeMap::execute()
 // class ASTNodeImport implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeImport::ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file )
+ASTNodeImport::ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file, bool run_once )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeImport file=" << file << endl;
 #endif
 
-	ASTNode::ptr yyroot = env->parse( get_location(), file.c_str(), true );
+	ASTNode::ptr yyroot = env->parse( get_location(), file.c_str(), true, run_once );
 	add_child( yyroot );
 }
 
@@ -846,7 +846,7 @@ uint64_t ASTNodeImport::execute()
 #endif
 
 	try {
-		get_children()[0]->execute();
+		if( get_children().size() > 0 ) get_children()[0]->execute();
 	}
     catch( ASTExceptionExit& ) {
         // nothing to do

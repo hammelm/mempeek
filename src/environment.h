@@ -57,8 +57,8 @@ public:
 	Environment();
 	~Environment();
 
-	std::shared_ptr<ASTNode> parse( const char* str, bool is_file );
-    std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file );
+	std::shared_ptr<ASTNode> parse( const char* str, bool is_file, bool run_once );
+    std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file, bool run_once );
 
     void add_include_path( std::string path );
 
