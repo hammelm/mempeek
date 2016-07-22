@@ -43,7 +43,7 @@ using namespace std;
 int Environment::s_DefaultSize = (sizeof(void*) == 8) ? T_64BIT : ((sizeof(void*) == 2) ? T_16BIT : T_32BIT);
 std::stack<int> Environment::s_DefaultSizeStack;
 
-int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ((sizeof(void*) == 8) ? ASTNodePrint::MOD_64BIT : ((sizeof(void*) == 2) ? ASTNodePrint::MOD_16BIT : ASTNodePrint::MOD_32BIT));
+int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE;
 std::stack<int> Environment::s_DefaultModifierStack;
 
 volatile sig_atomic_t Environment::s_IsTerminated = 0;
@@ -360,6 +360,7 @@ bool Environment::set_default_modifier( int modifier )
         case ASTNodePrint::MOD_16BIT:
         case ASTNodePrint::MOD_32BIT:
         case ASTNodePrint::MOD_64BIT:
+        case ASTNodePrint::MOD_WORDSIZE:
             s_DefaultModifier = modifier;
             return true;
 

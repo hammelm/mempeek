@@ -232,7 +232,7 @@ print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.
 
 print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.token = env->get_default_modifier(); }
            | print_args print_float                     { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_64BIT; }
-           | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::size_to_mod( env->get_default_size() ); }
+           | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_WORDSIZE; }
            | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
            | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.node, $$.token ) ); }
            | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }

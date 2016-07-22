@@ -303,6 +303,7 @@ public:
 		MOD_16BIT = 0x20,
 		MOD_32BIT = 0x30,
 		MOD_64BIT = 0x40,
+        MOD_WORDSIZE = 0x50,
 
 		MOD_SIZEMASK = 0xf0,
 		MOD_TYPEMASK = 0x0f

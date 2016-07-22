@@ -474,15 +474,20 @@ ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, std::string text )
 }
 
 ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier )
- : ASTNode( yylloc ),
-   m_Modifier( modifier )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
 		 << hex << setw(2) << setfill('0') << modifier << dec << endl;
 #endif
 
+	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
+	    modifier &= ~MOD_SIZEMASK;
+	    modifier |= size_to_mod( Environment::get_default_size() );
+	}
+
 	add_child( expression );
+	m_Modifier = modifier;
 }
 
 uint64_t ASTNodePrint::execute()
@@ -500,6 +505,7 @@ uint64_t ASTNodePrint::execute()
 int ASTNodePrint::size_to_mod( int size )
 {
 	switch( size ) {
+    case T_8BIT: return MOD_8BIT;
 	case T_16BIT: return MOD_16BIT;
 	case T_32BIT: return MOD_32BIT;
 	case T_64BIT: return MOD_64BIT;
