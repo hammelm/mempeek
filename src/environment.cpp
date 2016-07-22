@@ -82,24 +82,27 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     ASTNode::ptr yyroot = nullptr;
     FILE* file = nullptr;
     string filename = str;
+    MD5 md5;
 
     if( is_file ) {
-        file = fopen( str, "r" );
+        file = fopen( filename.c_str(), "r" );
         if( !file ) {
             for( string path: m_IncludePaths ) {
                 if( path.length() > 0 && path.back() != '/' ) path += '/';
-                path += str;
-                file = fopen( path.c_str(), "r" );
-                if( file ) {
-                    filename = path;
-                    break;
-                }
+                filename = path + str;
+                file = fopen( filename.c_str(), "r" );
+                if( file ) break;
             }
         }
 
         if( !file ) throw ASTExceptionFileNotFound( location, str );
 
-        if( run_once && !check_once( filename ) ) return nullptr;
+        if( run_once ) {
+            md5.load( filename.c_str() );
+
+            if( m_ImportedFiles.find( md5 ) == m_ImportedFiles.end() ) m_ImportedFiles.insert( md5 );
+            else return nullptr;
+        }
     }
 
     yyscan_t scanner;
@@ -130,11 +133,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
 
             fclose( file );
 
-            if( run_once ) {
-                MD5 md5;
-                md5.load( filename.c_str() );
-                m_ImportedFiles.erase( md5 );
-            }
+            if( run_once ) m_ImportedFiles.erase( md5 );
         }
 
         if( m_SubroutineContext ) {
@@ -157,20 +156,6 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
     }
 
     return yyroot;
-}
-
-bool Environment::check_once( std::string path )
-{
-    if( path == "" ) return true;
-
-    MD5 md5;
-    md5.load( path.c_str() );
-
-    if( m_ImportedFiles.find( md5 ) == m_ImportedFiles.end() ) {
-        m_ImportedFiles.insert( md5 );
-        return true;
-    }
-    else return false;
 }
 
 const Environment::var* Environment::get( std::string name )

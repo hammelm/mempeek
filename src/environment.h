@@ -62,8 +62,6 @@ public:
 
     void add_include_path( std::string path );
 
-    bool check_once( std::string path );
-
 	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
     var* alloc_global( std::string name );
