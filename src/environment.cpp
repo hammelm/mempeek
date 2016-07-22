@@ -32,6 +32,12 @@
 #include "lexer.h"
 
 #include <assert.h>
+#include <limits.h>
+#include <stdlib.h>
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace std;
 
@@ -81,6 +87,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
 {
     ASTNode::ptr yyroot = nullptr;
     FILE* file = nullptr;
+    char* curdir = nullptr;
     string filename = str;
     MD5 md5;
 
@@ -103,6 +110,18 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
             if( m_ImportedFiles.find( md5 ) == m_ImportedFiles.end() ) m_ImportedFiles.insert( md5 );
             else return nullptr;
         }
+
+        char* absname = realpath( filename.c_str(), nullptr );
+        if( absname ) {
+            string newdir( absname );
+            size_t last = newdir.find_last_of( '/' );
+            if( last != string::npos ) {
+                curdir = getcwd( nullptr, 0 );
+                newdir = newdir.substr( 0, last + 1 );
+                chdir( newdir.c_str() );
+            }
+            free( absname );
+        }
     }
 
     yyscan_t scanner;
@@ -120,21 +139,30 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
         push_default_modifier();
     }
 
-    try {
-        yyparse( scanner, this, yyroot );
-    }
-    catch( ... ) {
+    auto cleanup = [ lex_buffer, scanner, is_file, file, curdir ] () {
         yy_delete_buffer( lex_buffer, scanner );
         yylex_destroy( scanner );
 
-        if( is_file  ) {
+        if( is_file ) {
             pop_default_size();
             pop_default_modifier();
 
             fclose( file );
-
-            if( run_once ) m_ImportedFiles.erase( md5 );
         }
+
+        if( curdir ) {
+            chdir( curdir );
+            free( curdir );
+        }
+    };
+
+    try {
+        yyparse( scanner, this, yyroot );
+    }
+    catch( ... ) {
+        cleanup();
+
+        if( is_file && run_once ) m_ImportedFiles.erase( md5 );
 
         if( m_SubroutineContext ) {
             m_SubroutineContext->abort_subroutine();
@@ -145,17 +173,26 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
         throw;
     }
 
-    yy_delete_buffer( lex_buffer, scanner );
-    yylex_destroy( scanner );
-
-    if( is_file ) {
-        pop_default_size();
-        pop_default_modifier();
-
-        fclose( file );
-    }
+    cleanup();
 
     return yyroot;
+}
+
+bool Environment::add_include_path( std::string path )
+{
+    bool ret = false;
+
+    char* abspath = realpath( path.c_str(), nullptr );
+    if( abspath ) {
+        struct stat buf;
+        if( stat( abspath, &buf ) == 0 && S_ISDIR( buf.st_mode ) ) {
+            m_IncludePaths.push_back( abspath );
+            ret = true;
+        }
+        free( abspath );
+    }
+
+    return ret;
 }
 
 const Environment::var* Environment::get( std::string name )

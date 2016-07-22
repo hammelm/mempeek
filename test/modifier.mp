@@ -23,6 +23,7 @@
 # hex: 0x90abcdef
 #
 
+pragma loadpath "include"
 pragma wordsize 16
 
 import "pragma.mp"

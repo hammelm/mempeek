@@ -11,6 +11,7 @@
 # cnt = 4
 #
 
+pragma loadpath "include"
 pragma print dec
 
 cnt := 0

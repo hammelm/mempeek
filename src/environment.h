@@ -60,7 +60,7 @@ public:
 	std::shared_ptr<ASTNode> parse( const char* str, bool is_file, bool run_once );
     std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file, bool run_once );
 
-    void add_include_path( std::string path );
+    bool add_include_path( std::string path );
 
 	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
@@ -344,11 +344,6 @@ inline Environment::var* Environment::alloc_static( std::string name )
 inline std::set< std::string > Environment::get_struct_members( std::string name )
 {
     return m_GlobalVars->get_struct_members( name );
-}
-
-inline void Environment::add_include_path( std::string path )
-{
-    m_IncludePaths.push_back( path );
 }
 
 inline bool Environment::drop_procedure( std::string name )

@@ -61,7 +61,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_NOENDL
 %token T_SLEEP
 %token T_BREAK T_QUIT
-%token T_PRAGMA T_WORDSIZE
+%token T_PRAGMA T_WORDSIZE T_LOADPATH
 
 %token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR 
 %token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
@@ -202,6 +202,7 @@ pragma_stmt : T_PRAGMA T_PRINT print_float              { env->set_default_modif
             | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::MOD_WORDSIZE ); }
             | T_PRAGMA T_PRINT print_format print_size  { env->set_default_modifier( $3.token | $4.token ); }
             | T_PRAGMA T_WORDSIZE T_CONSTANT            { if( !env->set_default_size( env->parse_int( $3.value ) ) ) throw ASTExceptionSyntaxError( @3 ); }
+            | T_PRAGMA T_LOADPATH T_STRING              { string path = $3.value.substr( 1, $3.value.length() - 2 ); if( !env->add_include_path( path ) ) throw ASTExceptionFileNotFound( @3, path.c_str() ); }
             ;
 
 drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedure( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }

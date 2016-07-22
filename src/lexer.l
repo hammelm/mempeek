@@ -87,6 +87,7 @@
 "quit"                  TOKEN( T_QUIT )
 "pragma"                TOKEN( T_PRAGMA )
 "wordsize"              TOKEN( T_WORDSIZE )
+"loadpath"              TOKEN( T_LOADPATH )
 
 ":8"                    TOKEN( T_8BIT )
 ":16"                   TOKEN( T_16BIT )

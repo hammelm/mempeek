@@ -245,7 +245,10 @@ int main( int argc, char** argv )
                     throw ASTExceptionQuit();
                 }
 
-                env.add_include_path( argv[i] );
+                if( !env.add_include_path( argv[i] ) ) {
+                    cerr << "include path not found" << endl;
+                    throw ASTExceptionQuit();
+                }
             }
             else if( strcmp( argv[i], "-c" ) == 0 ) {
                 if( ++i >= argc ) {
