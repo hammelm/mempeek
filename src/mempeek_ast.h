@@ -319,6 +319,7 @@ public:
 		MOD_16BIT = 0x20,
 		MOD_32BIT = 0x30,
 		MOD_64BIT = 0x40,
+        MOD_WORDSIZE = 0x50,
 
 		MOD_SIZEMASK = 0xf0,
 		MOD_TYPEMASK = 0x0f
@@ -330,7 +331,7 @@ public:
 
 	uint64_t execute() override;
 
-	static int get_default_size();
+	static int size_to_mod( int size );
 
 private:
 	void print_value( std::ostream& out, uint64_t value );
@@ -410,7 +411,7 @@ class ASTNodeImport : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeImport> ptr;
 
-	ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file );
+	ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file, bool run_once );
 
 	uint64_t execute() override;
 };
@@ -539,9 +540,6 @@ public:
 	uint64_t execute() override;
 
 private:
-    static uint64_t parse_int( std::string str );
-    static uint64_t parse_float( std::string str );
-
     uint64_t m_Value;
 };
 

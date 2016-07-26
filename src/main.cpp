@@ -59,7 +59,7 @@ static void parse( Environment* env, const char* str, bool is_file )
     signal( SIGTERM, signal_handler );
 
     try {
-        ASTNode::ptr yyroot = env->parse( str, is_file );
+        ASTNode::ptr yyroot = env->parse( str, is_file, false );
 
 #ifdef ASTDEBUG
 		cerr << "executing ASTNode[" << yyroot << "]" << endl;
@@ -245,7 +245,10 @@ int main( int argc, char** argv )
                     throw ASTExceptionQuit();
                 }
 
-                env.add_include_path( argv[i] );
+                if( !env.add_include_path( argv[i] ) ) {
+                    cerr << "include path not found" << endl;
+                    throw ASTExceptionQuit();
+                }
             }
             else if( strcmp( argv[i], "-c" ) == 0 ) {
                 if( ++i >= argc ) {

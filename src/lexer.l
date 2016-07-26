@@ -61,6 +61,7 @@
 "static"                TOKEN( T_STATIC )
 "from"                  TOKEN( T_FROM )
 "import"                TOKEN( T_IMPORT )
+"run"                   TOKEN( T_RUN )
 "peek"                  TOKEN( T_PEEK )
 "poke"                  TOKEN( T_POKE )
 "mask"                  TOKEN( T_MASK )
@@ -85,6 +86,9 @@
 "sleep"                 TOKEN( T_SLEEP )
 "break"                 TOKEN( T_BREAK )
 "quit"                  TOKEN( T_QUIT )
+"pragma"                TOKEN( T_PRAGMA )
+"wordsize"              TOKEN( T_WORDSIZE )
+"loadpath"              TOKEN( T_LOADPATH )
 
 ":8"                    TOKEN( T_8BIT )
 ":16"                   TOKEN( T_16BIT )

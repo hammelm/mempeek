@@ -32,6 +32,7 @@
 #include "variables.h"
 #include "arrays.h"
 #include "mmap.h"
+#include "md5.h"
 
 #include <string>
 #include <map>
@@ -56,10 +57,10 @@ public:
 	Environment();
 	~Environment();
 
-	std::shared_ptr<ASTNode> parse( const char* str, bool is_file );
-    std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file );
+	std::shared_ptr<ASTNode> parse( const char* str, bool is_file, bool run_once );
+    std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file, bool run_once );
 
-    void add_include_path( std::string path );
+    bool add_include_path( std::string path );
 
 	var* alloc_var( std::string name );
 	var* alloc_def_var( std::string name );
@@ -93,10 +94,21 @@ public:
     bool drop_function( std::string name );
 
     static int get_default_size();
+    static bool set_default_size( int size );
+    static void push_default_size();
+    static void pop_default_size();
+
+    static int get_default_modifier();
+    static bool set_default_modifier( int modifier );
+    static void push_default_modifier();
+    static void pop_default_modifier();
 
     static void set_terminate();
     static void clear_terminate();
     static bool is_terminated();
+
+    static uint64_t parse_int( std::string str );
+    static uint64_t parse_float( std::string str );
 
 private:
     VarManager* m_GlobalVars;
@@ -114,6 +126,13 @@ private:
     ArrayManager* m_LocalArrays = nullptr;
 
 	std::vector< std::string > m_IncludePaths;
+	std::set< MD5 > m_ImportedFiles;
+
+	static int s_DefaultSize;
+	static std::stack<int> s_DefaultSizeStack;
+
+    static int s_DefaultModifier;
+    static std::stack<int> s_DefaultModifierStack;
 
     static volatile sig_atomic_t s_IsTerminated;
 };
@@ -183,11 +202,6 @@ inline std::set< std::string > Environment::get_struct_members( std::string name
     return m_GlobalVars->get_struct_members( name );
 }
 
-inline void Environment::add_include_path( std::string path )
-{
-    m_IncludePaths.push_back( path );
-}
-
 inline bool Environment::drop_procedure( std::string name )
 {
     return m_ProcedureManager->drop_subroutine( name );
@@ -211,6 +225,37 @@ inline void Environment::clear_terminate()
 inline bool Environment::is_terminated()
 {
     return s_IsTerminated == 1;
+}
+
+inline int Environment::get_default_size()
+{
+    return s_DefaultSize;
+}
+
+inline void Environment::push_default_size()
+{
+    s_DefaultSizeStack.push( s_DefaultSize );
+}
+
+inline void Environment::pop_default_size()
+{
+    s_DefaultSize = s_DefaultSizeStack.top();
+    s_DefaultSizeStack.pop();
+}
+inline int Environment::get_default_modifier()
+{
+    return s_DefaultModifier;
+}
+
+inline void Environment::push_default_modifier()
+{
+    s_DefaultModifierStack.push( s_DefaultModifier );
+}
+
+inline void Environment::pop_default_modifier()
+{
+    s_DefaultModifier = s_DefaultModifierStack.top();
+    s_DefaultModifierStack.pop();
 }
 
 

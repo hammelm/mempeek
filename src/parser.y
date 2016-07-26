@@ -53,7 +53,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_DEFFUNC T_ENDFUNC
 %token T_DROP
 %token T_EXIT T_GLOBAL T_STATIC
-%token T_IMPORT
+%token T_IMPORT T_RUN
 %token T_PEEK
 %token T_POKE T_MASK
 %token T_IF T_THEN T_ELSE T_ENDIF
@@ -62,6 +62,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_NOENDL
 %token T_SLEEP
 %token T_BREAK T_QUIT
+%token T_PRAGMA T_WORDSIZE T_LOADPATH
 
 %token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR
 %token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
@@ -100,6 +101,7 @@ subroutine_block :                                          { $$.node = make_sha
                  ;
 
 toplevel_statement : statement                          { $$.node = $1.node; }
+                   | pragma_stmt T_END_OF_STATEMENT     { $$.node = nullptr; }
                    | map_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
                    | def_stmt T_END_OF_STATEMENT        { $$.node = $1.node; }
                    | import_stmt T_END_OF_STATEMENT     { $$.node = $1.node; }
@@ -265,7 +267,15 @@ map_stmt : T_MAP expression expression                  { $$.node = make_shared<
          | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
 
-import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ) ); }
+pragma_stmt : T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
+            | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::MOD_WORDSIZE ); }
+            | T_PRAGMA T_PRINT print_format print_size  { env->set_default_modifier( $3.token | $4.token ); }
+            | T_PRAGMA T_WORDSIZE T_CONSTANT            { if( !env->set_default_size( env->parse_int( $3.value ) ) ) throw ASTExceptionSyntaxError( @3 ); }
+            | T_PRAGMA T_LOADPATH T_STRING              { string path = $3.value.substr( 1, $3.value.length() - 2 ); if( !env->add_include_path( path ) ) throw ASTExceptionFileNotFound( @3, path.c_str() ); }
+            ;
+
+import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), true ); }
+            | T_RUN T_STRING                            { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), false ); }
             ;
 
 poke_stmt : poke_token expression expression                        { $$.node = make_shared<ASTNodePoke>( @$, env, $2.node, $3.node, $1.token ); }
@@ -286,9 +296,9 @@ print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.
            | T_PRINT print_args T_NOENDL                { $$.node = $2.node; }
            ;
 
-print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.token = ASTNodePrint::MOD_HEX | ASTNodePrint::get_default_size(); }
+print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.token = env->get_default_modifier(); }
            | print_args print_float                     { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_64BIT; }
-           | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::get_default_size(); }
+           | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_WORDSIZE; }
            | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
            | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.node, $$.token ) ); }
            | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }

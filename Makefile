@@ -3,18 +3,15 @@ FLEX = flex
 BISON = bison
 
 OBJS = main.o console.o mmap.o lexer.o parser.o environment.o mempeek_ast.o mempeek_exceptions.o \
-       builtins.o subroutines.o variables.o arrays.o
+       builtins.o subroutines.o variables.o arrays.o md5.o
 GENERATED = lexer.cpp parser.cpp
 
 DEFINES = -DUSE_EDITLINE
 INCLUDES = -Isrc -Igenerated
-CFLAGS = -std=c++11 -g
+CFLAGS = -g
 LIBS = -ledit
 
-all: prepare bin/mempeek
-
-prepare: bin obj generated $(addprefix generated/, $(GENERATED))
-	@./create_buildinfo.sh
+all: bin/mempeek
 
 vpath %.cpp src
 vpath %.cpp generated
@@ -29,16 +26,22 @@ clean:
 	rm -rf obj
 	rm -rf generated
 
-bin/mempeek: $(addprefix obj/, $(OBJS))
+bin/mempeek: $(addprefix obj/, $(OBJS)) | bin buildinfo
 	$(GXX) -o $@ $^ generated/buildinfo.c $(LIBS)
 
-obj/%.o: %.cpp
-	$(GXX) $(CFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c -o $@ $<
+obj/%.o: %.cpp | obj buildinfo $(addprefix generated/, $(GENERATED))
+	$(GXX) -std=c++11 $(CFLAGS) $(DEFINES) $(INCLUDES) -MMD -MP -c -o $@ $<
 
-generated/%.cpp: %.l
+generated/%.cpp: %.l | generated
 	$(FLEX) --header-file=$(basename $@).h -o $@ $<
 
-generated/%.cpp: %.y
+generated/%.cpp: %.y | generated
 	$(BISON) --defines=$(basename $@).h -o $@ $<
+
+.PHONY: buildinfo
+buildinfo: | generated
+	@./create_buildinfo.sh
+
+obj/lexer.o: generated/parser.cpp
 
 -include obj/*.d

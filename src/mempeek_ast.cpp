@@ -499,15 +499,20 @@ ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, std::string text )
 }
 
 ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier )
- : ASTNode( yylloc ),
-   m_Modifier( modifier )
+ : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
 		 << hex << setw(2) << setfill('0') << modifier << dec << endl;
 #endif
 
+	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
+	    modifier &= ~MOD_SIZEMASK;
+	    modifier |= size_to_mod( Environment::get_default_size() );
+	}
+
 	add_child( expression );
+	m_Modifier = modifier;
 }
 
 uint64_t ASTNodePrint::execute()
@@ -522,9 +527,10 @@ uint64_t ASTNodePrint::execute()
 	return 0;
 }
 
-int ASTNodePrint::get_default_size()
+int ASTNodePrint::size_to_mod( int size )
 {
-	switch( Environment::get_default_size() ) {
+	switch( size ) {
+    case T_8BIT: return MOD_8BIT;
 	case T_16BIT: return MOD_16BIT;
 	case T_32BIT: return MOD_32BIT;
 	case T_64BIT: return MOD_64BIT;
@@ -1025,14 +1031,14 @@ uint64_t ASTNodeMap::execute()
 // class ASTNodeImport implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeImport::ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file )
+ASTNodeImport::ASTNodeImport( const yylloc_t& yylloc, Environment* env, std::string file, bool run_once )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeImport file=" << file << endl;
 #endif
 
-	ASTNode::ptr yyroot = env->parse( get_location(), file.c_str(), true );
+	ASTNode::ptr yyroot = env->parse( get_location(), file.c_str(), true, run_once );
 	add_child( yyroot );
 }
 
@@ -1043,7 +1049,7 @@ uint64_t ASTNodeImport::execute()
 #endif
 
 	try {
-		get_children()[0]->execute();
+		if( get_children().size() > 0 ) get_children()[0]->execute();
 	}
     catch( ASTExceptionExit& ) {
         // nothing to do
@@ -1360,7 +1366,7 @@ uint64_t ASTNodeArray::execute( Environment::array*& array )
 ASTNodeConstant::ASTNodeConstant( const yylloc_t& yylloc, std::string str, bool is_float )
  : ASTNode( yylloc )
 {
-	m_Value = is_float ? parse_float( str ) : parse_int( str );
+	m_Value = is_float ? Environment::parse_float( str ) : Environment::parse_int( str );
 
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeConstant value=" << m_Value << endl;
@@ -1389,41 +1395,3 @@ uint64_t ASTNodeConstant::execute()
 
 	return m_Value;
 };
-
-uint64_t ASTNodeConstant::parse_int( string str )
-{
-    uint64_t value = 0;
-
-    if( str.length() > 2 )
-    {
-        if( str[0] == '0' && str[1] == 'b' ) {
-            for( size_t i = 2; i < str.length(); i++ ) {
-                value <<= 1;
-                if( str[i] == '1' ) value |= 1;
-                else if( str[i] != '0' ) return 0;
-            }
-            return value;
-        }
-
-        if( str[0] == '0' && str[1] == 'x' ) {
-            istringstream stream( str );
-            stream >> hex >> value;
-            if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-            else return 0;
-        }
-    }
-
-    istringstream stream( str );
-    stream >> dec >> value;
-    if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-    else return 0;
-}
-
-uint64_t ASTNodeConstant::parse_float( string str )
-{
-    double d;
-    istringstream stream( str );
-    stream >> d;
-    if( stream.fail() || stream.bad() || !(stream.eof() || (stream >> ws).eof()) ) return 0;
-    else return *(uint64_t*)&d;
-}
