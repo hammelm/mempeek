@@ -11,7 +11,6 @@
 # 3 3
 # 4 4 4
 # 5 quit
-#
 
 deffunc fac( n )
   if n <= 1 then return := 1

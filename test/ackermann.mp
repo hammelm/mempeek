@@ -4,7 +4,6 @@
 # output:
 # 15
 # 253
-#
 
 deffunc a( n, m )
   if n == 0 then

@@ -8,7 +8,6 @@
 # 1 3 
 # 4 1 
 # -1 -5 -9 
-# 
 
 for i from 1 to 4 do
     print neg i " " noendl

@@ -3,7 +3,6 @@
 #
 # output:
 # 10
-#
  	 	 
 # foo
 # foobar # frob

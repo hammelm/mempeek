@@ -9,7 +9,6 @@
 # 343
 # 13002
 # 19032
-#
 
 defproc printarray a[]
     print "[" noendl

@@ -1,10 +1,10 @@
 #
 # test case: memory access
+# (valid only on little endian systems)
 #
 # output:
 # 0x00000000
-# [endianness of the system]
-#
+# little endian
 
 map 0x0000 0x1000 "/dev/zero"
 
