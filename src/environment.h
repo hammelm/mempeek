@@ -87,8 +87,8 @@ public:
     void set_subroutine_body( std::shared_ptr<ASTNode> body );
 	void commit_subroutine_context();
 
-	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
-    std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
+	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, const arglist_t& args );
+    std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, const arglist_t& args );
 
     bool drop_procedure( std::string name );
     bool drop_function( std::string name );

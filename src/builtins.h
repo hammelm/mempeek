@@ -50,7 +50,7 @@ public:
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
     bool has_subroutine( std::string name );
-    std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
+    std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, const arglist_t& args );
 
 private:
      typedef std::function< std::shared_ptr<ASTNode>( const yylloc_t& location ) > nodecreator_t;

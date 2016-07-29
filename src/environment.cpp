@@ -306,19 +306,19 @@ void Environment::commit_subroutine_context( )
     m_LocalArrays = nullptr;
 }
 
-std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, std::string name, const arglist_t& args )
 {
-    std::shared_ptr<ASTNode> node = m_ProcedureManager->get_subroutine( location, name, params );
+    std::shared_ptr<ASTNode> node = m_ProcedureManager->get_subroutine( location, name, args );
     if( !node ) throw ASTExceptionNamingConflict( location, name );
     return node;
 }
 
-std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, const arglist_t& args )
 {
-    std::shared_ptr<ASTNode> node = m_BuiltinManager->get_subroutine( location, name, params );
+    std::shared_ptr<ASTNode> node = m_BuiltinManager->get_subroutine( location, name, args );
     if( node ) return node;
 
-    node = m_FunctionManager->get_subroutine( location, name, params );
+    node = m_FunctionManager->get_subroutine( location, name, args );
     if( !node ) throw ASTExceptionNamingConflict( location, name );
     return node;
 }

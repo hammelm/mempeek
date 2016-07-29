@@ -247,19 +247,20 @@ void BuiltinManager::get_autocompletion( std::set< std::string >& completions, s
     }
 }
 
-std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& location, std::string name, const arglist_t& args )
 {
     auto iter = m_Builtins.find( name );
     if( iter == m_Builtins.end() ) return nullptr;
 
-    if( iter->second.first != params.size() ) throw ASTExceptionSyntaxError( location );
+    if( iter->second.first != args.size() ) throw ASTExceptionSyntaxError( location );
 
     ASTNode::ptr node = iter->second.second( location );
 
     bool is_const = true;
-    for( auto param: params ) {
-        node->add_child( param );
-        is_const &= param->is_constant();
+    for( auto arg: args ) {
+        if( !arg.first ) throw ASTExceptionSyntaxError( location );
+        node->add_child( arg.first );
+        is_const &= arg.first->is_constant();
     }
 
     if( is_const ) return make_shared< ASTNodeConstant >( location, node->execute() );

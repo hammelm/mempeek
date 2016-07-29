@@ -146,7 +146,7 @@ void SubroutineManager::get_autocompletion( std::set< std::string >& completions
     }
 }
 
-std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& location, std::string name, const arglist_t& args )
 {
     subroutine_t* subroutine;
 
@@ -157,13 +157,22 @@ std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& loca
         subroutine = value->second;
     }
 
-    if( subroutine->params.size() != params.size() ) throw ASTExceptionSyntaxError( location );
+    if( subroutine->params.size() != args.size() ) throw ASTExceptionSyntaxError( location );
 
     ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->body,
                                                         subroutine->vars, subroutine->arrays,
                                                         subroutine->params, subroutine->retval );
 
-    for( auto param: params ) node->add_child( param );
+    for( size_t i = 0; i < args.size(); i++ ) {
+        if( subroutine->params[i].is_array ) {
+            if( args[i].second == "" ) throw ASTExceptionSyntaxError( location );
+            node->add_child( make_shared<ASTNodeArray>( location, m_Environment, args[i].second ) );
+        }
+        else {
+            if( args[i].first == nullptr ) throw ASTExceptionSyntaxError( location );
+            node->add_child( args[i].first );
+        }
+    }
 
     return node;
 }

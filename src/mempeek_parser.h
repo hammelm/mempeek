@@ -29,6 +29,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <utility>
 
 class ASTNode;
 class Environment;
@@ -37,11 +38,13 @@ typedef std::shared_ptr<ASTNode> yynodeptr_t;
 
 typedef void* yyscan_t;
 
+typedef std::vector< std::pair<yynodeptr_t,std::string> > arglist_t;
+
 typedef struct {
     std::string value = "";
     int token = 0;
     yynodeptr_t node = nullptr;
-    std::vector< yynodeptr_t > nodelist;
+    arglist_t arglist;
 } yyvalue_t;
 
 typedef Environment* yyenv_t;

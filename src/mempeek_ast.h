@@ -59,7 +59,7 @@ public:
 	void add_child( ASTNode::ptr node );
 
 	virtual uint64_t execute() = 0;
-    virtual uint64_t execute( Environment::array*& array );
+    virtual bool get_array_result( Environment::array*& array );
 
 	bool is_constant();
 	virtual ASTNode::ptr clone_to_const();
@@ -519,7 +519,7 @@ public:
     ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
 
     uint64_t execute() override;
-    uint64_t execute( Environment::array*& array ) override;
+    bool get_array_result( Environment::array*& array ) override;
 
 private:
     Environment::array* m_Array;

@@ -56,10 +56,9 @@ ASTNode::~ASTNode()
 #endif
 }
 
-uint64_t ASTNode::execute( Environment::array*& array )
+bool ASTNode::get_array_result( Environment::array*& array )
 {
-    array = nullptr;
-    return execute();
+    return false;
 }
 
 ASTNode::ptr ASTNode::clone_to_const()
@@ -165,8 +164,8 @@ uint64_t ASTNodeSubroutine::execute()
         vector<param_t> params( m_Params.size() );
 
         for( size_t i = 0; i < m_Params.size(); i++ ) {
-            if( m_Params[i].is_array ) get_children()[i]->execute( params[i].array );
-            else params[i].value = get_children()[i]->execute();
+            params[i].value = get_children()[i]->execute();
+            if( m_Params[i].is_array ) get_children()[i]->get_array_result( params[i].array );
         }
 
         m_LocalVars->push();
@@ -1352,10 +1351,10 @@ uint64_t ASTNodeArray::execute()
     return m_Array ? m_Array->get( index ) : 0;
 }
 
-uint64_t ASTNodeArray::execute( Environment::array*& array )
+bool ASTNodeArray::get_array_result( Environment::array*& array )
 {
     array = m_Array;
-    return execute();
+    return true;
 }
 
 

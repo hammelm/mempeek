@@ -122,7 +122,7 @@ statement : %empty                                          { $$.node = nullptr;
           | if_block                                        { $$.node = $1.node; }
           | while_block                                     { $$.node = $1.node; }
           | for_block                                       { $$.node = $1.node; }
-          | plain_identifier proc_args T_END_OF_STATEMENT   { $$.node = env->get_procedure( @1, $1.value, $2.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
+          | plain_identifier proc_args T_END_OF_STATEMENT   { $$.node = env->get_procedure( @1, $1.value, $2.arglist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
           ;
 
 subroutine_statement : statement                        { $$.node = $1.node; }
@@ -168,17 +168,17 @@ func_arg_decl : %empty
               ;
 
 proc_args : %empty
-          | expression                                  { $$.nodelist.push_back( $1.node ); }
-          | plain_identifier '[' ']'                    { $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $1.value ) ); }
-          | proc_args expression                        { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $2.node ); }
-          | proc_args plain_identifier '[' ']'          { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $2.value ) ); }
+          | expression                                  { $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
+          | plain_identifier '[' ']'                    { $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
+          | proc_args expression                        { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $2.node, string("") ) ); }
+          | proc_args plain_identifier '[' ']'          { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $2.value ) ); }
           ;
 
 func_args : %empty
-          | expression                                  { $$.nodelist.push_back( $1.node ); }
-          | plain_identifier '[' ']'                    { $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $1.value ) ); }
-          | func_args ',' expression                    { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
-          | func_args ',' plain_identifier '[' ']'      { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( make_shared<ASTNodeArray>( @$, env, $3.value ) ); }
+          | expression                                  { $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
+          | plain_identifier '[' ']'                    { $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
+          | func_args ',' expression                    { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $3.node, string("") ) ); }
+          | func_args ',' plain_identifier '[' ']'      { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $3.value ) ); }
           ;
 
 global_stmt : T_GLOBAL plain_identifier T_END_OF_STATEMENT          { if( !env->alloc_global_var( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
@@ -190,7 +190,7 @@ static_stmt : T_STATIC plain_identifier
             | T_STATIC plain_identifier '[' expression ']'
               T_END_OF_STATEMENT                                { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, false ); }
             | T_STATIC plain_identifier '[' ']'
-              T_ASSIGN '[' comma_list ']' T_END_OF_STATEMENT    { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value ); for( auto expr: $7.nodelist ) $$.node->add_child( expr ); }
+              T_ASSIGN '[' comma_list ']' T_END_OF_STATEMENT    { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value ); for( auto arg: $7.arglist ) $$.node->add_child( arg.first ); }
             ;
 
 drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedure( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
@@ -240,7 +240,7 @@ assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<
             | plain_identifier '[' expression ']'
               T_ASSIGN expression                       { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node, $6.node ); }
             | plain_identifier '[' ']'
-              T_ASSIGN '[' comma_list ']'               { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value ); for( auto expr: $6.nodelist ) $$.node->add_child( expr ); }
+              T_ASSIGN '[' comma_list ']'               { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value ); for( auto arg: $6.arglist ) $$.node->add_child( arg.first ); }
             ;
 
 def_stmt : T_DEF plain_identifier expression                                    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
@@ -254,8 +254,8 @@ dim_stmt : T_DIM plain_identifier '[' expression ']'    { $$.node = make_shared<
          ;
 
 comma_list : %empty
-           | expression                                 { $$.nodelist.push_back( $1.node ); }
-           | comma_list ',' expression                  { $$.nodelist = std::move( $1.nodelist ); $$.nodelist.push_back( $3.node ); }
+           | expression                                 { $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
+           | comma_list ',' expression                  { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $3.node, string("") ) ); }
            ;
 
 
@@ -379,7 +379,7 @@ atomic_expr : T_CONSTANT                                { $$.node = make_shared<
             | var_identifier                            { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
-            | plain_identifier '(' func_args ')'        { $$.node = env->get_function( @1, $1.value, $3.nodelist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
+            | plain_identifier '(' func_args ')'        { $$.node = env->get_function( @1, $1.value, $3.arglist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
             ;
 
 peek_token : T_PEEK                                     { $$.token = Environment::get_default_size(); }
