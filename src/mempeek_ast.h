@@ -33,6 +33,7 @@
 #include <ostream>
 #include <string>
 #include <vector>
+#include <stack>
 #include <memory>
 
 #include <stdint.h>
@@ -142,23 +143,24 @@ public:
     typedef std::shared_ptr<ASTNodeSubroutine> ptr;
 
     ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body,
-                       VarManager* vars, ArrayManager* arrays,
+                       Environment* env, VarManager* vars, ArrayManager* arrays,
                        std::vector< SubroutineManager::param_t >& params,
-                       const Environment::var* retval = nullptr );
+                       size_t num_varargs, const Environment::var* retval = nullptr );
 
     uint64_t execute() override;
 
 private:
+    Environment* m_Env;
     VarManager* m_LocalVars;
     ArrayManager* m_LocalArrays;
 
     std::vector< SubroutineManager::param_t > m_Params;
+    size_t m_NumVarargs;
     const Environment::var* m_Retval;
 
     // use weak_ptr for subroutine body to break circular references of recursive
     // calls, a shared_ptr to the body remains in class SubroutineManager
     std::weak_ptr<ASTNode> m_Body;
-
 };
 
 
@@ -490,6 +492,29 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArg
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeArg : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeArg> ptr;
+
+    typedef enum { GET_TYPE, GET_VAR, GET_ARRAYSIZE } query_t;
+
+    ASTNodeArg( const yylloc_t& yylloc, Environment* env );
+    ASTNodeArg( const yylloc_t& yylloc, Environment* env, ASTNode::ptr arg_index, query_t query = GET_VAR );
+    ASTNodeArg( const yylloc_t& yylloc, Environment* env, ASTNode::ptr arg_index, ASTNode::ptr array_index );
+
+    uint64_t execute() override;
+
+private:
+    Environment* m_Env;
+
+    query_t m_Query = GET_VAR;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeRange
 //////////////////////////////////////////////////////////////////////////////
 
@@ -594,7 +619,7 @@ inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::
    m_Builtin( builtin )
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+    std::cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
 #endif
 }
 
@@ -602,7 +627,7 @@ template< size_t NUM_ARGS >
 uint64_t inline ASTNodeBuiltin< NUM_ARGS >::execute()
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+    std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
 #endif
 
     assert( get_children().size() == NUM_ARGS );

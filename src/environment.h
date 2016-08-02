@@ -38,6 +38,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <utility>
 #include <memory>
 
 
@@ -85,6 +86,7 @@ public:
 	void enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function );
     void set_subroutine_param( std::string name, bool is_array = false );
     void set_subroutine_body( std::shared_ptr<ASTNode> body );
+    void set_subroutine_varargs();
 	void commit_subroutine_context();
 
 	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, const arglist_t& args );
@@ -102,6 +104,14 @@ public:
     static bool set_default_modifier( int modifier );
     static void push_default_modifier();
     static void pop_default_modifier();
+
+    static size_t get_num_varargs();
+    static uint64_t get_vararg_value( size_t index );
+    static array* get_vararg_array( size_t index );
+    static void append_vararg( uint64_t value );
+    static void append_vararg( array* array );
+    static void push_varargs();
+    static void pop_varargs();
 
     static void set_terminate();
     static void clear_terminate();
@@ -133,6 +143,8 @@ private:
 
     static int s_DefaultModifier;
     static std::stack<int> s_DefaultModifierStack;
+
+    static std::stack< std::vector< std::pair< uint64_t, array* > > > s_ArgStack;
 
     static volatile sig_atomic_t s_IsTerminated;
 };
@@ -256,6 +268,41 @@ inline void Environment::pop_default_modifier()
 {
     s_DefaultModifier = s_DefaultModifierStack.top();
     s_DefaultModifierStack.pop();
+}
+
+inline size_t Environment::get_num_varargs()
+{
+    return s_ArgStack.top().size();
+}
+
+inline uint64_t Environment::get_vararg_value( size_t index )
+{
+    return s_ArgStack.top()[index].first;
+}
+
+inline Environment::array* Environment::get_vararg_array( size_t index )
+{
+    return s_ArgStack.top()[index].second;
+}
+
+inline void Environment::append_vararg( uint64_t value )
+{
+    s_ArgStack.top().push_back( std::make_pair( value, (array*)nullptr ) );
+}
+
+inline void Environment::append_vararg( array* array )
+{
+    s_ArgStack.top().push_back( std::make_pair( (uint64_t)0, array ) );
+}
+
+inline void Environment::push_varargs()
+{
+    s_ArgStack.emplace();
+}
+
+inline void Environment::pop_varargs()
+{
+    s_ArgStack.pop();
 }
 
 

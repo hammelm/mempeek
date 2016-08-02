@@ -68,6 +68,7 @@ void SubroutineManager::begin_subroutine( const yylloc_t& location, std::string 
     m_PendingSubroutine->arrays = new ArrayManager;
     m_PendingSubroutine->location = location;
     m_PendingSubroutine->is_function = is_function;
+    m_PendingSubroutine->has_varargs = false;
 
     if( is_function ) {
         m_PendingSubroutine->retval =  m_PendingSubroutine->vars->alloc_local( "return" );
@@ -105,6 +106,14 @@ void SubroutineManager::set_body( std::shared_ptr<ASTNode> body )
 
     m_PendingSubroutine->body = body;
 }
+
+void SubroutineManager::set_varargs()
+{
+    assert( m_PendingSubroutine );
+
+    m_PendingSubroutine->has_varargs = true;
+}
+
 
 void SubroutineManager::commit_subroutine()
 {
@@ -157,21 +166,35 @@ std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& loca
         subroutine = value->second;
     }
 
-    if( subroutine->params.size() != args.size() ) throw ASTExceptionSyntaxError( location );
+    if( subroutine->has_varargs ) {
+        if( subroutine->params.size() > args.size() ) throw ASTExceptionSyntaxError( location );
+    }
+    else {
+        if( subroutine->params.size() != args.size() ) throw ASTExceptionSyntaxError( location );
+    }
 
-    ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->body,
-                                                        subroutine->vars, subroutine->arrays,
-                                                        subroutine->params, subroutine->retval );
+    const size_t num_params = subroutine->params.size();
+    const size_t num_varargs = args.size() - num_params;
 
-    for( size_t i = 0; i < args.size(); i++ ) {
-        if( subroutine->params[i].is_array ) {
-            if( args[i].second == "" ) throw ASTExceptionSyntaxError( location );
-            node->add_child( make_shared<ASTNodeArray>( location, m_Environment, args[i].second ) );
-        }
-        else {
-            if( args[i].first == nullptr ) throw ASTExceptionSyntaxError( location );
+    ASTNodeSubroutine::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->body,
+                                                                  m_Environment, subroutine->vars, subroutine->arrays,
+                                                                  subroutine->params, num_varargs, subroutine->retval );
+
+    for( size_t i = 0; i < num_params; i++ ) {
+        if( args[i].first ) {
+            if( subroutine->params[i].is_array ) throw ASTExceptionSyntaxError( location );
             node->add_child( args[i].first );
         }
+        else {
+            if( !subroutine->params[i].is_array ) throw ASTExceptionSyntaxError( location );
+            node->add_child( make_shared<ASTNodeArray>( location, m_Environment, args[i].second ) );
+        }
+    }
+
+    for( size_t j = 0; j < num_varargs; j++ ) {
+        const size_t i = j + num_params;
+        if( args[i].first ) node->add_child( args[i].first );
+        else node->add_child( make_shared<ASTNodeArray>( location, m_Environment, args[i].second ) );
     }
 
     return node;

@@ -90,6 +90,9 @@
 "wordsize"              TOKEN( T_WORDSIZE )
 "loadpath"              TOKEN( T_LOADPATH )
 
+"..."                   TOKEN( T_ELLIPSIS )
+"args"                  TOKEN( T_ARGS )
+
 ":8"                    TOKEN( T_8BIT )
 ":16"                   TOKEN( T_16BIT )
 ":32"                   TOKEN( T_32BIT )

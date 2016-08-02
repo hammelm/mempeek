@@ -128,18 +128,20 @@ uint64_t ASTNodeBlock::execute()
 //////////////////////////////////////////////////////////////////////////////
 
 ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body,
-                                      VarManager* vars, ArrayManager* arrays,
+                                      Environment* env, VarManager* vars, ArrayManager* arrays,
                                       std::vector< SubroutineManager::param_t >& params,
-                                      const Environment::var* retval )
+                                      size_t num_varargs, const Environment::var* retval )
  : ASTNode( yylloc ),
+   m_Env( env ),
    m_LocalVars( vars ),
    m_LocalArrays( arrays ),
    m_Params( params ),
+   m_NumVarargs( num_varargs ),
    m_Retval( retval ),
    m_Body( body )
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeSubroutine" << endl;
+    cerr << "AST[" << this << "]: creating ASTNodeSubroutine num_varargs=" << num_varargs << endl;
 #endif
 }
 
@@ -149,8 +151,17 @@ uint64_t ASTNodeSubroutine::execute()
     cerr << "AST[" << this << "]: executing ASTNodeSubroutine" << endl;
 #endif
 
-    bool is_pushed = false;
-    uint64_t ret = 0;
+    int phase = 0;
+
+    auto cleanup = [ &phase, this ] () {
+        if( phase >= 2 ) {
+            m_LocalVars->pop();
+            m_LocalArrays->pop();
+        }
+        if( phase >= 1 ) {
+            m_Env->pop_varargs();
+        }
+    };
 
     try {
         ASTNode::ptr body = m_Body.lock();
@@ -161,18 +172,31 @@ uint64_t ASTNodeSubroutine::execute()
             Environment::array* array;
         } param_t;
 
-        vector<param_t> params( m_Params.size() );
+        const size_t num_params = m_Params.size();
+        vector<param_t> params( num_params );
 
-        for( size_t i = 0; i < m_Params.size(); i++ ) {
+        for( size_t i = 0; i < num_params; i++ ) {
             params[i].value = get_children()[i]->execute();
             if( m_Params[i].is_array ) get_children()[i]->get_array_result( params[i].array );
         }
 
+        m_Env->push_varargs();
+        phase = 1;
+
+        for( size_t j = 0; j < m_NumVarargs; j++ ) {
+            const size_t i = j + num_params;
+            Environment::array* array;
+            uint64_t value = get_children()[i]->execute();
+            bool is_array = get_children()[i]->get_array_result( array );
+            if( is_array ) m_Env->append_vararg( array );
+            else m_Env->append_vararg( value );
+        }
+
         m_LocalVars->push();
         m_LocalArrays->push();
-        is_pushed = true;
+        phase = 2;
 
-        for( size_t i = 0; i < m_Params.size(); i++ ) {
+        for( size_t i = 0; i < num_params; i++ ) {
             if( m_Params[i].is_array ) m_Params[i].param.array->set_ref( params[i].array );
             else m_Params[i].param.var->set( params[i].value );
         }
@@ -186,18 +210,14 @@ uint64_t ASTNodeSubroutine::execute()
         // nothing to do
     }
     catch( ... ) {
-        if( is_pushed ) {
-            m_LocalVars->pop();
-            m_LocalArrays->pop();
-        }
+        cleanup();
         throw;
     }
 
-    if( is_pushed ) {
-        if( m_Retval ) ret = m_Retval->get();
-        m_LocalVars->pop();
-        m_LocalArrays->pop();
-    }
+    uint64_t ret = 0;
+    if( phase == 2 && m_Retval ) ret = m_Retval->get();
+
+    cleanup();
 
     return ret;
 }
@@ -853,7 +873,7 @@ ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string na
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " range=[" << size << "] expression=[" << expression << "] size=" << endl;
+    cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " range=[" << size << "] range_expr=[" << range_expr << "] size=" << endl;
     switch( size ) {
     case T_8BIT: cerr << "1" << endl; break;
     case T_16BIT: cerr << "2" << endl; break;
@@ -942,7 +962,7 @@ ASTNodeDim::ASTNodeDim( const yylloc_t& yylloc, Environment* env, std::string na
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeDim name=" << name << " size=[" << expression << "]" << endl;
+    cerr << "AST[" << this << "]: creating ASTNodeDim name=" << name << " size=[" << size << "]" << endl;
 #endif
 
     m_Array = env->alloc_array( name );
@@ -1254,6 +1274,81 @@ uint64_t ASTNodeVar::execute()
 
 	if( m_Var ) return m_Var->get();
 	else return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArg implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeArg::ASTNodeArg( const yylloc_t& yylloc, Environment* env )
+ : ASTNode( yylloc ),
+   m_Env( env )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeArg" << endl;
+#endif
+}
+
+ASTNodeArg::ASTNodeArg( const yylloc_t& yylloc, Environment* env, ASTNode::ptr arg_index, query_t query )
+ : ASTNode( yylloc ),
+   m_Env( env ),
+   m_Query( query )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeArg arg_index=[" << arg_index << "]" << endl;
+#endif
+    add_child( arg_index );
+}
+
+ASTNodeArg::ASTNodeArg( const yylloc_t& yylloc, Environment* env, ASTNode::ptr arg_index, ASTNode::ptr array_index )
+ : ASTNode( yylloc ),
+   m_Env( env )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeArg arg_index=[" << arg_index << "] array_index=[" << array_index << "]" << endl;
+#endif
+    add_child( arg_index );
+    add_child( array_index );
+}
+
+uint64_t ASTNodeArg::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeArg" << endl;
+#endif
+
+    const uint64_t num_args = m_Env->get_num_varargs();
+
+    if( get_children().size() == 0 ) return num_args;
+
+    const uint64_t arg = get_children()[0]->execute();
+    if( arg >= num_args ) throw ASTExceptionOutOfBounds( get_location(), arg, num_args );
+
+    Environment::array* array = m_Env->get_vararg_array( arg );
+
+    if( get_children().size() == 1 ) {
+        switch( m_Query ) {
+        case GET_TYPE: {
+            return array ? 0xffffffffffffffff : 0;
+        } break;
+
+        case GET_VAR: {
+            if( array ) throw ASTExceptionArgTypeMismatch( get_location(), arg, true );
+            else return m_Env->get_vararg_value( arg );
+        } break;
+
+        case GET_ARRAYSIZE: {
+            if( array ) return array->get_size();
+            else throw ASTExceptionArgTypeMismatch( get_location(), arg, false );
+        } break;
+        }
+    }
+    else {
+        const uint64_t index = get_children()[1]->execute();
+        if( array ) return array->get( index );
+        else throw ASTExceptionArgTypeMismatch( get_location(), arg, false );
+    }
 }
 
 

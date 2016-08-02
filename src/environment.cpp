@@ -52,6 +52,8 @@ std::stack<int> Environment::s_DefaultSizeStack;
 int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE;
 std::stack<int> Environment::s_DefaultModifierStack;
 
+std::stack< std::vector< std::pair< uint64_t, Environment::array* > > > Environment::s_ArgStack;
+
 volatile sig_atomic_t Environment::s_IsTerminated = 0;
 
 
@@ -293,6 +295,13 @@ void Environment::set_subroutine_body( std::shared_ptr<ASTNode> body  )
     assert( m_SubroutineContext );
 
     m_SubroutineContext->set_body( body );
+}
+
+void Environment::set_subroutine_varargs()
+{
+    assert( m_SubroutineContext );
+
+    m_SubroutineContext->set_varargs();
 }
 
 void Environment::commit_subroutine_context( )

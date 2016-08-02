@@ -241,6 +241,15 @@ public:
     }
 };
 
+class ASTExceptionArgTypeMismatch : public ASTRuntimeException {
+public:
+    ASTExceptionArgTypeMismatch( const yylloc_t& location, uint64_t index, bool is_array )
+    {
+        loc( location );
+        msg( "type of vararg $0 is $1", index, is_array ? "array" : "var" );
+    }
+};
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodeException template functions

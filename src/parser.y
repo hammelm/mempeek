@@ -51,6 +51,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_MAP
 %token T_DEFPROC T_ENDPROC
 %token T_DEFFUNC T_ENDFUNC
+%token T_ELLIPSIS T_ARGS
 %token T_DROP
 %token T_EXIT T_GLOBAL T_STATIC
 %token T_IMPORT T_RUN
@@ -153,18 +154,28 @@ arrayfunc_def : %empty                                  { $$.token = 0; }
               | '[' ']'                                 { $$.token = 1; }
               ;
 
-proc_arg_decl : %empty
-              | plain_identifier                        { env->set_subroutine_param( $1.value ); }
-              | plain_identifier '[' ']'                { env->set_subroutine_param( $1.value, true ); }
-              | proc_arg_decl plain_identifier          { env->set_subroutine_param( $2.value ); }
-              | proc_arg_decl plain_identifier '[' ']'  { env->set_subroutine_param( $2.value, true ); }
+proc_arg_decl : proc_arg_list
+              | proc_arg_list T_ELLIPSIS                { env->set_subroutine_varargs(); }
+              | T_ELLIPSIS                              { env->set_subroutine_varargs(); }
               ;
 
-func_arg_decl : %empty
+proc_arg_list : %empty
+              | plain_identifier                        { env->set_subroutine_param( $1.value ); }
+              | plain_identifier '[' ']'                { env->set_subroutine_param( $1.value, true ); }
+              | proc_arg_list plain_identifier          { env->set_subroutine_param( $2.value ); }
+              | proc_arg_list plain_identifier '[' ']'  { env->set_subroutine_param( $2.value, true ); }
+              ;
+
+func_arg_decl : func_arg_list
+              | func_arg_list ',' T_ELLIPSIS            { env->set_subroutine_varargs(); }
+              | T_ELLIPSIS                              { env->set_subroutine_varargs(); }
+              ;
+
+func_arg_list : %empty
               | plain_identifier                            { env->set_subroutine_param( $1.value ); }
               | plain_identifier '[' ']'                    { env->set_subroutine_param( $1.value, true ); }
-              | func_arg_decl ',' plain_identifier          { env->set_subroutine_param( $3.value ); }
-              | func_arg_decl ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
+              | func_arg_list ',' plain_identifier          { env->set_subroutine_param( $3.value ); }
+              | func_arg_list ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
               ;
 
 proc_args : %empty
@@ -378,9 +389,17 @@ atomic_expr : T_CONSTANT                                { $$.node = make_shared<
             | T_FCONST                                  { $$.node = make_shared<ASTNodeConstant>( @$, $1.value, true ); }
             | var_identifier                            { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
+            | args_expr                                 { $$.node = $1.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
             | plain_identifier '(' func_args ')'        { $$.node = env->get_function( @1, $1.value, $3.arglist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
             ;
+
+args_expr : T_ARGS '{' '?' '}'                              { $$.node = make_shared<ASTNodeArg>( @$, env ); }
+          | T_ARGS '{' expression '}' '[' ']' '?'           { $$.node = make_shared<ASTNodeArg>( @$, env, $3.node, ASTNodeArg::GET_TYPE ); }
+          | T_ARGS '{' expression '}'                       { $$.node = make_shared<ASTNodeArg>( @$, env, $3.node, ASTNodeArg::GET_VAR ); }
+          | T_ARGS '{' expression '}' '[' '?' ']'           { $$.node = make_shared<ASTNodeArg>( @$, env, $3.node, ASTNodeArg::GET_ARRAYSIZE ); }
+          | T_ARGS '{' expression '}' '[' expression ']'    { $$.node = make_shared<ASTNodeArg>( @$, env, $3.node, $6.node ); }
+          ;
 
 peek_token : T_PEEK                                     { $$.token = Environment::get_default_size(); }
            | T_PEEK size_suffix                         { $$.token = $2.token; }
