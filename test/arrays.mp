@@ -6,9 +6,14 @@
 # b: [ 1 2 3 ]
 # 13
 # [ 42 ]
+# [ ]
 # 343
 # 13002
 # 19032
+# 0: [ 1 2 3 ]
+# 1: [ 10 20 ]
+# 2: [ 1 2 3 ]
+# 42
 
 defproc printarray a[]
     print "[" noendl
@@ -42,6 +47,10 @@ y := f( 10, x[] )
 print dec y
 printarray x[]
 
+z[] := [ 1, 1, 2, 3, 5, 8 ]
+z[] := []
+printarray z[]
+
 deffunc g( a[], b[], c )
     x[] := [ 100, 200 ]
     if c == 0 then return := g( b[], x[], 1 ) + a[?]
@@ -62,3 +71,18 @@ endfunc
 print dec h( t[] )
 t[] := [ 111, 1000, 4321, 10000 ]
 print dec h( t[] )
+
+defproc r n a[]
+    print dec n ": [" noendl
+    for i from 0 to a[?] - 1 do print " " dec a[i] noendl
+    print " ]"
+    if n == 0 then
+        b[] := [ 10, 20 ]
+        r 1 b[]
+        r 2 a[]
+    else a[0] := 42
+endproc
+
+t[] := [ 1, 2, 3 ]
+r 0 t[]
+print dec t[0]

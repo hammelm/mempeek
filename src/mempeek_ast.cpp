@@ -32,6 +32,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <list>
 
 #include <stdio.h>
 #include <ctype.h>
@@ -159,10 +160,14 @@ uint64_t ASTNodeSubroutine::execute()
             m_LocalArrays->pop();
         }
         if( phase >= 1 ) {
+            for( size_t i = 0; i < m_Params.size(); i++ ) {
+                if( m_Params[i].is_array ) m_Params[i].param.array->pop_ref();
+            }
             m_Env->pop_varargs();
         }
     };
 
+    list< ArrayManager::refarray > refarrays;
     try {
         ASTNode::ptr body = m_Body.lock();
         if( !body ) throw ASTExceptionDroppedSubroutine( get_location() );
@@ -183,12 +188,22 @@ uint64_t ASTNodeSubroutine::execute()
         m_Env->push_varargs();
         phase = 1;
 
+        for( size_t i = 0; i < num_params; i++ ) {
+            if( m_Params[i].is_array ) m_Params[i].param.array->push_ref( params[i].array );
+        }
+
         for( size_t j = 0; j < m_NumVarargs; j++ ) {
             const size_t i = j + num_params;
+
             Environment::array* array;
             uint64_t value = get_children()[i]->execute();
             bool is_array = get_children()[i]->get_array_result( array );
-            if( is_array ) m_Env->append_vararg( array );
+
+            if( is_array ) {
+                refarrays.emplace( refarrays.begin() );
+                refarrays.front().set_ref( array );
+                m_Env->append_vararg( &refarrays.front() );
+            }
             else m_Env->append_vararg( value );
         }
 
@@ -197,8 +212,7 @@ uint64_t ASTNodeSubroutine::execute()
         phase = 2;
 
         for( size_t i = 0; i < num_params; i++ ) {
-            if( m_Params[i].is_array ) m_Params[i].param.array->set_ref( params[i].array );
-            else m_Params[i].param.var->set( params[i].value );
+            if( !m_Params[i].is_array ) m_Params[i].param.var->set( params[i].value );
         }
 
         body->execute();
@@ -755,6 +769,49 @@ uint64_t ASTNodeAssign::execute()
 Environment::var* ASTNodeAssign::get_var()
 {
     return ( m_Type == VAR ) ? m_LValue.var : nullptr;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeAssignArg implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeAssignArg::ASTNodeAssignArg( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression )
+ : ASTNode( yylloc ),
+   m_Env( env )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeAssignArg name=" << name << " expression=[" << expression << "]" << endl;
+#endif
+
+    m_Array = env->alloc_array( name );
+
+    add_child( expression );
+
+    if( !m_Array ) throw ASTExceptionNamingConflict( get_location(), name );
+}
+
+uint64_t ASTNodeAssignArg::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeAssignArg" << endl;
+#endif
+
+    const uint64_t num_args = m_Env->get_num_varargs();
+    const uint64_t arg = get_children()[0]->execute();
+    if( arg >= num_args ) throw ASTExceptionOutOfBounds( get_location(), arg, num_args );
+
+    Environment::array* array = m_Env->get_vararg_array( arg );
+    if( !array ) throw ASTExceptionArgTypeMismatch( get_location(), arg, false );
+
+    const size_t size = array->get_size();
+    m_Array->resize( size );
+
+    for( size_t i = 0; i < size; i++ ) {
+        m_Array->set( i, array->get(i) );
+    }
+
+    return 0;
 }
 
 

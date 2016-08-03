@@ -178,16 +178,16 @@ func_arg_list : %empty
               | func_arg_list ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
               ;
 
-proc_args : %empty
-          | expression                                  { $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
-          | plain_identifier '[' ']'                    { $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
+proc_args : %empty                                      { $$.arglist.clear(); }
+          | expression                                  { $$.arglist.clear(); $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
+          | plain_identifier '[' ']'                    { $$.arglist.clear(); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
           | proc_args expression                        { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $2.node, string("") ) ); }
           | proc_args plain_identifier '[' ']'          { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $2.value ) ); }
           ;
 
-func_args : %empty
-          | expression                                  { $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
-          | plain_identifier '[' ']'                    { $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
+func_args : %empty                                      { $$.arglist.clear(); }
+          | expression                                  { $$.arglist.clear(); $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
+          | plain_identifier '[' ']'                    { $$.arglist.clear(); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
           | func_args ',' expression                    { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $3.node, string("") ) ); }
           | func_args ',' plain_identifier '[' ']'      { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $3.value ) ); }
           ;
@@ -247,11 +247,13 @@ for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO         
  * variables and arrays
  ****************************************************************************/
 
-assign_stmt : plain_identifier T_ASSIGN expression      { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node ); }
+assign_stmt : plain_identifier T_ASSIGN expression          { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node ); }
             | plain_identifier '[' expression ']'
-              T_ASSIGN expression                       { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node, $6.node ); }
+              T_ASSIGN expression                           { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node, $6.node ); }
             | plain_identifier '[' ']'
-              T_ASSIGN '[' comma_list ']'               { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value ); for( auto arg: $6.arglist ) $$.node->add_child( arg.first ); }
+              T_ASSIGN '[' comma_list ']'                   { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value ); for( auto arg: $6.arglist ) $$.node->add_child( arg.first ); }
+            | plain_identifier '[' ']'
+              T_ASSIGN T_ARGS '{' expression '}' '[' ']'    { $$.node = make_shared<ASTNodeAssignArg>( @$, env, $1.value, $7.node ); }
             ;
 
 def_stmt : T_DEF plain_identifier expression                                    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
@@ -264,8 +266,8 @@ def_stmt : T_DEF plain_identifier expression                                    
 dim_stmt : T_DIM plain_identifier '[' expression ']'    { $$.node = make_shared<ASTNodeDim>( @$, env, $2.value, $4.node ); }
          ;
 
-comma_list : %empty
-           | expression                                 { $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
+comma_list : %empty                                     { $$.arglist.clear(); }
+           | expression                                 { $$.arglist.clear(); $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
            | comma_list ',' expression                  { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $3.node, string("") ) ); }
            ;
 

@@ -321,3 +321,15 @@ void ArrayManager::refarray::set_ref( ArrayManager::array* array )
 {
     m_Data = get_data_from_sibling( array );
 }
+
+void ArrayManager::refarray::push_ref( ArrayManager::array* array )
+{
+    m_Stack.push( m_Data );
+    set_ref( array );
+}
+
+void ArrayManager::refarray::pop_ref()
+{
+    m_Data = m_Stack.top();
+    m_Stack.pop();
+}

@@ -197,12 +197,16 @@ public:
     virtual void resize( uint64_t size ) override;
 
     void set_ref( ArrayManager::array* array );
+    void push_ref( ArrayManager::array* array );
+    void pop_ref();
 
 protected:
     virtual data_t* get_data() override;
 
 private:
     data_t* m_Data;
+
+    std::stack< data_t* > m_Stack;
 };
 
 

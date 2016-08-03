@@ -55,7 +55,7 @@ public:
 	ASTNode( const yylloc_t& yylloc );
 	virtual ~ASTNode();
 
-	const yylloc_t& get_location();
+	const yylloc_t& get_location() const;
 
 	void add_child( ASTNode::ptr node );
 
@@ -187,6 +187,24 @@ private:
         Environment::var* var;
         Environment::array* array;
     } m_LValue;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeAssignArg
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeAssignArg : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeAssignArg> ptr;
+
+    ASTNodeAssignArg( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
+
+    uint64_t execute() override;
+
+private:
+    Environment* m_Env;
+    Environment::array* m_Array;
 };
 
 
@@ -573,7 +591,7 @@ private:
 // class ASTNode inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline const yylloc_t& ASTNode::get_location()
+inline const yylloc_t& ASTNode::get_location() const
 {
 	return m_Location;
 }
