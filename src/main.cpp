@@ -41,7 +41,10 @@
 #include <signal.h>
 
 #include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <pwd.h>
 
 using namespace std;
 
@@ -227,6 +230,17 @@ int main( int argc, char** argv )
     try {
         bool is_interactive = false;
         bool has_commands = false;
+
+        passwd* pwd = getpwuid( getuid() );
+        if( pwd ) {
+            string config = pwd->pw_dir;
+            config += "/.mempeek";
+
+            struct stat buf;
+            if( stat( config.c_str(), &buf ) == 0 && S_ISREG( buf.st_mode ) ) {
+                parse( &env, config.c_str(), true );
+            }
+        }
 
         for( int i = 1; i < argc; i++ )
         {
