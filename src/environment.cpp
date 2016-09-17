@@ -332,9 +332,10 @@ std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, st
     return node;
 }
 
-uint64_t Environment::parse_int( string str )
+uint64_t Environment::parse_int( string str, bool& is_ok )
 {
     uint64_t value = 0;
+    is_ok = true;
 
     if( str.length() > 2 )
     {
@@ -342,7 +343,10 @@ uint64_t Environment::parse_int( string str )
             for( size_t i = 2; i < str.length(); i++ ) {
                 value <<= 1;
                 if( str[i] == '1' ) value |= 1;
-                else if( str[i] != '0' ) return 0;
+                else if( str[i] != '0' ) {
+                    is_ok = false;
+                    return 0;
+                }
             }
             return value;
         }
@@ -351,23 +355,33 @@ uint64_t Environment::parse_int( string str )
             istringstream stream( str );
             stream >> hex >> value;
             if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-            else return 0;
+            else  {
+                is_ok = false;
+                return 0;
+            }
         }
     }
 
     istringstream stream( str );
     stream >> dec >> value;
     if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-    else return 0;
+    else  {
+        is_ok = false;
+        return 0;
+    }
 }
 
-uint64_t Environment::parse_float( string str )
+uint64_t Environment::parse_float( string str, bool& is_ok )
 {
     double d;
+    is_ok = true;
     istringstream stream( str );
     stream >> d;
-    if( stream.fail() || stream.bad() || !(stream.eof() || (stream >> ws).eof()) ) return 0;
-    else return *(uint64_t*)&d;
+    if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return *(uint64_t*)&d;
+    else  {
+        is_ok = false;
+        return 0;
+    }
 }
 
 bool Environment::set_default_size( int size )

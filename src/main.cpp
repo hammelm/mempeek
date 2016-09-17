@@ -282,7 +282,13 @@ int main( int argc, char** argv )
                     cerr << "missing argument" << endl;
                     throw ASTExceptionQuit();
                 }
-                uint64_t value = Environment::parse_int( argv[i] );
+                bool is_ok;
+                uint64_t value = Environment::parse_int( argv[i], is_ok );
+                if( !is_ok ) value = Environment::parse_float( argv[i], is_ok );
+                if( !is_ok ) {
+                    cerr << "could not parse parameter " << argv[i] << endl;
+                    throw ASTExceptionQuit();
+                }
                 Environment::append_vararg( value );
             }
             else if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "-ll" ) == 0 ) {

@@ -118,7 +118,9 @@ public:
     static bool is_terminated();
 
     static uint64_t parse_int( std::string str );
+    static uint64_t parse_int( std::string str, bool& is_ok );
     static uint64_t parse_float( std::string str );
+    static uint64_t parse_float( std::string str, bool& is_ok );
 
 private:
     VarManager* m_GlobalVars;
@@ -237,6 +239,18 @@ inline void Environment::clear_terminate()
 inline bool Environment::is_terminated()
 {
     return s_IsTerminated == 1;
+}
+
+inline uint64_t Environment::parse_int( std::string str )
+{
+    bool dummy = false;
+    return parse_int( str, dummy );
+}
+
+inline uint64_t Environment::parse_float( std::string str )
+{
+    bool dummy = false;
+    return parse_float( str, dummy );
 }
 
 inline int Environment::get_default_size()
