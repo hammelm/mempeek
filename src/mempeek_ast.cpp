@@ -562,7 +562,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 
 	case MOD_BIN: {
 		for( int i = size * 8 - 1; i >= 0; i-- ) {
-			out << ((value & (1 << i)) ? '1' : '0');
+			out << ((value & ((uint64_t)1 << i)) ? '1' : '0');
 			if( i > 0 && i % 4 == 0 ) out << ' ';
 		}
 		break;
