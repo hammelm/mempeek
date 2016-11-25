@@ -28,9 +28,15 @@
 #include "mempeek_parser.h"
 #include "parser.h"
 
+#include <string>
+
 #define YY_USER_ACTION yylloc->first_line = yylloc->last_line = yylineno; yylloc->file = yyget_extra( yyscanner );
 
 #define TOKEN( t ) yylval_param->value = yytext; yylval_param->token = t; return t;
+#define STRINGTOKEN( t ) yylval_param->value = parse_escape_characters( yytext ); yylval_param->token = t; return t;
+
+std::string parse_escape_characters( std::string str );
+
 %}
 
 %option noyywrap
@@ -144,7 +150,7 @@
 "0x"[0-9a-fA-F]+        TOKEN( T_CONSTANT )
 "0b"[01]+               TOKEN( T_CONSTANT )
 [0-9]+                  TOKEN( T_CONSTANT )
-\"[^"]*\"               TOKEN( T_STRING )
+\"(\\[rnt\"\\]|\\x[0-9a-fA-F]{2}|[^\\"])*\"  STRINGTOKEN( T_STRING )
 
 [+-]?[0-9]*\.[0-9]+                 TOKEN( T_FCONST )
 [+-]?[0-9]*\.?[0-9]+[eE][+-]?[0-9]+ TOKEN( T_FCONST )
@@ -152,3 +158,33 @@
 .                       printf( "unknown token\n" ); yyterminate();
 
 %%
+
+std::string parse_escape_characters( std::string str )
+{
+    std::string::size_type pos = str.find( '\\' );
+    while( pos != std::string::npos ) {
+        switch( str[ pos + 1 ] ) {
+        case 'r': str.replace( pos, 2, 1, '\r' ); break;
+        case 'n': str.replace( pos, 2, 1, '\n' ); break;
+        case 't': str.replace( pos, 2, 1, '\t' ); break;
+        case '\\': str.replace( pos, 2, 1, '\\' ); break;
+        case '\"': str.replace( pos, 2, 1, '\"' ); break;
+        case 'x':
+            char c1 = str[ pos + 2 ];
+            if( c1 <= '9' ) c1 -= '0';
+            else if( c1 <= 'F' ) c1 -= 'A' - 10;
+            else c1 -= 'a' - 10;
+
+            char c2 = str[ pos + 3 ];
+            if( c2 <= '9' ) c2 -= '0';
+            else if( c2 <= 'F' ) c2 -= 'A' - 10;
+            else c2 -= 'a' - 10;
+
+            str.replace( pos, 4, 1, (c1 << 4) | c2 );
+            break;
+        }
+        pos = str.find( '\\', pos + 1 );
+    }
+
+    return str;
+}
