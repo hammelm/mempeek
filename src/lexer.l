@@ -90,6 +90,8 @@ std::string parse_escape_characters( std::string str );
 "float"                 TOKEN( T_FLOAT )
 "noendl"                TOKEN( T_NOENDL )
 "sleep"                 TOKEN( T_SLEEP )
+"until"                 TOKEN( T_UNTIL )
+"now"                   TOKEN( T_NOW )
 "break"                 TOKEN( T_BREAK )
 "quit"                  TOKEN( T_QUIT )
 "pragma"                TOKEN( T_PRAGMA )

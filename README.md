@@ -223,7 +223,7 @@ expressions or strings are given, they are concatenated into one line. The modif
 "hex", "dec", "bin", "neg" or "float". When a modifier is given, all subsequent expression
 results are printed as hexadecimal, unsigned decimal, binary, signed decimal or floating
 point number. Each modifier except "float" can be used with an optional suffix ":8", ":16",
- ":32" or ":64" which specifies the number of bits of the result to be displayed. Several
+":32" or ":64" which specifies the number of bits of the result to be displayed. Several
 modifiers can be used within the same print command. The default modifier for each print
 command is "hex" with the default bit size of the system. The print command does add a
 newline at the end of an output line. The last parameter of the print command can be the
@@ -348,18 +348,39 @@ other commands
 --------------
 
         import "file"
+        run "file"
 
 Execute the content of "file". All mappings, variable definitions, and assignments are
-imported in the current scope. An exit command in the imported file stops execution and
-returns to the current scope.
+imported in the current scope. An exit command in the file stops execution and returns to
+the current scope. The difference between import and run is that import executes the file
+only once when the import statement occurs several times, whereas run does always execute
+the file even if it was called before. Import decides wether the file was already executed
+or not based on the MD5 hash of the file.
 
         sleep <time>
+        sleep until <time>
+        now
 
-Suspend execution for *time* microseconds
+The first command suspends execution for *time* microseconds. The second command waits
+until a fixed point in time. The keyword now can be used in expressions to get the
+current point in time in microseconds since a fixed reference time in the past. This
+value can be used as argument for the sleep until command.
 
         quit
 
 Terminate a program
+
+compiler options
+----------------
+
+        pragma loadpath "path"
+        pragma wordsize (16 | 32 | 64)
+        pragma print <modifier>
+
+The first command adds *path* to the search path which is used to find files in the
+import and run commands. The second command changes the default wordsize for the print
+command. The third command changes the default modifier for the print command. *modifier*
+is any modifier that is allowed in the print command.
 
 comments, whitespace, newline
 -----------------------------

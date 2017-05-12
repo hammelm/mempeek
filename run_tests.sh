@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 desired_output=$(mktemp -p generated desired.XXXXXXXX)
 actual_output=$(mktemp -p generated actual.XXXXXXXX)
