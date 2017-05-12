@@ -333,9 +333,13 @@ class ASTNodeSleep : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSleep> ptr;
 
-    ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression );
+    ASTNodeSleep( const yylloc_t& yylloc );
+    ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression, bool is_absolute );
 
     uint64_t execute() override;
+
+private:
+    enum { SLEEP_RELATIVE, SLEEP_ABSOLUTE, RETRIEVE_TIME } m_Mode;
 };
 
 
@@ -539,7 +543,7 @@ inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::
 }
 
 template< size_t NUM_ARGS >
-uint64_t inline ASTNodeBuiltin< NUM_ARGS >::execute()
+inline uint64_t ASTNodeBuiltin< NUM_ARGS >::execute()
 {
 #ifdef ASTDEBUG
     cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;

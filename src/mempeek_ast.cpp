@@ -583,11 +583,21 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 // class ASTNodeSleep implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression )
- : ASTNode( yylloc )
+ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc )
+ : ASTNode( yylloc ),
+   m_Mode( RETRIEVE_TIME )
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeSleep expression=[" << expression << "]" << endl;
+    cerr << "AST[" << this << "]: creating ASTNodeSleep" << endl;
+#endif
+}
+
+ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression, bool is_absolute )
+ : ASTNode( yylloc ),
+   m_Mode( is_absolute ? SLEEP_ABSOLUTE : SLEEP_RELATIVE )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeSleep " << (is_absolute ? "abs" : "rel") << " expression=[" << expression << "]" << endl;
 #endif
 
     add_child( expression );
@@ -599,6 +609,12 @@ uint64_t ASTNodeSleep::execute()
     cerr << "AST[" << this << "]: executing ASTNodeSleep" << endl;
 #endif
 
+    if( m_Mode == RETRIEVE_TIME ) {
+        struct timespec ts;
+        clock_gettime( CLOCK_MONOTONIC, &ts );
+        return ts.tv_sec * 1000000 + (ts.tv_nsec + 500) / 1000;
+    }
+
     uint64_t time = get_children()[0]->execute() * 1000;
 
     struct timespec ts;
@@ -607,15 +623,15 @@ uint64_t ASTNodeSleep::execute()
 
     for(;;) {
         struct timespec remaining;
-        int ret = nanosleep( &ts, &remaining );
+        int ret = clock_nanosleep( CLOCK_MONOTONIC, (m_Mode == SLEEP_ABSOLUTE) ? TIMER_ABSTIME : 0, &ts, &remaining );
         if( ret == 0 ) break;
-        if( errno == EINTR ) {
+        if( ret == EINTR ) {
             if( Environment::is_terminated() ) break;
-            ts = remaining;
+            if( m_Mode == SLEEP_RELATIVE ) ts = remaining;
             continue;
         }
         else {
-            cerr << "nanosleep failed with errno " << errno << endl;
+            cerr << "nanosleep failed with errno " << ret << endl;
             break;
         }
     }

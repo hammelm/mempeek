@@ -59,7 +59,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_WHILE T_DO T_ENDWHILE
 %token T_FOR T_TO T_STEP T_ENDFOR
 %token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_NOENDL
-%token T_SLEEP
+%token T_SLEEP T_UNTIL T_NOW
 %token T_BREAK T_QUIT
 %token T_PRAGMA T_WORDSIZE T_LOADPATH
 
@@ -254,7 +254,8 @@ print_size : T_8BIT                                     { $$.token = ASTNodePrin
            | T_64BIT                                    { $$.token = ASTNodePrint::MOD_64BIT; }
            ;
 
-sleep_stmt : T_SLEEP expression                         { $$.node = make_shared<ASTNodeSleep>( @$, $2.node ); }
+sleep_stmt : T_SLEEP expression                         { $$.node = make_shared<ASTNodeSleep>( @$, $2.node, false ); }
+           | T_SLEEP T_UNTIL expression                 { $$.node = make_shared<ASTNodeSleep>( @$, $3.node, true ); }
            ;
 
 expression : expression T_LOG_OR and_expr               { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); } 
@@ -306,6 +307,7 @@ unary_expr : T_MINUS atomic_expr                        { $$.node = make_shared<
 
 atomic_expr : T_CONSTANT                                { $$.node = make_shared<ASTNodeConstant>( @$, $1.value ); }
             | T_FCONST                                  { $$.node = make_shared<ASTNodeConstant>( @$, $1.value, true ); }
+            | T_NOW                                     { $$.node = make_shared<ASTNodeSleep>( @$ ); }
             | identifier                                { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | peek_token '(' expression ')'             { $$.node = make_shared<ASTNodePeek>( @$, env, $3.node, $1.token ); }
