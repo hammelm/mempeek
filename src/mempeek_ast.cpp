@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -612,7 +612,7 @@ uint64_t ASTNodeSleep::execute()
     if( m_Mode == RETRIEVE_TIME ) {
         struct timespec ts;
         clock_gettime( CLOCK_MONOTONIC, &ts );
-        return ts.tv_sec * 1000000 + (ts.tv_nsec + 500) / 1000;
+        return ts.tv_sec * 1000000ULL + (ts.tv_nsec + 500) / 1000;
     }
 
     uint64_t time = get_children()[0]->execute() * 1000;
