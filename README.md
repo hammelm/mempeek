@@ -156,6 +156,33 @@ the operators have the following precedences, with higher precedence listed firs
         6:  &&
         7:  || ^^
 
+literals
+--------
+
+Mempeek provides three different types of literals: integer literals, floating point
+literals, and string literals. Integer literals are signed or unsigned decimal numbers,
+hexadecimal numbers starting with *0x* or binary numbers starting with *0b*. Integer
+literals can be used in expressions and are transformed to a 64 bit value. Signed decimal
+literals are transformed to the 64 bit value representing the negative number in two's
+complement.
+
+Floating point literals are written as decimal numbers either with a decimal point or as
+numbers in scientific notation usig the common *e* notation (e.g. 6.022e-23). Floating
+point literals can be used in expressions and are transformed to a 64 bit value in IEEE
+754 double precision encoding.
+
+String literals are only allowed in print commands and consist of printable ASCII
+characters between two double quotes. The backslash character has a special meaning and
+is used to escape some special characters which cannot be encoded as printable ASCII
+characters:
+
+        \n    newline
+        \r    carriage return
+        \t    tabulator
+        \"    double quote
+        \\    backslash
+        \x??  ?? is a two digit hexadecimal number representing the character value
+
 conditional execution
 ---------------------
 
