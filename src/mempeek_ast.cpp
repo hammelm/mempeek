@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -667,25 +667,33 @@ uint64_t ASTNodeSleep::execute()
     cerr << "AST[" << this << "]: executing ASTNodeSleep" << endl;
 #endif
 
-    if( m_Mode == RETRIEVE_TIME ) {
-        struct timespec ts;
+    struct timespec ts;
+
+    if( m_Mode == RETRIEVE_TIME || m_Mode == SLEEP_RELATIVE ) {
         clock_gettime( CLOCK_MONOTONIC, &ts );
-        return ts.tv_sec * 1000000 + (ts.tv_nsec + 500) / 1000;
+        if( m_Mode == RETRIEVE_TIME ) return ts.tv_sec * 1000000ULL + (ts.tv_nsec + 500) / 1000;
     }
 
     uint64_t time = get_children()[0]->execute() * 1000;
 
-    struct timespec ts;
-    ts.tv_sec = time / 1000000000;
-    ts.tv_nsec = time % 1000000000;
+    if( m_Mode == SLEEP_ABSOLUTE ) {
+        ts.tv_sec = time / 1000000000;
+        ts.tv_nsec = time % 1000000000;
+    }
+    else {
+        ts.tv_sec += time / 1000000000;
+        ts.tv_nsec += time % 1000000000;
+        if( ts.tv_nsec >= 1000000000 ) {
+            ts.tv_sec++;
+            ts.tv_nsec -= 1000000000;
+        }
+    }
 
     for(;;) {
-        struct timespec remaining;
-        int ret = clock_nanosleep( CLOCK_MONOTONIC, (m_Mode == SLEEP_ABSOLUTE) ? TIMER_ABSTIME : 0, &ts, &remaining );
+        int ret = clock_nanosleep( CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr );
         if( ret == 0 ) break;
         if( ret == EINTR ) {
             if( Environment::is_terminated() ) break;
-            if( m_Mode == SLEEP_RELATIVE ) ts = remaining;
             continue;
         }
         else {
