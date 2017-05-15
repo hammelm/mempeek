@@ -167,7 +167,7 @@ literals are transformed to the 64 bit value representing the negative number in
 complement.
 
 Floating point literals are written as decimal numbers either with a decimal point or as
-numbers in scientific notation usig the common *e* notation (e.g. 6.022e-23). Floating
+numbers in scientific notation using the common *e* notation (e.g. *6.022e-23*). Floating
 point literals can be used in expressions and are transformed to a 64 bit value in IEEE
 754 double precision encoding.
 
