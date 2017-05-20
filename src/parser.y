@@ -72,7 +72,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 
 %token T_IDENTIFIER T_CONSTANT T_FCONST T_STRING
 
-%token T_END_OF_STATEMENT
+%token T_END_OF_STATEMENT 0
 
 %start start
 

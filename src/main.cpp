@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -269,10 +269,7 @@ int main( int argc, char** argv )
                     cerr << "missing command" << endl;
                     throw ASTExceptionQuit();
                 }
-                // TODO: parser should treat EOF as end of statement
-                string cmd = string( argv[i] ) + '\n';
-
-                parse( &env, cmd.c_str(), false );
+                parse( &env, argv[i], false );
                 has_commands = true;
             }
             else if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "-ll" ) == 0 ) {
