@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2016, Martin Hammel
+/*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@
 
 
 #define RELEASE_VERSION "1.1"
-#define RELEASE_COPYRIGHT "Copyright (c) 2015-2016 Martin Hammel"
+#define RELEASE_COPYRIGHT "Copyright (c) 2015-2017 Martin Hammel"
 
 
 inline void print_release_info( std::ostream& out = std::cout )
