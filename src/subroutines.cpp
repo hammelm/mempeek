@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016, Martin Hammel
+/*  Copyright (c) 2016-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -67,7 +67,6 @@ void SubroutineManager::begin_subroutine( const yylloc_t& location, std::string 
     m_PendingSubroutine->vars = new VarManager;
     m_PendingSubroutine->arrays = new ArrayManager;
     m_PendingSubroutine->location = location;
-    m_PendingSubroutine->is_function = is_function;
     m_PendingSubroutine->has_varargs = false;
 
     if( is_function ) {

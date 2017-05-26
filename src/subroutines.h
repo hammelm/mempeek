@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016, Martin Hammel
+/*  Copyright (c) 2016-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -81,7 +81,6 @@ private:
         std::vector< param_t > params;
         std::shared_ptr<ASTNode> body;
         const VarManager::var* retval = nullptr;
-        bool is_function;
         bool has_varargs;
         yylloc_t location;
     } subroutine_t;
