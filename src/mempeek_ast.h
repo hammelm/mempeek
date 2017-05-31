@@ -176,6 +176,7 @@ public:
     typedef std::shared_ptr<ASTNodeAssign> ptr;
 
     ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, std::string copy );
     ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
     ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index, ASTNode::ptr expression );
 
@@ -184,12 +185,14 @@ public:
     Environment::var* get_var();
 
 private:
-    enum { VAR, ARRAY, ARRAYLIST } m_Type;
+    enum { VAR, ARRAY, ARRAYLIST, ARRAYCOPY } m_Type;
 
     union {
         Environment::var* var;
         Environment::array* array;
     } m_LValue;
+
+    Environment::array* m_Copy = nullptr;
 };
 
 

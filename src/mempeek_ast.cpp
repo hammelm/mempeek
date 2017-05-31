@@ -734,6 +734,21 @@ ASTNodeAssign::ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::str
     if( !m_LValue.array ) throw ASTExceptionNamingConflict( get_location(), name );
 }
 
+ASTNodeAssign::ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, std::string copy )
+ : ASTNode( yylloc ),
+   m_Type( ARRAYCOPY )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeAssign name=" << name << " copy=" << copy << endl;
+#endif
+
+    m_LValue.array = env->alloc_array( name );
+    m_Copy = env->alloc_array( copy );
+
+    if( !m_LValue.array ) throw ASTExceptionNamingConflict( get_location(), name );
+    if( !m_Copy ) throw ASTExceptionNamingConflict( get_location(), copy );
+}
+
 ASTNodeAssign::ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression )
  : ASTNode( yylloc ),
    m_Type( VAR )
@@ -795,6 +810,16 @@ uint64_t ASTNodeAssign::execute()
                 m_LValue.array->set( i, get_children()[i]->execute() );
             }
         }
+        break;
+
+	case ARRAYCOPY:
+	    if( m_LValue.array && m_Copy ) {
+            size_t size = m_Copy->get_size();
+            m_LValue.array->resize( size );
+            for( size_t i = 0; i < size; i++ ) {
+                m_LValue.array->set( i, m_Copy->get( i ) );
+            }
+	    }
         break;
 	}
 

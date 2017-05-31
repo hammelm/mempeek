@@ -2,6 +2,8 @@
 # test case: arrays
 #
 # output:
+# [ 3 1 4 1 5 9 ]
+# [ 2 7 1 8 ]
 # a: 20
 # b: [ 1 2 3 ]
 # 13
@@ -37,6 +39,13 @@ defproc p a b[]
     print "b: " noendl
     printarray b[]
 endproc
+
+pi[] := [ 3, 1, 4, 1, 5, 9 ]
+e[] := [ 2, 7, 1, 8 ]
+test[] := pi[]
+printarray test[]
+test[] := e[]
+printarray test[]
 
 x[] := [ 1, 2, 3 ]
 

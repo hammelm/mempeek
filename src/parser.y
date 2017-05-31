@@ -251,6 +251,8 @@ assign_stmt : plain_identifier T_ASSIGN expression          { $$.node = make_sha
             | plain_identifier '[' expression ']'
               T_ASSIGN expression                           { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node, $6.node ); }
             | plain_identifier '[' ']'
+              T_ASSIGN plain_identifier '[' ']'             { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $5.value ); }
+            | plain_identifier '[' ']'
               T_ASSIGN '[' comma_list ']'                   { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value ); for( auto arg: $6.arglist ) $$.node->add_child( arg.first ); }
             | plain_identifier '[' ']'
               T_ASSIGN T_ARGS '{' expression '}' '[' ']'    { $$.node = make_shared<ASTNodeAssignArg>( @$, env, $1.value, $7.node ); }
