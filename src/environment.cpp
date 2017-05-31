@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -222,14 +222,16 @@ std::set< std::string > Environment::get_autocompletion( std::string prefix )
     return completions;
 }
 
-bool Environment::map_memory( void* phys_addr, size_t size, std::string device )
+bool Environment::map_memory( void* phys_addr, void* map_addr, size_t size, std::string device )
 {
-	if( get_mapping( phys_addr, size ) ) return true;
+	if( get_mapping( map_addr, size ) ) return true;
 
 	MMap* mmap = MMap::create( phys_addr, size, device.c_str() );
 	if( !mmap ) return false;
 
-	m_Mappings[ phys_addr ] = mmap;
+	mmap->set_base_address( map_addr );
+
+	m_Mappings[ map_addr ] = mmap;
 	return true;
 }
 

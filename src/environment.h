@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -72,7 +72,7 @@ public:
 	std::set< std::string > get_autocompletion( std::string prefix );
 	std::set< std::string > get_struct_members( std::string name );
 
-    bool map_memory( void* phys_addr, size_t size, std::string device );
+    bool map_memory( void* phys_addr, void* map_addr, size_t size, std::string device );
 
 	MMap* get_mapping( void* phys_addr, size_t size );
 

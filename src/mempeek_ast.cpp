@@ -794,32 +794,34 @@ uint64_t ASTNodeDef::execute()
 //////////////////////////////////////////////////////////////////////////////
 
 ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr size )
- : ASTNode( yylloc )
-{
-#ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "]" << endl;
-#endif
+ : ASTNodeMap( yylloc, env, compiletime_execute( address ), compiletime_execute( size ), "/dev/mem" )
+{}
 
-    const uint64_t phys_addr = compiletime_execute( address );
-    const uint64_t mapping_size = compiletime_execute( size );
-
-    if( !env->map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) {
-        throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, "/dev/mem" );
-    }
-}
+ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr at, ASTNode::ptr size )
+ : ASTNodeMap( yylloc, env, compiletime_execute( address ), compiletime_execute( at ), compiletime_execute( size ), "/dev/mem" )
+{}
 
 ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr size, std::string device )
+ : ASTNodeMap( yylloc, env, compiletime_execute( address ), compiletime_execute( size ), device )
+{}
+
+ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr at, ASTNode::ptr size, std::string device )
+: ASTNodeMap( yylloc, env, compiletime_execute( address ), compiletime_execute( at ), compiletime_execute( size ), device )
+{}
+
+ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, uint64_t address, uint64_t size, std::string device )
+ : ASTNodeMap( yylloc, env, address, address, size, device )
+{}
+
+ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, uint64_t address, uint64_t at, uint64_t size, std::string device )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-        cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "] device=" << device << endl;
+        cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] at=[" << at << "] size=[" << size << "] device=" << device << endl;
 #endif
 
-    const uint64_t phys_addr = compiletime_execute( address );
-    const uint64_t mapping_size = compiletime_execute( size );
-
-    if( !env->map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) {
-        throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, device );
+    if( !env->map_memory( (void*)address, (void*)at, (size_t)size, device ) ) {
+        throw ASTExceptionMappingFailure( get_location(), address, size, device );
     }
 }
 

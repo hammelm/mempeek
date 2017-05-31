@@ -47,7 +47,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %lex-param { yyscan_t scanner }
 
 %token T_DEF T_FROM
-%token T_MAP
+%token T_MAP T_AT
 %token T_DEFPROC T_ENDPROC
 %token T_DEFFUNC T_ENDFUNC
 %token T_DROP
@@ -195,7 +195,10 @@ def_stmt : T_DEF plain_identifier expression                            { $$.nod
          ;
 
 map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node ); }
+         | T_MAP expression expression T_AT expression  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $5.node, $3.node ); }
          | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
+         | T_MAP expression expression T_STRING
+           T_AT expression                              { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $6.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
 
 pragma_stmt : T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
