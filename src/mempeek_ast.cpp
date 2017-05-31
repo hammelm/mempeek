@@ -67,7 +67,7 @@ ASTNode::ptr ASTNode::clone_to_const()
     return nullptr;
 }
 
-uint64_t ASTNode::compiletime_execute( ASTNode::ptr node )
+uint64_t ASTNode::compiletime_execute( ASTNode* node )
 {
     if( !node->is_constant() ) throw ASTExceptionNonconstExpression( node->get_location() );
 
@@ -879,14 +879,7 @@ ASTNodeStatic::ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::str
     if( is_var ) m_Data.var = env->alloc_static_var( name );
     else m_Data.array = env->alloc_static_array( name );
 
-    if( expression->is_constant() ) {
-        try {
-            add_child( make_shared<ASTNodeConstant>( yylloc, expression->execute() ) );
-        }
-        catch( const ASTExceptionDivisionByZero& ex ) {
-            throw ASTExceptionConstDivisionByZero( ex );
-        }
-    }
+    if( expression->is_constant() ) add_child( make_shared<ASTNodeConstant>( yylloc, compiletime_execute( expression ) ) );
     else add_child( expression );
 
     if( is_var && !m_Data.var || !is_var && !m_Data.array ) throw ASTExceptionNamingConflict( get_location(), name );
@@ -1179,12 +1172,7 @@ ASTNode::ptr ASTNodeUnaryOperator::clone_to_const()
     cerr << "AST[" << this << "]: running const optimization" << endl;
 #endif
 
-    try {
-        return make_shared<ASTNodeConstant>( get_location(), execute() );
-    }
-    catch( const ASTExceptionDivisionByZero& ex ) {
-        throw ASTExceptionConstDivisionByZero( ex );
-    }
+    return make_shared<ASTNodeConstant>( get_location(), compiletime_execute( this ) );
 }
 
 
@@ -1253,12 +1241,7 @@ ASTNode::ptr ASTNodeBinaryOperator::clone_to_const()
     cerr << "AST[" << this << "]: running const optimization" << endl;
 #endif
 
-    try {
-        return make_shared<ASTNodeConstant>( get_location(), execute() );
-    }
-    catch( const ASTExceptionDivisionByZero& ex ) {
-        throw ASTExceptionConstDivisionByZero( ex );
-    }
+    return make_shared<ASTNodeConstant>( get_location(), compiletime_execute( this ) );
 }
 
 
