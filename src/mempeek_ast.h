@@ -64,6 +64,7 @@ public:
 
 protected:
     static uint64_t compiletime_execute( ASTNode::ptr node );
+    static uint64_t compiletime_execute( ASTNode* node );
 
 	typedef std::vector< ASTNode::ptr > nodelist_t;
 
@@ -523,6 +524,11 @@ inline const ASTNode::nodelist_t& ASTNode::get_children()
 inline void ASTNode::set_constant()
 {
     m_IsConstant = true;
+}
+
+inline uint64_t ASTNode::compiletime_execute( ASTNode::ptr node )
+{
+	return compiletime_execute( node.get() );
 }
 
 
