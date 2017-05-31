@@ -66,6 +66,8 @@ public:
 	virtual ASTNode::ptr clone_to_const();
 
 protected:
+    static uint64_t compiletime_execute( ASTNode::ptr node );
+
 	typedef std::vector< ASTNode::ptr > nodelist_t;
 
 	const nodelist_t& get_children();
@@ -421,9 +423,15 @@ public:
     typedef std::shared_ptr<ASTNodeMap> ptr;
 
 	ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr size );
+    ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr at, ASTNode::ptr size );
     ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr size, std::string device );
+    ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr address, ASTNode::ptr at, ASTNode::ptr size, std::string device );
 
 	uint64_t execute() override;
+
+private:
+    ASTNodeMap( const yylloc_t& yylloc, Environment* env, uint64_t address, uint64_t size, std::string device );
+    ASTNodeMap( const yylloc_t& yylloc, Environment* env, uint64_t address, uint64_t at, uint64_t size, std::string device );
 };
 
 

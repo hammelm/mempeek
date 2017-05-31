@@ -57,6 +57,7 @@ std::string parse_escape_characters( std::string str );
 "def"                   TOKEN( T_DEF )
 "dim"                   TOKEN( T_DIM )
 "map"                   TOKEN( T_MAP )
+"at"                    TOKEN( T_AT )
 "defproc"               TOKEN( T_DEFPROC )
 "endproc"               TOKEN( T_ENDPROC )
 "deffunc"               TOKEN( T_DEFFUNC )

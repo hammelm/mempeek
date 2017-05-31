@@ -17,7 +17,7 @@ mempeek makes it very easy to interactively explore the features of new peripher
         -ll <file>  Append output and interactive input to <file>
         -v          Print version
         -h          Print usage
-    
+
 The -I and -c options can be used several times to add more than one include path or to
 execute more than one command. Options and commands can be mixed and are executed in the
 same order as in the args list.
@@ -259,12 +259,14 @@ modifier "noendl" which suppresses the newline.
 mapping physical memory
 -----------------------
 
-        map <address> <size> ["device"]
+        map <address> <size> ["device"] [at <base>]
 
 Map *size* bytes of physical memory at address *address* to the process memory space. When
-"device" is given, the mapping occurs on that device, default is /dev/mem. *address* and
-*size* must be constants, dynamic calculation of address spaces is not allowed. This
-operation is not allowed within for loops, while loops, and if statements
+"device" is given, the mapping occurs on that device, default is /dev/mem. The physical
+memory is mapped at the same address in the process memory space unless *base* is given.
+In this case *base* is used as address in the process memory space. *address*, *size*, and
+*base* must be constants, dynamic calculation of address spaces is not allowed. This
+operation is not allowed within for loops, while loops, and if statements.
 
 No memory can be accessed by peek and poke commands before it has been mapped with this
 command.
@@ -339,7 +341,7 @@ keyword is executed for the first time.
 Functions and procedures cannot be redefined once they exist, but it is possible to remove
 an existing function or procedure with the "drop" command where *procedure* is the name of
 the procedure to be removed, and *function* is the name of the function to be removed.
- 
+
 floating point numbers
 ----------------------
 
@@ -408,6 +410,10 @@ The first command adds *path* to the search path which is used to find files in 
 import and run commands. The second command changes the default wordsize for the print
 command. The third command changes the default modifier for the print command. *modifier*
 is any modifier that is allowed in the print command.
+
+*wordsize* and *print* apply only to the file in which they are used and to files which
+are imported from that file. The defaults of files which import a file with these pragmas
+are not changed.
 
 comments, whitespace, newline
 -----------------------------
