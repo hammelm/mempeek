@@ -61,6 +61,17 @@ ASTNode::ptr ASTNode::clone_to_const()
     return nullptr;
 }
 
+uint64_t ASTNode::compiletime_execute( ASTNode::ptr node )
+{
+    if( !node->is_constant() ) throw ASTExceptionNonconstExpression( node->get_location() );
+
+    try {
+        return node->execute();
+    }
+    catch( const ASTExceptionDivisionByZero& ex ) {
+        throw ASTExceptionConstDivisionByZero( ex );
+    }
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // class ASTNodeBreak
@@ -733,18 +744,11 @@ ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string na
     cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "]" << endl;
 #endif
 
-    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( expression->get_location() );
+    const uint64_t value = compiletime_execute( expression );
 
-    try {
-        const uint64_t value = expression->execute();
-
-        Environment::var* def = env->alloc_def( name );
-        if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
-        def->set( value );
-    }
-    catch( const ASTExceptionDivisionByZero& ex ) {
-        throw ASTExceptionConstDivisionByZero( ex );
-    }
+    Environment::var* def = env->alloc_def( name );
+    if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
+    def->set( value );
 }
 
 ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression, std::string from )
@@ -754,29 +758,22 @@ ASTNodeDef::ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string na
     cerr << "AST[" << this << "]: creating ASTNodeDef name=" << name << " expression=[" << expression << "] from=" << from << endl;
 #endif
 
-    if( !expression->is_constant() ) throw ASTExceptionNonconstExpression( expression->get_location() );
+    const uint64_t value = compiletime_execute( expression );
 
-    try {
-        const uint64_t value = expression->execute();
+    Environment::var* def = env->alloc_def( name );
+    if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
+    def->set( value );
 
-        Environment::var* def = env->alloc_def( name );
-        if( !def ) throw ASTExceptionNamingConflict( get_location(), name );
-        def->set( value );
+    const Environment::var* from_base = env->get( from );
+    if( !from_base || !from_base->is_def() ) throw ASTExceptionNamingConflict( get_location(), from );
 
-        const Environment::var* from_base = env->get( from );
-        if( !from_base || !from_base->is_def() ) throw ASTExceptionNamingConflict( get_location(), from );
+    const uint64_t from_value = from_base->get();
 
-        const uint64_t from_value = from_base->get();
+    for( string member: env->get_struct_members( from ) ) {
+        Environment::var* dst = env->alloc_def( name + '.' + member );
+        const Environment::var* src = env->get( from + '.' + member );
 
-        for( string member: env->get_struct_members( from ) ) {
-            Environment::var* dst = env->alloc_def( name + '.' + member );
-            const Environment::var* src = env->get( from + '.' + member );
-
-            dst->set( src->get() - from_value );
-        }
-    }
-    catch( const ASTExceptionDivisionByZero& ex ) {
-        throw ASTExceptionConstDivisionByZero( ex );
+        dst->set( src->get() - from_value );
     }
 }
 
@@ -803,19 +800,11 @@ ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr a
     cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "]" << endl;
 #endif
 
-    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( address->get_location() );
-    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( size->get_location() );
+    const uint64_t phys_addr = compiletime_execute( address );
+    const uint64_t mapping_size = compiletime_execute( size );
 
-    try {
-        const uint64_t phys_addr = address->execute();
-        const uint64_t mapping_size = size->execute();
-
-        if( !env->map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) {
-            throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, "/dev/mem" );
-        }
-    }
-    catch( const ASTExceptionDivisionByZero& ex ) {
-        throw ASTExceptionConstDivisionByZero( ex );
+    if( !env->map_memory( (void*)phys_addr, (size_t)mapping_size, "/dev/mem" ) ) {
+        throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, "/dev/mem" );
     }
 }
 
@@ -826,19 +815,11 @@ ASTNodeMap::ASTNodeMap( const yylloc_t& yylloc, Environment* env, ASTNode::ptr a
         cerr << "AST[" << this << "]: creating ASTNodeMap address=[" << address << "] size=[" << size << "] device=" << device << endl;
 #endif
 
-    if( !address->is_constant() ) throw ASTExceptionNonconstExpression( address->get_location() );
-    if( !size->is_constant() ) throw ASTExceptionNonconstExpression( size->get_location() );
+    const uint64_t phys_addr = compiletime_execute( address );
+    const uint64_t mapping_size = compiletime_execute( size );
 
-    try {
-        const uint64_t phys_addr = address->execute();
-        const uint64_t mapping_size = size->execute();
-
-        if( !env->map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) {
-            throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, device );
-        }
-    }
-    catch( const ASTExceptionDivisionByZero& ex ) {
-        throw ASTExceptionConstDivisionByZero( ex );
+    if( !env->map_memory( (void*)phys_addr, (size_t)mapping_size, device ) ) {
+        throw ASTExceptionMappingFailure( get_location(), phys_addr, mapping_size, device );
     }
 }
 

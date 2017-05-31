@@ -63,6 +63,8 @@ public:
 	virtual ASTNode::ptr clone_to_const();
 
 protected:
+    static uint64_t compiletime_execute( ASTNode::ptr node );
+
 	typedef std::vector< ASTNode::ptr > nodelist_t;
 
 	const nodelist_t& get_children();
