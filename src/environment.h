@@ -55,6 +55,8 @@ public:
     typedef ArrayManager::array array;
     typedef ArrayManager::refarray refarray;
 
+    typedef enum { PROCEDURE, FUNCTION, ARRAYFUNC } subroutine_type_t;
+
 	Environment();
 	~Environment();
 
@@ -83,7 +85,7 @@ public:
 
 	MMap* get_mapping( void* phys_addr, size_t size );
 
-	void enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function );
+	void enter_subroutine_context( const yylloc_t& location, std::string name, subroutine_type_t type );
     void set_subroutine_param( std::string name, bool is_array = false );
     void set_subroutine_body( std::shared_ptr<ASTNode> body );
     void set_subroutine_varargs();
@@ -91,6 +93,7 @@ public:
 
 	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, const arglist_t& args );
     std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, const arglist_t& args );
+    std::shared_ptr<ASTNode> get_arrayfunc( const yylloc_t& location, std::string name, std::string ret, const arglist_t& args );
 
     bool drop_procedure( std::string name );
     bool drop_function( std::string name );
@@ -132,6 +135,7 @@ private:
 
 	SubroutineManager* m_ProcedureManager;
 	SubroutineManager* m_FunctionManager;
+	SubroutineManager* m_ArrayfuncManager;
 
 	SubroutineManager* m_SubroutineContext = nullptr;
     VarManager* m_LocalVars = nullptr;
@@ -223,7 +227,8 @@ inline bool Environment::drop_procedure( std::string name )
 
 inline bool Environment::drop_function( std::string name )
 {
-    return m_FunctionManager->drop_subroutine( name );
+    if( m_FunctionManager->drop_subroutine( name ) ) return true;
+    else return m_ArrayfuncManager->drop_subroutine( name );
 }
 
 inline void Environment::set_terminate()

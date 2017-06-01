@@ -136,14 +136,14 @@ subroutine_statement : statement                        { $$.node = $1.node; }
  * procedure and function definitions
  ****************************************************************************/
 
-proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, false ); }
+proc_def : T_DEFPROC plain_identifier                   { env->enter_subroutine_context( @1, $2.value, Environment::PROCEDURE ); }
                proc_arg_decl T_END_OF_STATEMENT
                subroutine_block
            T_ENDPROC                                    { env->commit_subroutine_context(); }
            T_END_OF_STATEMENT                           { $$.node = nullptr; }
          ;
 
-func_def : T_DEFFUNC arrayfunc_def plain_identifier     { env->enter_subroutine_context( @1, $3.value, true ); }
+func_def : T_DEFFUNC arrayfunc_def plain_identifier     { env->enter_subroutine_context( @1, $3.value, $2.token ? Environment::ARRAYFUNC : Environment::FUNCTION ); }
                '(' func_arg_decl ')' T_END_OF_STATEMENT
                subroutine_block
            T_ENDFUNC                                    { env->commit_subroutine_context(); }
@@ -257,7 +257,7 @@ assign_stmt : plain_identifier T_ASSIGN expression          { $$.node = make_sha
             | plain_identifier '[' ']'
               T_ASSIGN T_ARGS '{' expression '}' '[' ']'    { $$.node = make_shared<ASTNodeAssignArg>( @$, env, $1.value, $7.node ); }
             | plain_identifier '[' ']'
-              T_ASSIGN plain_identifier '(' func_args ')'   { $7.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); $$.node = env->get_function( @1, $5.value, $7.arglist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
+              T_ASSIGN plain_identifier '(' func_args ')'   { $$.node = env->get_arrayfunc( @1, $5.value, $1.value, $7.arglist ); if( !$$.node ) throw ASTExceptionSyntaxError( @1 ); }
             ;
 
 def_stmt : T_DEF plain_identifier expression                                    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
