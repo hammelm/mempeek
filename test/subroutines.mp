@@ -10,6 +10,8 @@
 # [ 3 9 27 ]
 # [ 2 4 8 ]
 # [ 125 25 5 ]
+# 0
+# 10
 # 24
 # 120
 # 420 2226
@@ -48,6 +50,13 @@ endproc
 arraytest a2[] a3[]
 a1[1] := a1[1] + a1[0]
 arraytest a3[] a1[]
+
+deffunc ret( i )
+	print dec return
+	return := i
+endfunc
+
+print dec ret(10)
 
 deffunc fac( n )
   if n <= 1 then return := 1

@@ -142,7 +142,7 @@ uint64_t ASTNodeBlock::execute()
 ASTNodeSubroutine::ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body,
                                       Environment* env, VarManager* vars, ArrayManager* arrays,
                                       std::vector< SubroutineManager::param_t >& params,
-                                      size_t num_varargs, const Environment::var* retval )
+                                      size_t num_varargs, Environment::var* retval )
  : ASTNode( yylloc ),
    m_Env( env ),
    m_LocalVars( vars ),
@@ -225,6 +225,8 @@ uint64_t ASTNodeSubroutine::execute()
         for( size_t i = 0; i < num_params; i++ ) {
             if( !m_Params[i].is_array ) m_Params[i].param.var->set( params[i].value );
         }
+
+        if( m_Retval ) m_Retval->set(0);
 
         body->execute();
     }

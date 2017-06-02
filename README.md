@@ -114,9 +114,9 @@ index position *expression* from the array.
         name[] := array[]
         name[] := function()
 
-The first line assigns to name an array that contains the elements defined by the
-expressions within the square brackets. The second line copies array to name. The third
-line evaluates an array function and assigns the result to name.
+The first line assigns an array that contains the elements defined by the expressions
+within the square brackets to name. The second line copies array to name. The third line
+evaluates an array function and assigns the result to name.
 
 expressions
 -----------
@@ -347,10 +347,11 @@ The parameters can be accessed as variables within the subroutine body. When an 
 keyword is encountered, the execution of the subroutine is stopped and control flow returns
 to the caller.
 
-Parameters are either scalars or arrays. Scalar parameters are passed by value. To use
-arrays as function parameters, empty square brackets must be added after the parameter
-name. Arrays are passed by reference. When changing an array in a function or procedure,
-the array is also changed in the scope of the caller.
+Parameters are either scalars or arrays. To use arrays as function parameters, empty
+square brackets must be added to the parameter name. Scalar parameters are passed by
+value, and arrays are passed by reference. When changing an array in a function or
+procedure, the array is also changed in the scope of the caller. This is not the case for
+scalar variables.
 
 Variables which are defined within the subroutine body are not visible outside of the
 subroutine body, and variables defined outside of the subroutine body are not visible
@@ -358,7 +359,7 @@ within. Definition variables are visible within the subroutine body, but it is n
 to create or change definition variables from within a subroutine.
 
 The function definition comes in two flavors. The first one defines a normal function with
-scalar return value, second one defines an array function which returns an array.
+scalar return value, the second one defines an array function which returns an array.
 
         return
         return[]
@@ -367,6 +368,9 @@ To return a value from a function, the special variable *return* is defined with
 function body. The result of the function must be assigned to this variable. On exit, the
 value stored in the variable is used as return value. The variable *return* is a scalar
 variable for normal functions, and an array variable for array functions.
+
+The *return* variable is always initialized with zero, and a *return[]* array has always
+size zero.
 
         global <var>
         static <var> := <expression>

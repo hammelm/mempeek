@@ -80,7 +80,7 @@ private:
         ArrayManager* arrays;
         std::vector< param_t > params;
         std::shared_ptr<ASTNode> body;
-        const VarManager::var* retval = nullptr;
+        VarManager::var* retval = nullptr;
         bool has_varargs;
         yylloc_t location;
     } subroutine_t;
