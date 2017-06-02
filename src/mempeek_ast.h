@@ -223,6 +223,7 @@ public:
     typedef std::shared_ptr<ASTNodeStatic> ptr;
 
     ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name, std::string from );
     ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name,
                    ASTNode::ptr expression, bool is_var );
 
@@ -235,6 +236,8 @@ private:
         Environment::var* var;
         Environment::array* array;
     } m_Data;
+
+    Environment::array* m_Copy = nullptr;
 };
 
 

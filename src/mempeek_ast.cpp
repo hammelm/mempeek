@@ -892,6 +892,21 @@ ASTNodeStatic::ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::str
     if( !m_Data.array ) throw ASTExceptionNamingConflict( get_location(), name );
 }
 
+ASTNodeStatic::ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name, std::string from )
+ : ASTNode( yylloc ),
+   m_Status( ARRAY )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeStatic name=" << name << " from=" << from << endl;
+#endif
+
+    m_Data.array = env->alloc_static_array( name );
+    m_Copy = env->get_array( from );
+
+    if( !m_Data.array ) throw ASTExceptionNamingConflict( get_location(), name );
+    if( !m_Copy ) throw ASTExceptionNamingConflict( get_location(), from );
+}
+
 ASTNodeStatic::ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name,
                               ASTNode::ptr expression, bool is_var )
  : ASTNode( yylloc ),
@@ -940,10 +955,19 @@ uint64_t ASTNodeStatic::execute()
 
     case ARRAY:
         if( m_Data.array ) {
-            size_t size = get_children().size();
-            m_Data.array->resize( size );
-            for( size_t i = 0; i < size; i++ ) {
-                m_Data.array->set( i, get_children()[i]->execute() );
+            if( m_Copy ) {
+            	size_t size = m_Copy->get_size();
+            	m_Data.array->resize( size );
+            	for( size_t i = 0; i < size; i++ ) {
+            		m_Data.array->set( i, m_Copy->get( i ) );
+            	}
+            }
+            else {
+                size_t size = get_children().size();
+				m_Data.array->resize( size );
+				for( size_t i = 0; i < size; i++ ) {
+					m_Data.array->set( i, get_children()[i]->execute() );
+				}
             }
             m_Status = INITIALIZED;
         }

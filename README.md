@@ -100,27 +100,23 @@ arrays
 
         dim name[ <expression> ]
 
-Create or resize the array *name* to contain *expression* elements.
+Create or resize the array *name* to contain *expression* elements. When the array size
+is increased or a new array is created, the new elements are initialized with zero. When
+the array size is decreased, the remainig elements are not changed.
 
-	    name[?]
-		name[ <expression> ]
+        name[?]
+        name[ <expression> ]
 
 The first line retrieves the size of the array, the second line retrieves the value at
 index position *expression* from the array.
 
-		name[] := [ <expression>, ... ]
-		name[] := array[]
-		name[] := function()
+        name[] := [ <expression>, ... ]
+        name[] := array[]
+        name[] := function()
 
 The first line assigns to name an array that contains the elements defined by the
 expressions within the square brackets. The second line copies array to name. The third
 line evaluates an array function and assigns the result to name.
-
-        procedure ... name[] ...
-		function( ..., name[], ... )
-
-Arrays can be used as arguments to procedures and functions by placing them to the
-argument list with empty square brackets.
 
 expressions
 -----------
@@ -338,7 +334,7 @@ without parentheses and are separated only by white space.
             ...
         endfunc
 
-	    deffunc[] <name> ( [<parameter> [, <parameter> [, ...]]] )
+       deffunc[] <name> ( [<parameter> [, <parameter> [, ...]]] )
             <command>
             ...
             [exit]
@@ -351,6 +347,11 @@ The parameters can be accessed as variables within the subroutine body. When an 
 keyword is encountered, the execution of the subroutine is stopped and control flow returns
 to the caller.
 
+Parameters are either scalars or arrays. Scalar parameters are passed by value. To use
+arrays as function parameters, empty square brackets must be added after the parameter
+name. Arrays are passed by reference. When changing an array in a function or procedure,
+the array is also changed in the scope of the caller.
+
 Variables which are defined within the subroutine body are not visible outside of the
 subroutine body, and variables defined outside of the subroutine body are not visible
 within. Definition variables are visible within the subroutine body, but it is not allowed
@@ -360,7 +361,7 @@ The function definition comes in two flavors. The first one defines a normal fun
 scalar return value, second one defines an array function which returns an array.
 
         return
-		return[]
+        return[]
 
 To return a value from a function, the special variable *return* is defined within the
 function body. The result of the function must be assigned to this variable. On exit, the
@@ -375,6 +376,16 @@ was defined outside of the function. The keyword "static" can be used to define 
 which is only visible within the function and remains unchanged between function calls.
 The result of *expression* is used as initial value for the variable when the "static"
 keyword is executed for the first time.
+
+        global <var>[]
+        static <var>[ <expression> ]
+        static <var>[] := [ <expression>, ... ]
+        static <var>[] := <local>[]
+
+The "global" and "static" keywords are also allowed for arrays, with the same semantics as
+for scalar variables. The three variants of the "static" command initialize the array
+either with a given size and all elements set to zero, or copies the content from a square
+bracket list of expressions or a local array.
 
         drop procedure
         drop function()
@@ -391,11 +402,11 @@ parameter list. The ellipsis allows to add zero or more optional parameters to t
 function. To retrieve the optional parameters the special keyword "args" is defined with
 the following functions:
 
-	    args{?}                     retrieve number of optional parameters
-		args{ <expr> }              retrieve value of parameter <expr>
-		args{ <expr> }[]?           true if parameter <expr> is an array, false otherwise
-		args{ <expr> }[?]           retrieve array size of parameter <expr>
-		args{ <expr1> }[ <expr2> ]  retrieve array index <expr2> of parameter <exp1>
+        args{?}                     retrieve number of optional parameters
+        args{ <expr> }              retrieve value of parameter <expr>
+        args{ <expr> }[]?           true if parameter <expr> is an array, false otherwise
+        args{ <expr> }[?]           retrieve array size of parameter <expr>
+        args{ <expr1> }[ <expr2> ]  retrieve array index <expr2> of parameter <exp1>
 
 The keyword "args" can be used in the toplevel scope of a mempeek script to retrieve
 parameters which were defined on the mempeek command line using the option -a.

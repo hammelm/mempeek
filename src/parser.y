@@ -202,6 +202,8 @@ static_stmt : T_STATIC plain_identifier
               T_END_OF_STATEMENT                                { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $4.node, false ); }
             | T_STATIC plain_identifier '[' ']'
               T_ASSIGN '[' comma_list ']' T_END_OF_STATEMENT    { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value ); for( auto arg: $7.arglist ) $$.node->add_child( arg.first ); }
+            | T_STATIC plain_identifier '[' ']' T_ASSIGN
+              plain_identifier '[' ']'	T_END_OF_STATEMENT      { $$.node = make_shared<ASTNodeStatic>( @1, env, $2.value, $6.value ); }
             ;
 
 drop_stmt : T_DROP plain_identifier                     { if( !env->drop_procedure( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
