@@ -2,6 +2,12 @@
 # test case: subroutines
 #
 # output:
+# [ 2 4 8 ]
+# [ 10 10 10 ]
+# [ 3 9 27 ]
+# [ 3 7 8 ]
+# [ 3 9 27 ]
+# [ 125 25 5 ]
 # 24
 # 120
 # 420 2226
@@ -11,6 +17,30 @@
 # 3 3
 # 4 4 4
 # 5 quit
+
+defproc printarray a[]
+    print "[" noendl
+    for i from 0 to a[?] - 1 do print " " dec a[i] noendl
+    print " ]"
+endproc
+
+a1[] := [ 2, 4, 8 ]
+a2[] := [ 3, 9, 27 ]
+a3[] := [ 125, 25, 5 ]
+
+defproc arraytest a[]
+	global a1[]
+	static a2[] := [ 10, 10, 10 ]
+	printarray a1[]
+	printarray a2[]
+	printarray a[]
+	a2[] := a[]
+	a1[0] := a1[0] + 1
+endproc
+
+arraytest a2[]
+a1[1] := a1[1] + a1[0]
+arraytest a3[]
 
 deffunc fac( n )
   if n <= 1 then return := 1

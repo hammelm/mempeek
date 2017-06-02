@@ -59,17 +59,26 @@ Assign the result of evaluating *expression* to the definition variable *name*
 
 The definition variable *base.name* is assigned the value *base* + *expression*
 
+        def <base>.<name>[size]{ <expr1> } <expr2>
+
+The definition variable *base.name* is assigned the value *base* + *expr2*. Additionally,
+an index access is set up to access *expr1* consecutive registers starting at
+*base.name*. *size* can be ":8", ":16", ":32" or ":64" and defines the register size in
+bits, i.e. *base.name{i}* is translated to the address *base.name* + *i* * *size*/8. The
+default size is the system word size.
+
         def <base> <expression> from <name>
 
 Clone all derived definition variables name.x to base.x and assign them to the new base
 value *expression*
 
-These operations are not allowed within for loops, while loops, and if statements.
+These operations are not allowed within for loops, while loops, and if statements. All
+expressions in the definitions must be constant and are evaluated at compile time.
 
 assigning values to variables
 -----------------------------
 
-        name := expression
+        name := <expression>
 
 Assign the result of evaluating *expression* to the variable *name*. It is not allowed to
 assign values to a definition variable.
@@ -85,6 +94,33 @@ prefix "0x" or binary number starting with the prefix "0b".
 Numerical values containing a decimal point or exponential values (e.g. 3.14, .5 or 1e-6)
 are interpreted as floating point numbers and are converted to a 64 bit integer value
 representing the IEEE 754 double precision encoding of the floating point number.
+
+arrays
+------
+
+        dim name[ <expression> ]
+
+Create or resize the array *name* to contain *expression* elements.
+
+	    name[?]
+		name[ <expression> ]
+
+The first line retrieves the size of the array, the second line retrieves the value at
+index position *expression* from the array.
+
+		name[] := [ <expression>, ... ]
+		name[] := array[]
+		name[] := function()
+
+The first line assigns to name an array that contains the elements defined by the
+expressions within the square brackets. The second line copies array to name. The third
+line evaluates an array function and assigns the result to name.
+
+        procedure ... name[] ...
+		function( ..., name[], ... )
+
+Arrays can be used as arguments to procedures and functions by placing them to the
+argument list with empty square brackets.
 
 expressions
 -----------
@@ -135,13 +171,6 @@ operators, but they treat their arguments as signed integers in two's complement
         <expr1> -> <expr2>       true if <expr1> is greater than <expr2>
         <expr1> -<= <expr2>      true if <expr1> is lower than or equal to <expr2>
         <expr1> ->= <expr2>      true if <expr1> is greater than or equal to <expr2>
-
-index operator (can be applied on variables or definition variables):
-
-        <name>[<expression>]    evaluates to value of <name> + result of <expression>
-
-**WARNING** This feature is deprecated. The usage of the index operator will very likely
-change in the future to allow the implementation of arrays.
 
 operator precedence
 -------------------
@@ -309,6 +338,13 @@ without parentheses and are separated only by white space.
             ...
         endfunc
 
+	    deffunc[] <name> ( [<parameter> [, <parameter> [, ...]]] )
+            <command>
+            ...
+            [exit]
+            ...
+        endfunc
+
 Define a function or procedure with name *name* and optional parameters. The body of the
 subroutine consists of a list of commands which are executed when the subroutine is called.
 The parameters can be accessed as variables within the subroutine body. When an "exit"
@@ -320,11 +356,16 @@ subroutine body, and variables defined outside of the subroutine body are not vi
 within. Definition variables are visible within the subroutine body, but it is not allowed
 to create or change definition variables from within a subroutine.
 
-        return := <expresion>
+The function definition comes in two flavors. The first one defines a normal function with
+scalar return value, second one defines an array function which returns an array.
+
+        return
+		return[]
 
 To return a value from a function, the special variable *return* is defined within the
 function body. The result of the function must be assigned to this variable. On exit, the
-value stored in the variable is used as return value.
+value stored in the variable is used as return value. The variable *return* is a scalar
+variable for normal functions, and an array variable for array functions.
 
         global <var>
         static <var> := <expression>
@@ -341,6 +382,23 @@ keyword is executed for the first time.
 Functions and procedures cannot be redefined once they exist, but it is possible to remove
 an existing function or procedure with the "drop" command where *procedure* is the name of
 the procedure to be removed, and *function* is the name of the function to be removed.
+
+variable arguments
+------------------
+
+Function and procedure definitions can use an ellipsis "..." as last parameter in the
+parameter list. The ellipsis allows to add zero or more optional parameters to the
+function. To retrieve the optional parameters the special keyword "args" is defined with
+the following functions:
+
+	    args{?}                     retrieve number of optional parameters
+		args{ <expr> }              retrieve value of parameter <expr>
+		args{ <expr> }[]?           true if parameter <expr> is an array, false otherwise
+		args{ <expr> }[?]           retrieve array size of parameter <expr>
+		args{ <expr1> }[ <expr2> ]  retrieve array index <expr2> of parameter <exp1>
+
+The keyword "args" can be used in the toplevel scope of a mempeek script to retrieve
+parameters which were defined on the mempeek command line using the option -a.
 
 floating point numbers
 ----------------------
@@ -391,7 +449,7 @@ or not based on the MD5 hash of the file.
         now
 
 The first command suspends execution for *time* microseconds. The second command waits
-until a fixed point in time. The keyword now can be used in expressions to get the
+until a fixed point in time. The keyword "now" can be used in expressions to get the
 current point in time in microseconds since a fixed reference time in the past. This
 value can be used as argument for the sleep until command.
 
