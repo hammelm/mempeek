@@ -31,7 +31,7 @@
 #include <iostream>
 
 
-#define RELEASE_VERSION "1.1"
+#define RELEASE_VERSION "1.2.0"
 #define RELEASE_COPYRIGHT "Copyright (c) 2015-2017 Martin Hammel"
 
 
