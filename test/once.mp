@@ -1,7 +1,6 @@
 # test case: import and run
 #
 # output:
-#
 # import: cnt = 1
 # import: cnt = 2
 # cnt = 2
@@ -9,7 +8,6 @@
 # cnt = 3
 # import: cnt = 4
 # cnt = 4
-#
 
 pragma loadpath "include"
 pragma print dec

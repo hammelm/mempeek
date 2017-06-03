@@ -3,7 +3,6 @@
 #
 # output:
 # ok
-#
 
 # the following line must not end with a newline
 print "ok"

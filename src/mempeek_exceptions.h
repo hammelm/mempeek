@@ -117,6 +117,15 @@ public:
 	}
 };
 
+class ASTExceptionNoReturnValue : public ASTCompileException {
+public:
+    ASTExceptionNoReturnValue( const yylloc_t& location )
+    {
+        loc( location );
+        msg( "no return value" );
+    }
+};
+
 class ASTExceptionMappingFailure : public ASTCompileException {
 public:
 	ASTExceptionMappingFailure( const yylloc_t& location, uint64_t address,
@@ -156,6 +165,7 @@ public:
     }
 };
 
+
 //////////////////////////////////////////////////////////////////////////////
 // ASTNode runtime exceptions
 //////////////////////////////////////////////////////////////////////////////
@@ -188,12 +198,55 @@ public:
 
 };
 
+class ASTExceptionOutOfBounds : public ASTRuntimeException {
+public:
+    ASTExceptionOutOfBounds( const yylloc_t& location, uint64_t index, uint64_t size )
+     : ASTExceptionOutOfBounds( index, size )
+    {
+        loc( location );
+    }
+
+    ASTExceptionOutOfBounds( uint64_t index, uint64_t size )
+    {
+        msg( "index $0 does not match size $1", index, size );
+    }
+
+    ASTExceptionOutOfBounds( const yylloc_t& location, const ASTExceptionOutOfBounds& ex )
+    {
+        clone( ex );
+        loc( location );
+    }
+};
+
+class ASTExceptionOutOfMemory : public ASTRuntimeException {
+public:
+    ASTExceptionOutOfMemory( uint64_t size )
+    {
+        msg( "failed to allocate array of size $0", size );
+    }
+
+    ASTExceptionOutOfMemory( const yylloc_t& location, const ASTExceptionOutOfMemory& ex )
+    {
+        clone( ex );
+        loc( location );
+    }
+};
+
 class ASTExceptionDroppedSubroutine : public ASTRuntimeException {
 public:
     ASTExceptionDroppedSubroutine( const yylloc_t& location )
     {
         loc( location );
         msg( "calling dropped subroutine" );
+    }
+};
+
+class ASTExceptionArgTypeMismatch : public ASTRuntimeException {
+public:
+    ASTExceptionArgTypeMismatch( const yylloc_t& location, uint64_t index, bool is_array )
+    {
+        loc( location );
+        msg( "type of vararg $0 is $1", index, is_array ? "array" : "var" );
     }
 };
 

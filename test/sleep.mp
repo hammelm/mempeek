@@ -5,7 +5,6 @@
 # below eps
 # below eps
 # below eps
-#
 
 delta := 1000000
 eps := 10000

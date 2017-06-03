@@ -1,16 +1,16 @@
 /*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
-    
+
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions are met:
-    
+
     * Redistributions of source code must retain the above copyright notice, this
       list of conditions and the following disclaimer.
-    
+
     * Redistributions in binary form must reproduce the above copyright notice,
       this list of conditions and the following disclaimer in the documentation
       and/or other materials provided with the distribution.
-    
+
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
     AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
     IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -55,6 +55,7 @@ std::string parse_escape_characters( std::string str );
 ";"                     TOKEN( T_END_OF_STATEMENT )
 
 "def"                   TOKEN( T_DEF )
+"dim"                   TOKEN( T_DIM )
 "map"                   TOKEN( T_MAP )
 "at"                    TOKEN( T_AT )
 "defproc"               TOKEN( T_DEFPROC )
@@ -98,6 +99,9 @@ std::string parse_escape_characters( std::string str );
 "wordsize"              TOKEN( T_WORDSIZE )
 "loadpath"              TOKEN( T_LOADPATH )
 
+"..."                   TOKEN( T_ELLIPSIS )
+"args"                  TOKEN( T_ARGS )
+
 ":8"                    TOKEN( T_8BIT )
 ":16"                   TOKEN( T_16BIT )
 ":32"                   TOKEN( T_32BIT )
@@ -139,8 +143,11 @@ std::string parse_escape_characters( std::string str );
 ","                     TOKEN( ',' )
 "["                     TOKEN( '[' )
 "]"                     TOKEN( ']' )
+"{"                     TOKEN( '{' )
+"}"                     TOKEN( '}' )
 "("                     TOKEN( '(' )
 ")"                     TOKEN( ')' )
+"?"                     TOKEN( '?' )
 
 [a-zA-Z][a-zA-Z0-9_]*   TOKEN( T_IDENTIFIER )
 "0x"[0-9a-fA-F]+        TOKEN( T_CONSTANT )

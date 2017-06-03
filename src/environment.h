@@ -28,31 +28,34 @@
 
 #include "mempeek_parser.h"
 #include "builtins.h"
+#include "subroutines.h"
+#include "variables.h"
+#include "arrays.h"
 #include "mmap.h"
 #include "md5.h"
 
 #include <string>
-#include <utility>
 #include <map>
 #include <set>
-#include <stack>
 #include <vector>
+#include <utility>
 #include <memory>
-
-#include <stdint.h>
 
 
 //////////////////////////////////////////////////////////////////////////////
 // class Environment
 //////////////////////////////////////////////////////////////////////////////
 
-class SubroutineManager;
-class VarStorage;
 class ASTNode;
 
 class Environment {
 public:
-	class var;
+
+    typedef VarManager::var var;
+    typedef ArrayManager::array array;
+    typedef ArrayManager::refarray refarray;
+
+    typedef enum { PROCEDURE, FUNCTION, ARRAYFUNC } subroutine_type_t;
 
 	Environment();
 	~Environment();
@@ -62,12 +65,18 @@ public:
 
     bool add_include_path( std::string path );
 
-	var* alloc_def( std::string name );
 	var* alloc_var( std::string name );
-    var* alloc_global( std::string name );
-    var* alloc_static( std::string name );
+	var* alloc_def_var( std::string name );
+    var* alloc_global_var( std::string name );
+    var* alloc_static_var( std::string name );
 
-	const var* get( std::string name );
+	array* alloc_array( std::string name );
+    array* alloc_global_array( std::string name );
+    array* alloc_static_array( std::string name );
+    refarray* alloc_ref_array( std::string name );
+
+	const var* get_var( std::string name );
+	array* get_array( std::string name );
 
 	std::set< std::string > get_autocompletion( std::string prefix );
 	std::set< std::string > get_struct_members( std::string name );
@@ -76,13 +85,15 @@ public:
 
 	MMap* get_mapping( void* phys_addr, size_t size );
 
-	void enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function );
-    void set_subroutine_param( std::string name );
+	void enter_subroutine_context( const yylloc_t& location, std::string name, subroutine_type_t type );
+    void set_subroutine_param( std::string name, bool is_array = false );
     void set_subroutine_body( std::shared_ptr<ASTNode> body );
+    void set_subroutine_varargs();
 	void commit_subroutine_context();
 
-	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
-    std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
+	std::shared_ptr<ASTNode> get_procedure( const yylloc_t& location, std::string name, const arglist_t& args );
+    std::shared_ptr<ASTNode> get_function( const yylloc_t& location, std::string name, const arglist_t& args );
+    std::shared_ptr<ASTNode> get_arrayfunc( const yylloc_t& location, std::string name, std::string ret, const arglist_t& args );
 
     bool drop_procedure( std::string name );
     bool drop_function( std::string name );
@@ -97,15 +108,26 @@ public:
     static void push_default_modifier();
     static void pop_default_modifier();
 
+    static size_t get_num_varargs();
+    static uint64_t get_vararg_value( size_t index );
+    static array* get_vararg_array( size_t index );
+    static void append_vararg( uint64_t value );
+    static void append_vararg( array* array );
+    static void push_varargs();
+    static void pop_varargs();
+
     static void set_terminate();
     static void clear_terminate();
     static bool is_terminated();
 
     static uint64_t parse_int( std::string str );
+    static uint64_t parse_int( std::string str, bool& is_ok );
     static uint64_t parse_float( std::string str );
+    static uint64_t parse_float( std::string str, bool& is_ok );
 
 private:
-    VarStorage* m_GlobalVars;
+    VarManager* m_GlobalVars;
+    ArrayManager* m_GlobalArrays;
 
 	std::map< void*, MMap* > m_Mappings;
 
@@ -113,9 +135,11 @@ private:
 
 	SubroutineManager* m_ProcedureManager;
 	SubroutineManager* m_FunctionManager;
+	SubroutineManager* m_ArrayfuncManager;
 
 	SubroutineManager* m_SubroutineContext = nullptr;
-    VarStorage* m_LocalVars = nullptr;
+    VarManager* m_LocalVars = nullptr;
+    ArrayManager* m_LocalArrays = nullptr;
 
 	std::vector< std::string > m_IncludePaths;
 	std::set< MD5 > m_ImportedFiles;
@@ -126,185 +150,9 @@ private:
     static int s_DefaultModifier;
     static std::stack<int> s_DefaultModifierStack;
 
+    static std::stack< std::vector< std::pair< uint64_t, array* > > > s_ArgStack;
+
     static volatile sig_atomic_t s_IsTerminated;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class SubroutineManager
-//////////////////////////////////////////////////////////////////////////////
-
-class SubroutineManager {
-public:
-    SubroutineManager( Environment* env );
-    ~SubroutineManager();
-
-    VarStorage* begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
-    void set_param( std::string name );
-    void set_body( std::shared_ptr<ASTNode> body );
-    void commit_subroutine();
-    void abort_subroutine();
-
-    bool drop_subroutine( std::string name );
-
-    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
-
-    bool has_subroutine( std::string name );
-    std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params );
-
-private:
-    typedef struct {
-        VarStorage* vars;
-        std::vector< Environment::var* > params;
-        std::shared_ptr<ASTNode> body;
-        Environment::var* retval = nullptr;
-        yylloc_t location;
-    } subroutine_t;
-
-    Environment* m_Environment;
-
-    std::map< std::string, subroutine_t* > m_Subroutines;
-
-    std::string m_PendingName;
-    subroutine_t* m_PendingSubroutine = nullptr;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage {
-public:
-    VarStorage();
-    ~VarStorage();
-
-    Environment::var* alloc_def( std::string name );
-    Environment::var* alloc_global( std::string name );
-    Environment::var* alloc_ref( std::string name, Environment::var* var );
-    Environment::var* alloc_local( std::string name );
-
-    void get_autocompletion( std::set< std::string >& completions, std::string prefix );
-
-    std::set< std::string > get_struct_members( std::string name );
-
-    const Environment::var* get( std::string name );
-
-    void push();
-    void pop();
-
-private:
-    class defvar;
-    class structvar;
-    class globalvar;
-    class localvar;
-    class refvar;
-
-    std::map< std::string, Environment::var* > m_Vars;
-
-    uint64_t* m_Storage = nullptr;
-    size_t m_StorageSize = 0;
-    std::stack< uint64_t* > m_Stack;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class Environment::var
-//////////////////////////////////////////////////////////////////////////////
-
-class  Environment::var {
-public:
-	virtual ~var();
-
-	virtual bool is_def() const;
-    virtual bool is_local() const;
-
-	virtual uint64_t get() const = 0;
-	virtual void set( uint64_t value ) = 0;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::defvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::defvar : public Environment::var {
-public:
-    bool is_def() const override;
-
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    uint64_t m_Value = 0;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::structvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::structvar : public Environment::var {
-public:
-    structvar( const Environment::var* base );
-
-    bool is_def() const override;
-
-    uint64_t get() const override;
-    void set( uint64_t offset ) override;
-
-private:
-    uint64_t m_Offset = 0;
-    const Environment::var* m_Base;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::globalvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::globalvar : public Environment::var {
-public:
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    uint64_t m_Value = 0;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::localvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::localvar : public Environment::var {
-public:
-    localvar( uint64_t*& storage, size_t offset );
-
-    bool is_local() const override;
-
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    uint64_t*& m_Storage;
-    size_t m_Offset;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::refvar
-//////////////////////////////////////////////////////////////////////////////
-
-class VarStorage::refvar : public Environment::var {
-public:
-    refvar( Environment::var* var );
-
-    uint64_t get() const override;
-    void set( uint64_t value ) override;
-
-private:
-    Environment::var* m_Var;
 };
 
 
@@ -312,7 +160,7 @@ private:
 // class Environment inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline Environment::var* Environment::alloc_def( std::string name )
+inline Environment::var* Environment::alloc_def_var( std::string name )
 {
     return m_GlobalVars->alloc_def( name );
 }
@@ -327,18 +175,44 @@ inline Environment::var* Environment::alloc_var( std::string name )
     else return m_GlobalVars->alloc_global( name );
 }
 
-inline Environment::var* Environment::alloc_global( std::string name )
+inline Environment::var* Environment::alloc_global_var( std::string name )
 {
     Environment::var* var = m_GlobalVars->alloc_global( name );
 
-    if( var && m_LocalVars ) return m_LocalVars->alloc_ref( name, var );
+    if( var && m_LocalVars ) return m_LocalVars->alloc_delegate( name, var );
     else return var;
 }
 
-inline Environment::var* Environment::alloc_static( std::string name )
+inline Environment::var* Environment::alloc_static_var( std::string name )
 {
     if( m_LocalVars ) return m_LocalVars->alloc_global( name );
     else return m_GlobalVars->alloc_global( name );
+}
+
+inline Environment::array* Environment::alloc_array( std::string name )
+{
+    if( m_LocalArrays ) return m_LocalArrays->alloc_local( name );
+    else return m_GlobalArrays->alloc_global( name );
+}
+
+inline Environment::array* Environment::alloc_global_array( std::string name )
+{
+    Environment::array* array = m_GlobalArrays->alloc_global( name );
+
+    if( array && m_LocalArrays ) return m_LocalArrays->alloc_delegate( name, array );
+    else return array;
+}
+
+inline Environment::array* Environment::alloc_static_array( std::string name )
+{
+    if( m_LocalArrays ) return m_LocalArrays->alloc_global( name );
+    else return m_GlobalArrays->alloc_global( name );
+}
+
+inline Environment::refarray* Environment::alloc_ref_array( std::string name )
+{
+    if( m_LocalArrays ) return m_LocalArrays->alloc_ref( name );
+    else return m_GlobalArrays->alloc_ref( name );
 }
 
 inline std::set< std::string > Environment::get_struct_members( std::string name )
@@ -353,7 +227,8 @@ inline bool Environment::drop_procedure( std::string name )
 
 inline bool Environment::drop_function( std::string name )
 {
-    return m_FunctionManager->drop_subroutine( name );
+    if( m_FunctionManager->drop_subroutine( name ) ) return true;
+    else return m_ArrayfuncManager->drop_subroutine( name );
 }
 
 inline void Environment::set_terminate()
@@ -369,6 +244,18 @@ inline void Environment::clear_terminate()
 inline bool Environment::is_terminated()
 {
     return s_IsTerminated == 1;
+}
+
+inline uint64_t Environment::parse_int( std::string str )
+{
+    bool dummy = false;
+    return parse_int( str, dummy );
+}
+
+inline uint64_t Environment::parse_float( std::string str )
+{
+    bool dummy = false;
+    return parse_float( str, dummy );
 }
 
 inline int Environment::get_default_size()
@@ -402,43 +289,39 @@ inline void Environment::pop_default_modifier()
     s_DefaultModifierStack.pop();
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-// class SubroutineManager inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline bool SubroutineManager::has_subroutine( std::string name )
+inline size_t Environment::get_num_varargs()
 {
-    auto iter = m_Subroutines.find( name );
-    return iter != m_Subroutines.end();
+    return s_ArgStack.top().size();
 }
 
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline const Environment::var* VarStorage::get( std::string name )
+inline uint64_t Environment::get_vararg_value( size_t index )
 {
-    auto iter = m_Vars.find( name );
-    if( iter == m_Vars.end() ) return nullptr;
-    else return iter->second;
+    return s_ArgStack.top()[index].first;
 }
 
-inline void VarStorage::push()
+inline Environment::array* Environment::get_vararg_array( size_t index )
 {
-    if( m_StorageSize > 0 )
-        m_Stack.push( m_Storage );
-        m_Storage = new uint64_t[ m_StorageSize ];
+    return s_ArgStack.top()[index].second;
 }
 
-inline void VarStorage::pop()
+inline void Environment::append_vararg( uint64_t value )
 {
-    if( !m_Stack.empty() ) {
-        delete[] m_Storage;
-        m_Storage = m_Stack.top();
-        m_Stack.pop();
-    }
+    s_ArgStack.top().push_back( std::make_pair( value, (array*)nullptr ) );
+}
+
+inline void Environment::append_vararg( array* array )
+{
+    s_ArgStack.top().push_back( std::make_pair( (uint64_t)0, array ) );
+}
+
+inline void Environment::push_varargs()
+{
+    s_ArgStack.emplace();
+}
+
+inline void Environment::pop_varargs()
+{
+    s_ArgStack.pop();
 }
 
 

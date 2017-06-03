@@ -28,10 +28,12 @@
 
 #include "mempeek_parser.h"
 #include "environment.h"
+#include "subroutines.h"
 
 #include <ostream>
 #include <string>
 #include <vector>
+#include <stack>
 #include <memory>
 
 #include <stdint.h>
@@ -53,11 +55,12 @@ public:
 	ASTNode( const yylloc_t& yylloc );
 	virtual ~ASTNode();
 
-	const yylloc_t& get_location();
+	const yylloc_t& get_location() const;
 
 	void add_child( ASTNode::ptr node );
 
 	virtual uint64_t execute() = 0;
+    virtual bool get_array_result( Environment::array*& array );
 
 	bool is_constant();
 	virtual ASTNode::ptr clone_to_const();
@@ -142,21 +145,25 @@ class ASTNodeSubroutine : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSubroutine> ptr;
 
-    ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body, VarStorage* vars,
-                       std::vector< Environment::var* >& params, Environment::var* retval = nullptr );
+    ASTNodeSubroutine( const yylloc_t& yylloc, std::weak_ptr<ASTNode> body,
+                       Environment* env, VarManager* vars, ArrayManager* arrays,
+                       std::vector< SubroutineManager::param_t >& params,
+                       size_t num_varargs, Environment::var* retval = nullptr );
 
     uint64_t execute() override;
 
 private:
-    VarStorage* m_LocalVars;
+    Environment* m_Env;
+    VarManager* m_LocalVars;
+    ArrayManager* m_LocalArrays;
 
-    std::vector< Environment::var* > m_Params;
+    std::vector< SubroutineManager::param_t > m_Params;
+    size_t m_NumVarargs;
     Environment::var* m_Retval;
 
     // use weak_ptr for subroutine body to break circular references of recursive
     // calls, a shared_ptr to the body remains in class SubroutineManager
     std::weak_ptr<ASTNode> m_Body;
-
 };
 
 
@@ -168,14 +175,42 @@ class ASTNodeAssign : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeAssign> ptr;
 
+    ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, std::string copy );
     ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
+    ASTNodeAssign( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index, ASTNode::ptr expression );
 
     uint64_t execute() override;
 
     Environment::var* get_var();
 
 private:
-    Environment::var* m_Var;
+    enum { VAR, ARRAY, ARRAYLIST, ARRAYCOPY } m_Type;
+
+    union {
+        Environment::var* var;
+        Environment::array* array;
+    } m_LValue;
+
+    Environment::array* m_Copy = nullptr;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeAssignArg
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeAssignArg : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeAssignArg> ptr;
+
+    ASTNodeAssignArg( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
+
+    uint64_t execute() override;
+
+private:
+    Environment* m_Env;
+    Environment::array* m_Array;
 };
 
 
@@ -187,15 +222,22 @@ class ASTNodeStatic : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeStatic> ptr;
 
-    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr expression );
+    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name, std::string from );
+    ASTNodeStatic( const yylloc_t& yylloc, Environment* env, std::string name,
+                   ASTNode::ptr expression, bool is_var );
 
     uint64_t execute() override;
 
-    Environment::var* get_var();
-
 private:
-    bool m_IsInitialized;
-    Environment::var* m_Var;
+    enum { VAR, ARRAY, EMPTY_ARRAY, INITIALIZED }  m_Status;
+
+    union {
+        Environment::var* var;
+        Environment::array* array;
+    } m_Data;
+
+    Environment::array* m_Copy = nullptr;
 };
 
 
@@ -355,9 +397,27 @@ public:
     typedef std::shared_ptr<ASTNodeDef> ptr;
 
 	ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr address );
+    ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr range, ASTNode::ptr address, int size );
 	ASTNodeDef( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr address, std::string from );
 
 	uint64_t execute() override;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeDim
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeDim : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeDim> ptr;
+
+    ASTNodeDim( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr size );
+
+    uint64_t execute() override;
+
+private:
+    Environment::array* m_Array;
 };
 
 
@@ -460,12 +520,71 @@ public:
     typedef std::shared_ptr<ASTNodeVar> ptr;
 
 	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name );
-	ASTNodeVar( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
 
 	uint64_t execute() override;
 
 private:
 	const Environment::var* m_Var;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArg
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeArg : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeArg> ptr;
+
+    typedef enum { GET_TYPE, GET_VAR, GET_ARRAYSIZE } query_t;
+
+    ASTNodeArg( const yylloc_t& yylloc, Environment* env );
+    ASTNodeArg( const yylloc_t& yylloc, Environment* env, ASTNode::ptr arg_index, query_t query = GET_VAR );
+    ASTNodeArg( const yylloc_t& yylloc, Environment* env, ASTNode::ptr arg_index, ASTNode::ptr array_index );
+
+    uint64_t execute() override;
+
+private:
+    Environment* m_Env;
+
+    query_t m_Query = GET_VAR;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeRange
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeRange : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeRange> ptr;
+
+    ASTNodeRange( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeRange( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
+
+    uint64_t execute() override;
+
+private:
+    const Environment::var* m_Var;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArray
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeArray : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeArray> ptr;
+
+    ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name );
+    ASTNodeArray( const yylloc_t& yylloc, Environment* env, std::string name, ASTNode::ptr index );
+
+    uint64_t execute() override;
+    bool get_array_result( Environment::array*& array ) override;
+
+private:
+    Environment::array* m_Array;
 };
 
 
@@ -491,7 +610,7 @@ private:
 // class ASTNode inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline const yylloc_t& ASTNode::get_location()
+inline const yylloc_t& ASTNode::get_location() const
 {
 	return m_Location;
 }
@@ -533,16 +652,6 @@ inline uint64_t ASTNode::compiletime_execute( ASTNode::ptr node )
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class ASTNodeAssign inline functions
-//////////////////////////////////////////////////////////////////////////////
-
-inline Environment::var* ASTNodeAssign::get_var()
-{
-    return m_Var;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeBuiltin template functions
 //////////////////////////////////////////////////////////////////////////////
 
@@ -552,7 +661,7 @@ inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::
    m_Builtin( builtin )
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+    std::cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
 #endif
 }
 
@@ -560,7 +669,7 @@ template< size_t NUM_ARGS >
 inline uint64_t ASTNodeBuiltin< NUM_ARGS >::execute()
 {
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << endl;
+    std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
 #endif
 
     assert( get_children().size() == NUM_ARGS );

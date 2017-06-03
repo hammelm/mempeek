@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016, Martin Hammel
+/*  Copyright (c) 2016-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -23,52 +23,96 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef __builtins_h__
-#define __builtins_h__
+#ifndef __subroutines_h__
+#define __subroutines_h__
 
 #include "mempeek_parser.h"
+#include "variables.h"
+#include "arrays.h"
 
 #include <string>
 #include <map>
 #include <set>
 #include <vector>
-#include <functional>
-#include <utility>
 #include <memory>
 
 class ASTNode;
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class BuiltinManager
+// class SubroutineManager
 //////////////////////////////////////////////////////////////////////////////
 
-class BuiltinManager {
+class SubroutineManager {
 public:
-    BuiltinManager();
+    SubroutineManager( Environment* env );
+    ~SubroutineManager();
+
+    void begin_subroutine( const yylloc_t& location, std::string name, bool is_function );
+    void set_param( std::string name, bool is_array );
+    void set_body( std::shared_ptr<ASTNode> body );
+    void set_varargs();
+    void commit_subroutine();
+    void abort_subroutine();
+
+    bool drop_subroutine( std::string name );
+
+    VarManager* get_var_manager();
+    ArrayManager* get_array_manager();
 
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
     bool has_subroutine( std::string name );
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, const arglist_t& args );
 
-private:
-     typedef std::function< std::shared_ptr<ASTNode>( const yylloc_t& location ) > nodecreator_t;
-     typedef std::map< std::string, std::pair< size_t, nodecreator_t > > builtinmap_t;
+    typedef struct {
+        bool is_array;
+        union {
+            VarManager::var* var;
+            ArrayManager::refarray* array;
+        } param;
+    } param_t;
 
-     builtinmap_t m_Builtins;
+
+private:
+    typedef struct {
+        VarManager* vars;
+        ArrayManager* arrays;
+        std::vector< param_t > params;
+        std::shared_ptr<ASTNode> body;
+        VarManager::var* retval = nullptr;
+        bool has_varargs;
+        yylloc_t location;
+    } subroutine_t;
+
+    Environment* m_Environment;
+
+    std::map< std::string, subroutine_t* > m_Subroutines;
+
+    std::string m_PendingName;
+    subroutine_t* m_PendingSubroutine = nullptr;
 };
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class BuiltinManager inline functions
+// class SubroutineManager inline functions
 //////////////////////////////////////////////////////////////////////////////
 
-inline bool BuiltinManager::has_subroutine( std::string name )
+inline bool SubroutineManager::has_subroutine( std::string name )
 {
-    auto iter = m_Builtins.find( name );
-    return iter != m_Builtins.end();
+    auto iter = m_Subroutines.find( name );
+    return iter != m_Subroutines.end();
+}
+
+inline VarManager* SubroutineManager::get_var_manager()
+{
+    return m_PendingSubroutine ? m_PendingSubroutine->vars : nullptr;
+}
+
+inline ArrayManager* SubroutineManager::get_array_manager()
+{
+    return m_PendingSubroutine ? m_PendingSubroutine->arrays : nullptr;
 }
 
 
-#endif // __builtins_h__
+#endif // __subroutines_h__

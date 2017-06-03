@@ -5,7 +5,6 @@
 # 0: dfhjk
 # 1: abcegil
 # 2: abcegim
-#
 
 for i from 0 to 2 do
 

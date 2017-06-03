@@ -105,6 +105,7 @@ static void print_usage( const char* name )
             "    -i          Enter interactive mode when all scripts and commands are completed\n"
             "    -I <path>   Add <path> to the search path of the \"import\" command\n"
             "    -c <stmt>   Execute the mempeek command <stmt>\n"
+            "    -a <value>  Append value to script arguments\n"
             "    -l <file>   Write output and interactive input to <file>\n"
             "    -ll <file>  Append output and interactive input to <file>\n"
             "    -v          Print version\n"
@@ -225,6 +226,7 @@ int main( int argc, char** argv )
     basic_teebuf< char >* cout_buf = nullptr;
     basic_teebuf< char >* cerr_buf = nullptr;
 
+    Environment::push_varargs();
     Environment env;
 
     try {
@@ -271,6 +273,20 @@ int main( int argc, char** argv )
                 }
                 parse( &env, argv[i], false );
                 has_commands = true;
+            }
+            else if( strcmp( argv[i], "-a" ) == 0 ) {
+                if( ++i >= argc ) {
+                    cerr << "missing argument" << endl;
+                    throw ASTExceptionQuit();
+                }
+                bool is_ok;
+                uint64_t value = Environment::parse_int( argv[i], is_ok );
+                if( !is_ok ) value = Environment::parse_float( argv[i], is_ok );
+                if( !is_ok ) {
+                    cerr << "could not parse parameter " << argv[i] << endl;
+                    throw ASTExceptionQuit();
+                }
+                Environment::append_vararg( value );
             }
             else if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "-ll" ) == 0 ) {
                 if( logfile ) {
@@ -325,6 +341,8 @@ int main( int argc, char** argv )
         delete logfile;
         // teebuffers are not deleted because cout/cerr still use them
     }
+
+    Environment::pop_varargs();
 
     return 0;
 }

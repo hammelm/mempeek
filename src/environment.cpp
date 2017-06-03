@@ -52,17 +52,21 @@ std::stack<int> Environment::s_DefaultSizeStack;
 int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE;
 std::stack<int> Environment::s_DefaultModifierStack;
 
+std::stack< std::vector< std::pair< uint64_t, Environment::array* > > > Environment::s_ArgStack;
+
 volatile sig_atomic_t Environment::s_IsTerminated = 0;
 
 
 Environment::Environment()
 {
-    m_GlobalVars = new VarStorage;
+    m_GlobalVars = new VarManager;
+    m_GlobalArrays = new ArrayManager;
 
     m_BuiltinManager = new BuiltinManager;
 
     m_ProcedureManager = new SubroutineManager( this );
     m_FunctionManager = new SubroutineManager( this );
+    m_ArrayfuncManager = new SubroutineManager( this );
 }
 
 Environment::~Environment()
@@ -71,9 +75,11 @@ Environment::~Environment()
 
 	delete m_ProcedureManager;
 	delete m_FunctionManager;
+	delete m_ArrayfuncManager;
 
 	delete m_BuiltinManager;
 
+    delete m_GlobalArrays;
 	delete m_GlobalVars;
 }
 
@@ -168,6 +174,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
             m_SubroutineContext->abort_subroutine();
             m_SubroutineContext = nullptr;
             m_LocalVars = nullptr;
+            m_LocalArrays = nullptr;
         }
 
         throw;
@@ -195,7 +202,7 @@ bool Environment::add_include_path( std::string path )
     return ret;
 }
 
-const Environment::var* Environment::get( std::string name )
+const Environment::var* Environment::get_var( std::string name )
 {
     if( m_LocalVars ) {
         const Environment::var* var = m_LocalVars->get( name );
@@ -208,16 +215,30 @@ const Environment::var* Environment::get( std::string name )
     else return m_GlobalVars->get( name );
 }
 
+Environment::array* Environment::get_array( std::string name )
+{
+    if( m_LocalArrays ) {
+        Environment::array* array = m_LocalArrays->get( name );
+        if( array ) return array;
+    }
+
+    return m_GlobalArrays->get( name );
+}
+
 std::set< std::string > Environment::get_autocompletion( std::string prefix )
 {
     set< string > completions;
 
     m_BuiltinManager->get_autocompletion( completions, prefix );
     m_FunctionManager->get_autocompletion( completions, prefix );
+    m_ArrayfuncManager->get_autocompletion( completions, prefix );
     // m_ProcedureManager is skipped intentionally; procedures are more like keywords than variables
 
     m_GlobalVars->get_autocompletion( completions, prefix );
     if( m_LocalVars ) m_LocalVars->get_autocompletion( completions, prefix );
+
+    m_GlobalArrays->get_autocompletion( completions, prefix );
+    if( m_LocalArrays ) m_LocalArrays->get_autocompletion( completions, prefix );
 
     return completions;
 }
@@ -250,26 +271,47 @@ MMap* Environment::get_mapping( void* phys_addr, size_t size )
 	else return mmap;
 }
 
-void Environment::enter_subroutine_context( const yylloc_t& location, std::string name, bool is_function )
+void Environment::enter_subroutine_context( const yylloc_t& location, std::string name, subroutine_type_t type )
 {
-    assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr );
+    assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr && m_LocalArrays == nullptr );
 
-    if( is_function ) {
-        if( m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    if( m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+
+    switch( type ) {
+    case PROCEDURE:
         if( m_FunctionManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+        if( m_ArrayfuncManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+
+        m_SubroutineContext = m_ProcedureManager;
+        break;
+
+    case FUNCTION:
+    	if( m_ProcedureManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+        if( m_ArrayfuncManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+
+    	m_SubroutineContext = m_FunctionManager;
+    	break;
+
+    case ARRAYFUNC:
+    	if( m_ProcedureManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+        if( m_FunctionManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+
+    	m_SubroutineContext = m_ArrayfuncManager;
+    	break;
     }
-    else if( m_ProcedureManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
 
-    m_SubroutineContext = is_function ? m_FunctionManager : m_ProcedureManager;
+    m_SubroutineContext->begin_subroutine( location, name, (type == FUNCTION) ? true : false );
+    m_LocalVars = m_SubroutineContext->get_var_manager();
+    m_LocalArrays = m_SubroutineContext->get_array_manager();
 
-    m_LocalVars = m_SubroutineContext->begin_subroutine( location, name, is_function );
+    if( type == ARRAYFUNC ) set_subroutine_param( "return", true );
 }
 
-void Environment::set_subroutine_param( std::string name )
+void Environment::set_subroutine_param( std::string name, bool is_array )
 {
     assert( m_SubroutineContext );
 
-    m_SubroutineContext->set_param( name );
+    m_SubroutineContext->set_param( name, is_array );
 }
 
 void Environment::set_subroutine_body( std::shared_ptr<ASTNode> body  )
@@ -277,6 +319,13 @@ void Environment::set_subroutine_body( std::shared_ptr<ASTNode> body  )
     assert( m_SubroutineContext );
 
     m_SubroutineContext->set_body( body );
+}
+
+void Environment::set_subroutine_varargs()
+{
+    assert( m_SubroutineContext );
+
+    m_SubroutineContext->set_varargs();
 }
 
 void Environment::commit_subroutine_context( )
@@ -287,28 +336,59 @@ void Environment::commit_subroutine_context( )
 
     m_SubroutineContext = nullptr;
     m_LocalVars = nullptr;
+    m_LocalArrays = nullptr;
 }
 
-std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, std::string name, const arglist_t& args )
 {
-    std::shared_ptr<ASTNode> node = m_ProcedureManager->get_subroutine( location, name, params );
+    std::shared_ptr<ASTNode> node = m_ProcedureManager->get_subroutine( location, name, args );
     if( !node ) throw ASTExceptionNamingConflict( location, name );
     return node;
 }
 
-std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
+std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, const arglist_t& args )
 {
-    std::shared_ptr<ASTNode> node = m_BuiltinManager->get_subroutine( location, name, params );
+    std::shared_ptr<ASTNode> node = m_BuiltinManager->get_subroutine( location, name, args );
     if( node ) return node;
 
-    node = m_FunctionManager->get_subroutine( location, name, params );
+    node = m_FunctionManager->get_subroutine( location, name, args );
     if( !node ) throw ASTExceptionNamingConflict( location, name );
     return node;
 }
 
-uint64_t Environment::parse_int( string str )
+std::shared_ptr<ASTNode> Environment::get_arrayfunc( const yylloc_t& location, std::string name, std::string ret, const arglist_t& args )
+{
+	arglist_t retargs;
+	retargs.push_back( make_pair( ASTNode::ptr(nullptr), ret ) );
+
+	bool ret_is_input = false;
+	for( auto arg: args ) {
+		if( arg.second == ret ) ret_is_input = true;
+		retargs.push_back( arg );
+	}
+
+	std::shared_ptr<ASTNode> block = make_shared<ASTNodeBlock>( location );
+	std::shared_ptr<ASTNode> zero = make_shared<ASTNodeConstant>( location, 0 );
+
+	if( ret_is_input ) {
+		retargs[0].second = "@return";
+		block->add_child( make_shared<ASTNodeDim>( location, this, retargs[0].second, zero ) );
+	}
+	else block->add_child( make_shared<ASTNodeDim>( location, this, ret, zero ) );
+
+    std::shared_ptr<ASTNode> subroutine = m_ArrayfuncManager->get_subroutine( location, name, retargs );
+    if( !subroutine ) throw ASTExceptionNamingConflict( location, name );
+    block->add_child( subroutine );
+
+    if( ret_is_input ) block->add_child( make_shared<ASTNodeAssign>( location, this, ret, retargs[0].second ) );
+
+    return block;
+}
+
+uint64_t Environment::parse_int( string str, bool& is_ok )
 {
     uint64_t value = 0;
+    is_ok = true;
 
     if( str.length() > 2 )
     {
@@ -316,7 +396,10 @@ uint64_t Environment::parse_int( string str )
             for( size_t i = 2; i < str.length(); i++ ) {
                 value <<= 1;
                 if( str[i] == '1' ) value |= 1;
-                else if( str[i] != '0' ) return 0;
+                else if( str[i] != '0' ) {
+                    is_ok = false;
+                    return 0;
+                }
             }
             return value;
         }
@@ -325,23 +408,33 @@ uint64_t Environment::parse_int( string str )
             istringstream stream( str );
             stream >> hex >> value;
             if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-            else return 0;
+            else  {
+                is_ok = false;
+                return 0;
+            }
         }
     }
 
     istringstream stream( str );
     stream >> dec >> value;
     if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return value;
-    else return 0;
+    else  {
+        is_ok = false;
+        return 0;
+    }
 }
 
-uint64_t Environment::parse_float( string str )
+uint64_t Environment::parse_float( string str, bool& is_ok )
 {
     double d;
+    is_ok = true;
     istringstream stream( str );
     stream >> d;
-    if( stream.fail() || stream.bad() || !(stream.eof() || (stream >> ws).eof()) ) return 0;
-    else return *(uint64_t*)&d;
+    if( !stream.fail() && !stream.bad() && (stream.eof() || (stream >> ws).eof()) ) return *(uint64_t*)&d;
+    else  {
+        is_ok = false;
+        return 0;
+    }
 }
 
 bool Environment::set_default_size( int size )
@@ -395,341 +488,4 @@ bool Environment::set_default_modifier( int modifier )
     default:
         return false;
     }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class SubroutineManager implementation
-//////////////////////////////////////////////////////////////////////////////
-
-SubroutineManager::SubroutineManager( Environment* env )
- : m_Environment( env )
-{}
-
-SubroutineManager::~SubroutineManager()
-{
-    if( m_PendingSubroutine ) {
-        delete m_PendingSubroutine->vars;
-        delete m_PendingSubroutine;
-    }
-
-    for( auto value: m_Subroutines ) {
-        delete value.second->vars;
-        delete value.second;
-    }
-}
-
-VarStorage* SubroutineManager::begin_subroutine( const yylloc_t& location, std::string name, bool is_function )
-{
-    assert( m_PendingSubroutine == nullptr );
-
-    if( m_Subroutines.find( name ) != m_Subroutines.end() ) throw ASTExceptionNamingConflict( location, name );
-
-    m_PendingName = name;
-    m_PendingSubroutine = new subroutine_t;
-    m_PendingSubroutine->vars = new VarStorage;
-    m_PendingSubroutine->location = location;
-
-    if( is_function ) {
-        m_PendingSubroutine->retval =  m_PendingSubroutine->vars->alloc_local( "return" );
-        assert( m_PendingSubroutine->retval );
-    }
-
-    return m_PendingSubroutine->vars;
-}
-
-void SubroutineManager::set_param( std::string name )
-{
-    assert( m_PendingSubroutine );
-
-    Environment::var* var = m_Environment->alloc_var( name );
-    if( !var ) throw ASTExceptionNamingConflict( m_PendingSubroutine->location, name );
-
-    m_PendingSubroutine->params.push_back( var );
-}
-
-void SubroutineManager::set_body( std::shared_ptr<ASTNode> body )
-{
-    assert( m_PendingSubroutine );
-
-    m_PendingSubroutine->body = body;
-}
-
-void SubroutineManager::commit_subroutine()
-{
-    assert( m_PendingSubroutine );
-
-    m_Subroutines[ m_PendingName ] = m_PendingSubroutine;
-
-    m_PendingSubroutine = nullptr;
-}
-
-void SubroutineManager::abort_subroutine()
-{
-    assert( m_PendingSubroutine );
-
-    delete m_PendingSubroutine->vars;
-    delete m_PendingSubroutine;
-
-    m_PendingSubroutine = nullptr;
-}
-
-bool SubroutineManager::drop_subroutine( std::string name )
-{
-    auto iter = m_Subroutines.find( name );
-    if( iter == m_Subroutines.end() ) return false;
-
-    delete iter->second->vars;
-    delete iter->second;
-
-    m_Subroutines.erase( iter );
-
-    return true;
-}
-
-void SubroutineManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
-{
-    for( auto iter = m_Subroutines.lower_bound( prefix ); iter != m_Subroutines.end(); iter++ ) {
-        if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
-        completions.insert( iter->first );
-    }
-}
-
-std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& location, std::string name, std::vector< std::shared_ptr<ASTNode> >& params )
-{
-    subroutine_t* subroutine;
-
-    if( m_PendingSubroutine && m_PendingName == name ) subroutine = m_PendingSubroutine;
-    else {
-        auto value = m_Subroutines.find( name );
-        if( value == m_Subroutines.end() ) return nullptr;
-        subroutine = value->second;
-    }
-
-    if( subroutine->params.size() != params.size() ) throw ASTExceptionSyntaxError( location );
-
-    ASTNode::ptr node = make_shared<ASTNodeSubroutine>( location, subroutine->body, subroutine->vars, subroutine->params, subroutine->retval );
-
-    for( auto param: params ) node->add_child( param );
-
-    return node;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage implementation
-//////////////////////////////////////////////////////////////////////////////
-
-VarStorage::VarStorage()
-{}
-
-VarStorage::~VarStorage()
-{
-    for( auto value: m_Vars ) delete value.second;
-
-    if( m_Storage ) delete[] m_Storage;
-    while( !m_Stack.empty() ) {
-        delete[] m_Stack.top();
-        m_Stack.pop();
-    }
-}
-
-Environment::var* VarStorage::alloc_def( std::string name )
-{
-    auto iter = m_Vars.find( name );
-
-    if( iter == m_Vars.end() ) {
-        size_t dot = name.find( '.' );
-
-        if( dot == string::npos ) {
-            Environment::var* var = new VarStorage::defvar();
-            iter = m_Vars.insert( make_pair( name, var ) ).first;
-        }
-        else {
-            auto base = m_Vars.find( name.substr( 0, dot ) );
-            if( base == m_Vars.end() ) return nullptr;
-
-            Environment::var* var = new VarStorage::structvar( base->second );
-            iter = m_Vars.insert( make_pair( name, var ) ).first;
-        }
-    }
-    else if( !iter->second->is_def() ) return nullptr;
-
-    return iter->second;
-}
-
-Environment::var* VarStorage::alloc_global( std::string name )
-{
-    auto iter = m_Vars.find( name );
-
-    if( iter == m_Vars.end() ) {
-        Environment::var* var = new VarStorage::globalvar();
-        iter = m_Vars.insert( make_pair( name, var ) ).first;
-    }
-    else if( iter->second->is_def() ) return nullptr;
-
-    return iter->second;
-}
-
-Environment::var* VarStorage::alloc_ref( std::string name, Environment::var* var )
-{
-    if( m_Vars.find( name ) != m_Vars.end() ) return nullptr;
-
-    Environment::var* ref = new VarStorage::refvar( var );
-    m_Vars[ name ] = ref;
-    return ref;
-}
-
-Environment::var* VarStorage::alloc_local( std::string name )
-{
-    auto iter = m_Vars.find( name );
-
-    if( iter == m_Vars.end() ) {
-        Environment::var* var = new VarStorage::localvar( m_Storage, m_StorageSize++ );
-        iter = m_Vars.insert( make_pair( name, var ) ).first;
-    }
-    else if( iter->second->is_def() ) return nullptr;
-
-    return iter->second;
-}
-
-void VarStorage::get_autocompletion( std::set< std::string >& completions, std::string prefix )
-{
-    for( auto iter = m_Vars.lower_bound( prefix ); iter != m_Vars.end(); iter++ ) {
-        if( iter->first.substr( 0, prefix.length() ) != prefix ) break;
-        completions.insert( iter->first );
-    }
-}
-
-std::set< std::string > VarStorage::get_struct_members( std::string name )
-{
-    set< string > members;
-
-    for( auto iter = m_Vars.lower_bound( name + '.' ); iter != m_Vars.end(); iter++  ) {
-        if( iter->first.substr( 0, name.length() + 1 ) != name + '.' ) break;
-        members.insert( iter->first.substr( name.length() + 1, string::npos ) );
-    }
-
-    return members;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class Environment::var implementation
-//////////////////////////////////////////////////////////////////////////////
-
-Environment::var::~var()
-{}
-
-bool Environment::var::is_def() const
-{
-    return false;
-}
-
-bool Environment::var::is_local() const
-{
-    return false;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::defvar implementation
-//////////////////////////////////////////////////////////////////////////////
-
-bool VarStorage::defvar::is_def() const
-{
-    return true;
-}
-
-uint64_t VarStorage::defvar::get() const
-{
-    return m_Value;
-}
-
-void VarStorage::defvar::set( uint64_t value )
-{
-    m_Value = value;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::structvar implementation
-//////////////////////////////////////////////////////////////////////////////
-
-VarStorage::structvar::structvar( const Environment::var* base )
- : m_Base( base )
-{}
-
-bool VarStorage::structvar::is_def() const
-{
-    return true;
-}
-
-uint64_t VarStorage::structvar::get() const
-{
-    return m_Base->get() + m_Offset;
-}
-
-void VarStorage::structvar::set( uint64_t offset )
-{
-    m_Offset = offset;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::globalvar implementation
-//////////////////////////////////////////////////////////////////////////////
-
-uint64_t VarStorage::globalvar::get() const
-{
-    return m_Value;
-}
-
-void VarStorage::globalvar::set( uint64_t value )
-{
-    m_Value = value;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::localvar implementation
-//////////////////////////////////////////////////////////////////////////////
-
-VarStorage::localvar::localvar( uint64_t*& storage, size_t offset )
- : m_Storage( storage ),
-   m_Offset( offset )
-{}
-
-bool VarStorage::localvar::is_local() const
-{
-    return true;
-}
-
-uint64_t VarStorage::localvar::get() const
-{
-    return m_Storage[ m_Offset ];
-}
-
-void VarStorage::localvar::set( uint64_t value )
-{
-    m_Storage[ m_Offset ] = value;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class VarStorage::refvar implementation
-//////////////////////////////////////////////////////////////////////////////
-
-VarStorage::refvar::refvar( Environment::var* var)
- : m_Var( var )
-{}
-
-uint64_t VarStorage::refvar::get() const
-{
-    return m_Var->get();
-}
-
-void VarStorage::refvar::set( uint64_t value )
-{
-    m_Var->set( value );
 }
