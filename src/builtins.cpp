@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016, Martin Hammel
+/*  Copyright (c) 2016-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -211,6 +211,15 @@ static ASTNode::ptr fceil( const yylloc_t& location )
     });
 }
 
+static ASTNode::ptr fround( const yylloc_t& location )
+{
+    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
+        double d1 = *(double*)(args + 0);
+        double d2 = round( d1 );
+        return *(uint64_t*)&d2;
+    });
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 // class BuiltinManager implementation
@@ -237,6 +246,7 @@ BuiltinManager::BuiltinManager()
     m_Builtins[ "fabs" ] = make_pair< size_t, nodecreator_t >( 1, fabs_ );
     m_Builtins[ "ffloor" ] = make_pair< size_t, nodecreator_t >( 1, ffloor );
     m_Builtins[ "fceil" ] = make_pair< size_t, nodecreator_t >( 1, fceil );
+    m_Builtins[ "fround" ] = make_pair< size_t, nodecreator_t >( 1, fround );
 }
 
 void BuiltinManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )

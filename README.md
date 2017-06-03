@@ -334,7 +334,7 @@ without parentheses and are separated only by white space.
             ...
         endfunc
 
-       deffunc[] <name> ( [<parameter> [, <parameter> [, ...]]] )
+        deffunc[] <name> ( [<parameter> [, <parameter> [, ...]]] )
             <command>
             ...
             [exit]
@@ -441,6 +441,7 @@ arithmetic and conversion functions are available:
         fabs( a )           calculate | a |
         ffloor( a )         returns largest integer not greater than a
         fceil( a )          returns smallest integer not less than a
+		fround( a )         rounds a to the nearest integer, away from zero
 
 IEEE 754 encoding preserves the ordering of floating point values when treated as integer
 values in two's complement. Therefore the signed integer comparison operators can be used
