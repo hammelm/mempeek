@@ -88,25 +88,6 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class ASTNodeBuiltin
-//////////////////////////////////////////////////////////////////////////////
-
-template< size_t NUM_ARGS >
-class ASTNodeBuiltin : public ASTNode {
-public:
-    typedef std::shared_ptr<ASTNodeBuiltin> ptr;
-    typedef uint64_t args_t[NUM_ARGS];
-
-    ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin );
-
-    uint64_t execute() override;
-
-private:
-    std::function< uint64_t( const args_t& ) > m_Builtin;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeBreak
 //////////////////////////////////////////////////////////////////////////////
 
@@ -648,35 +629,6 @@ inline void ASTNode::set_constant()
 inline uint64_t ASTNode::compiletime_execute( ASTNode::ptr node )
 {
 	return compiletime_execute( node.get() );
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class ASTNodeBuiltin template functions
-//////////////////////////////////////////////////////////////////////////////
-
-template< size_t NUM_ARGS >
-inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin )
- : ASTNode( yylloc ),
-   m_Builtin( builtin )
-{
-#ifdef ASTDEBUG
-    std::cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
-#endif
-}
-
-template< size_t NUM_ARGS >
-inline uint64_t ASTNodeBuiltin< NUM_ARGS >::execute()
-{
-#ifdef ASTDEBUG
-    std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
-#endif
-
-    assert( get_children().size() == NUM_ARGS );
-
-    uint64_t args[ NUM_ARGS ];
-    for( size_t i = 0; i < NUM_ARGS; i++ ) args[i] = get_children()[i]->execute();
-    return m_Builtin( args );
 }
 
 

@@ -45,7 +45,7 @@ class ASTNode;
 
 class BuiltinManager {
 public:
-    BuiltinManager();
+    BuiltinManager( Environment* env );
 
     void get_autocompletion( std::set< std::string >& completions, std::string prefix );
 
@@ -53,10 +53,13 @@ public:
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, const arglist_t& args );
 
 private:
-     typedef std::function< std::shared_ptr<ASTNode>( const yylloc_t& location ) > nodecreator_t;
-     typedef std::map< std::string, std::pair< size_t, nodecreator_t > > builtinmap_t;
+    typedef std::function< std::shared_ptr<ASTNode>( const yylloc_t& location, Environment* env, const arglist_t& args ) > nodecreator_t;
+    typedef std::map< std::string, nodecreator_t > builtinmap_t;
 
-     builtinmap_t m_Builtins;
+    Environment* m_Env;
+
+    // TODO: make m_Builtins static
+    builtinmap_t m_Builtins;
 };
 
 

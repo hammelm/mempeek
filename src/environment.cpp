@@ -62,7 +62,7 @@ Environment::Environment()
     m_GlobalVars = new VarManager;
     m_GlobalArrays = new ArrayManager;
 
-    m_BuiltinManager = new BuiltinManager;
+    m_BuiltinManager = new BuiltinManager( this );
 
     m_ProcedureManager = new SubroutineManager( this );
     m_FunctionManager = new SubroutineManager( this );
