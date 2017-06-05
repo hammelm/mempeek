@@ -51,9 +51,6 @@ public:
     uint64_t execute() override;
 
 private:
-    Environment* m_Env;
-    std::vector< Environment::array* > m_ArrayParameters;
-
     std::function< uint64_t( const args_t& ) > m_Builtin;
 };
 
@@ -66,7 +63,6 @@ template< size_t NUM_ARGS, uint32_t SIGNATURE >
 inline ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::ASTNodeBuiltin( const yylloc_t& yylloc, Environment* env, const arglist_t& args,
 		                                                      std::function< uint64_t( const args_t& ) > builtin, bool is_const )
  : ASTNode( yylloc ),
-   m_Env( env ),
    m_Builtin( builtin )
 {
 #ifdef ASTDEBUG
@@ -83,9 +79,8 @@ inline ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::ASTNodeBuiltin( const yylloc_t& yy
         }
         else {
         	if( (SIGNATURE & (1 << i)) == 0 ) throw ASTExceptionSyntaxError( yylloc );
-        	Environment::array* array = m_Env->get_array( args[i].second );
-        	if( !array ) throw ASTExceptionUndefinedVar( yylloc, args[i].second );
-        	m_ArrayParameters.push_back( array );
+        	add_child( make_shared<ASTNodeArray>( yylloc, env, args[i].second ) );
+        	is_const = false;
         }
     }
 
@@ -99,12 +94,12 @@ inline uint64_t ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::execute()
     std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << "," << hex << SIGNATURE << dec << ">" << std::endl;
 #endif
 
-    assert( get_children().size() + m_ArrayParameters.size() == NUM_ARGS );
+    assert( get_children().size() == NUM_ARGS );
 
     args_t args;
-    for( size_t i = 0, j = 0, sum = 0; sum < NUM_ARGS; sum++  ) {
-    	if( (SIGNATURE & (1 << sum)) ) args[sum].array = m_ArrayParameters[ i++ ];
-    	else args[sum].value = get_children()[ j++ ]->execute();
+    for( size_t i = 0; i < NUM_ARGS; i++ ) {
+    	if( (SIGNATURE & (1 << i)) ) get_children()[i]->get_array_result( args[i].array );
+    	else args[i].value = get_children()[i]->execute();
     }
     return m_Builtin( args );
 }
