@@ -50,6 +50,8 @@ public:
 
     uint64_t execute() override;
 
+	virtual ASTNode::ptr clone_to_const() override;
+
 private:
     std::function< uint64_t( const args_t& ) > m_Builtin;
 };
@@ -102,6 +104,18 @@ inline uint64_t ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::execute()
     	else args[i].value = get_children()[i]->execute();
     }
     return m_Builtin( args );
+}
+
+template< size_t NUM_ARGS, uint32_t SIGNATURE >
+inline ASTNode::ptr ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::clone_to_const()
+{
+    if( !is_constant() ) return nullptr;
+
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: running const optimization" << endl;
+#endif
+
+    return make_shared<ASTNodeConstant>( get_location(), compiletime_execute( this ) );
 }
 
 
