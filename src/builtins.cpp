@@ -314,26 +314,26 @@ static ASTNode::ptr fround( const yylloc_t& location, Environment* env, const ar
 BuiltinManager::BuiltinManager( Environment* env )
  : m_Env( env )
 {
-    m_Builtins[ "int2float" ] = int2float;
-    m_Builtins[ "float2int" ] = float2int;
-    m_Builtins[ "fadd" ] = fadd;
-    m_Builtins[ "fsub" ] = fsub;
-    m_Builtins[ "fmul" ] = fmul;
-    m_Builtins[ "fdiv" ] = fdiv;
-    m_Builtins[ "fsqrt" ] = fsqrt;
-    m_Builtins[ "fpow" ] = fpow;
-    m_Builtins[ "flog" ] = flog;
-    m_Builtins[ "fexp" ] = fexp;
-    m_Builtins[ "fsin" ] = fsin;
-    m_Builtins[ "fcos" ] = fcos;
-    m_Builtins[ "ftan" ] = ftan;
-    m_Builtins[ "fasin" ] = fasin;
-    m_Builtins[ "facos" ] = facos;
-    m_Builtins[ "fatan" ] = fatan;
-    m_Builtins[ "fabs" ] = fabs_;
-    m_Builtins[ "ffloor" ] = ffloor;
-    m_Builtins[ "fceil" ] = fceil;
-    m_Builtins[ "fround" ] = fround;
+    register_function( "int2float", int2float );
+    register_function( "float2int", float2int );
+    register_function( "fadd", fadd );
+    register_function( "fsub", fsub );
+    register_function( "fmul", fmul );
+    register_function( "fdiv", fdiv );
+    register_function( "fsqrt", fsqrt );
+    register_function( "fpow", fpow );
+    register_function( "flog", flog );
+    register_function( "fexp", fexp );
+    register_function( "fsin", fsin );
+    register_function( "fcos", fcos );
+    register_function( "ftan", ftan );
+    register_function( "fasin", fasin );
+    register_function( "facos", facos );
+    register_function( "fatan", fatan );
+    register_function( "fabs", fabs_ );
+    register_function( "ffloor", ffloor );
+    register_function( "fceil", fceil );
+    register_function( "fround", fround );
 }
 
 void BuiltinManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
@@ -352,4 +352,10 @@ std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& locatio
     std::shared_ptr<ASTNode> node = iter->second( location, m_Env, args );
 
     return node->is_constant() ? node->clone_to_const() : node;
+}
+
+void BuiltinManager::register_function( std::string name, nodecreator_t creator )
+{
+    auto ret = m_Builtins.insert( make_pair( name, creator ) );
+    assert( ret.second );
 }

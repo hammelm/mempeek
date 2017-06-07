@@ -52,8 +52,11 @@ public:
     bool has_subroutine( std::string name );
     std::shared_ptr<ASTNode> get_subroutine( const yylloc_t& location, std::string name, const arglist_t& args );
 
-private:
     typedef std::function< std::shared_ptr<ASTNode>( const yylloc_t& location, Environment* env, const arglist_t& args ) > nodecreator_t;
+
+    void register_function( std::string name, nodecreator_t creator );
+
+private:
     typedef std::map< std::string, nodecreator_t > builtinmap_t;
 
     Environment* m_Env;

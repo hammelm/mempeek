@@ -131,7 +131,8 @@ private:
 
 	std::map< void*, MMap* > m_Mappings;
 
-	BuiltinManager* m_BuiltinManager;
+	BuiltinManager* m_BuiltinFunctions;
+	BuiltinManager* m_BuiltinArrayfuncs;
 
 	SubroutineManager* m_ProcedureManager;
 	SubroutineManager* m_FunctionManager;

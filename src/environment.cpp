@@ -62,7 +62,8 @@ Environment::Environment()
     m_GlobalVars = new VarManager;
     m_GlobalArrays = new ArrayManager;
 
-    m_BuiltinManager = new BuiltinManager( this );
+    m_BuiltinFunctions = new BuiltinManager( this );
+    m_BuiltinArrayfuncs = new BuiltinManager( this );
 
     m_ProcedureManager = new SubroutineManager( this );
     m_FunctionManager = new SubroutineManager( this );
@@ -77,7 +78,8 @@ Environment::~Environment()
 	delete m_FunctionManager;
 	delete m_ArrayfuncManager;
 
-	delete m_BuiltinManager;
+	delete m_BuiltinFunctions;
+	delete m_BuiltinArrayfuncs;
 
     delete m_GlobalArrays;
 	delete m_GlobalVars;
@@ -229,7 +231,8 @@ std::set< std::string > Environment::get_autocompletion( std::string prefix )
 {
     set< string > completions;
 
-    m_BuiltinManager->get_autocompletion( completions, prefix );
+    m_BuiltinFunctions->get_autocompletion( completions, prefix );
+    m_BuiltinArrayfuncs->get_autocompletion( completions, prefix );
     m_FunctionManager->get_autocompletion( completions, prefix );
     m_ArrayfuncManager->get_autocompletion( completions, prefix );
     // m_ProcedureManager is skipped intentionally; procedures are more like keywords than variables
@@ -275,7 +278,8 @@ void Environment::enter_subroutine_context( const yylloc_t& location, std::strin
 {
     assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr && m_LocalArrays == nullptr );
 
-    if( m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    if( m_BuiltinFunctions->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    if( m_BuiltinArrayfuncs->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
 
     switch( type ) {
     case PROCEDURE:
@@ -348,7 +352,7 @@ std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, s
 
 std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, const arglist_t& args )
 {
-    std::shared_ptr<ASTNode> node = m_BuiltinManager->get_subroutine( location, name, args );
+    std::shared_ptr<ASTNode> node = m_BuiltinFunctions->get_subroutine( location, name, args );
     if( node ) return node;
 
     node = m_FunctionManager->get_subroutine( location, name, args );
@@ -376,7 +380,8 @@ std::shared_ptr<ASTNode> Environment::get_arrayfunc( const yylloc_t& location, s
 	}
 	else block->add_child( make_shared<ASTNodeDim>( location, this, ret, zero ) );
 
-    std::shared_ptr<ASTNode> subroutine = m_ArrayfuncManager->get_subroutine( location, name, retargs );
+    std::shared_ptr<ASTNode> subroutine = m_BuiltinArrayfuncs->get_subroutine( location, name, retargs );
+    if( !subroutine ) m_ArrayfuncManager->get_subroutine( location, name, retargs );
     if( !subroutine ) throw ASTExceptionNamingConflict( location, name );
     block->add_child( subroutine );
 
