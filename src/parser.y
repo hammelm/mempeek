@@ -30,7 +30,6 @@
 #include <stdio.h>
 
 #include "mempeek_parser.h"
-#include "mempeek_exceptions.h"
 #include "mempeek_ast.h"
 
 using namespace std;

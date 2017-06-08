@@ -65,6 +65,8 @@ Environment::Environment()
     m_BuiltinFunctions = new BuiltinManager( this );
     m_BuiltinArrayfuncs = new BuiltinManager( this );
 
+    register_float_functions( m_BuiltinFunctions );
+
     m_ProcedureManager = new SubroutineManager( this );
     m_FunctionManager = new SubroutineManager( this );
     m_ArrayfuncManager = new SubroutineManager( this );

@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015, Martin Hammel
+/*  Copyright (c) 2015-2017, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
 #ifndef __mempeek_exceptions_h__
 #define __mempeek_exceptions_h__
 
-#include "mempeek_ast.h"
+#include "mempeek_parser.h"
 
 #include <sstream>
 #include <iomanip>

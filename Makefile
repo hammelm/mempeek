@@ -3,7 +3,7 @@ FLEX = flex
 BISON = bison
 
 OBJS = main.o console.o mmap.o lexer.o parser.o environment.o mempeek_ast.o mempeek_exceptions.o \
-       builtins.o subroutines.o variables.o arrays.o md5.o
+       builtins.o builtins_float.o subroutines.o variables.o arrays.o md5.o
 GENERATED = lexer.cpp parser.cpp
 
 DEFINES = -DUSE_EDITLINE

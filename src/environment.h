@@ -126,6 +126,8 @@ public:
     static uint64_t parse_float( std::string str, bool& is_ok );
 
 private:
+    void register_float_functions( BuiltinManager* manager );
+
     VarManager* m_GlobalVars;
     ArrayManager* m_GlobalArrays;
 
