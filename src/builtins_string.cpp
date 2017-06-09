@@ -132,6 +132,24 @@ ASTNode::ptr strcat_( const yylloc_t& location, Environment* env, const arglist_
     });
 }
 
+ASTNode::ptr substr( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<4,0x03> >( location, env, args, [] ( const ASTNodeBuiltin<4,0x03>::args_t& args ) -> uint64_t {
+    	MPString dst( args[0].array );
+    	string src = MPString( args[1].array ).get();
+    	uint64_t pos = args[2].value;
+    	uint64_t len = args[3].value;
+
+    	if( pos < src.length() ) {
+    		if( len < src.length() ) dst.set( src.substr( pos, len ) );
+    		else dst.set( src.substr( pos ) );
+    	}
+    	else dst.set("");
+
+    	return 0;
+    });
+}
+
 ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
@@ -156,4 +174,5 @@ void Environment::register_string_functions( BuiltinManager* manager )
 void Environment::register_string_arrayfuncs( BuiltinManager* manager )
 {
     manager->register_function( "strcat", strcat_ );
+    manager->register_function( "substr", substr );
 }
