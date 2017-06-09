@@ -127,6 +127,8 @@ public:
 
 private:
     void register_float_functions( BuiltinManager* manager );
+    void register_string_functions( BuiltinManager* manager );
+    void register_string_arrayfuncs( BuiltinManager* manager );
 
     VarManager* m_GlobalVars;
     ArrayManager* m_GlobalArrays;
