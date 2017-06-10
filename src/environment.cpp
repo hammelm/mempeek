@@ -385,7 +385,7 @@ std::shared_ptr<ASTNode> Environment::get_arrayfunc( const yylloc_t& location, s
 	else block->add_child( make_shared<ASTNodeDim>( location, this, ret, zero ) );
 
     std::shared_ptr<ASTNode> subroutine = m_BuiltinArrayfuncs->get_subroutine( location, name, retargs );
-    if( !subroutine ) m_ArrayfuncManager->get_subroutine( location, name, retargs );
+    if( !subroutine ) subroutine = m_ArrayfuncManager->get_subroutine( location, name, retargs );
     if( !subroutine ) throw ASTExceptionNamingConflict( location, name );
     block->add_child( subroutine );
 
