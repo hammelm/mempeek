@@ -220,6 +220,33 @@ private:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeString
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeString : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeString> ptr;
+
+    ASTNodeString( const yylloc_t& yylloc, Environment* env, std::string name, std::string str );
+
+    uint64_t execute() override;
+
+	static size_t get_length( const Environment::array* array );
+	static std::string get_string( const Environment::array* array );
+	static void set_string( Environment::array* array, std::string str );
+
+private:
+	typedef union {
+		uint64_t integer;
+		uint8_t string[8];
+	} element_t;
+
+    Environment::array* m_Array;
+    std::string m_String;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeStatic
 //////////////////////////////////////////////////////////////////////////////
 
@@ -355,13 +382,19 @@ public:
 		MOD_64BIT = 0x40,
         MOD_WORDSIZE = 0x50,
 
-		MOD_SIZEMASK = 0xf0,
-		MOD_TYPEMASK = 0x0f
+        MOD_ARRAY = 0x100,
+        MOD_STRING = 0x200,
+
+        MOD_ARRAYMASK = 0xf00,
+		MOD_SIZEMASK = 0x0f0,
+		MOD_TYPEMASK = 0x00f,
+		MOD_TYPESIZEMASK = 0x0ff
 	};
 
 	ASTNodePrint( const yylloc_t& yylloc );
 	ASTNodePrint( const yylloc_t& yylloc, std::string text );
 	ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier );
+	ASTNodePrint( const yylloc_t& yylloc, Environment* env, std::string array, int modifier );
 
 	uint64_t execute() override;
 
@@ -369,9 +402,12 @@ public:
 
 private:
 	void print_value( std::ostream& out, uint64_t value );
+	void print_array( std::ostream& out, Environment::array* array );
 
-	int m_Modifier = MOD_DEC | MOD_32BIT;
+	int m_Modifier = MOD_DEC | MOD_32BIT | MOD_ARRAY;
 	std::string m_Text = "";
+
+    bool m_IsArray = false;
 };
 
 

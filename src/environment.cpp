@@ -49,7 +49,7 @@ using namespace std;
 int Environment::s_DefaultSize = (sizeof(void*) == 8) ? T_64BIT : ((sizeof(void*) == 2) ? T_16BIT : T_32BIT);
 std::stack<int> Environment::s_DefaultSizeStack;
 
-int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE;
+int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE | ASTNodePrint::MOD_ARRAY;
 std::stack<int> Environment::s_DefaultModifierStack;
 
 std::stack< std::vector< std::pair< uint64_t, Environment::array* > > > Environment::s_ArgStack;
@@ -471,30 +471,59 @@ bool Environment::set_default_size( int size )
 
 bool Environment::set_default_modifier( int modifier )
 {
-    switch( modifier & ASTNodePrint::MOD_TYPEMASK ) {
-    case ASTNodePrint::MOD_FLOAT:
-        if( (modifier & ASTNodePrint::MOD_SIZEMASK) != ASTNodePrint::MOD_64BIT ) return false;
-        s_DefaultModifier = modifier;
-        return true;
+    int arraymod = modifier & ASTNodePrint::MOD_ARRAYMASK;
+    int typemod = modifier & ASTNodePrint::MOD_TYPESIZEMASK;
 
-    case ASTNodePrint::MOD_BIN:
-    case ASTNodePrint::MOD_DEC:
-    case ASTNodePrint::MOD_HEX:
-    case ASTNodePrint::MOD_NEG:
-        switch( modifier & ASTNodePrint::MOD_SIZEMASK ) {
-        case ASTNodePrint::MOD_8BIT:
-        case ASTNodePrint::MOD_16BIT:
-        case ASTNodePrint::MOD_32BIT:
-        case ASTNodePrint::MOD_64BIT:
-        case ASTNodePrint::MOD_WORDSIZE:
-            s_DefaultModifier = modifier;
-            return true;
+    bool ret = true;
+
+    if( arraymod ) {
+    	switch( arraymod ) {
+    	case ASTNodePrint::MOD_ARRAY:
+    	case ASTNodePrint::MOD_STRING:
+    		s_DefaultModifier &= ~ASTNodePrint::MOD_ARRAYMASK;
+			s_DefaultModifier |= arraymod;
+    		break;
+
+    	default:
+    		ret = false;
+    		break;
+    	}
+    }
+
+    if( typemod ) {
+        switch( typemod & ASTNodePrint::MOD_TYPEMASK ) {
+        case ASTNodePrint::MOD_FLOAT:
+            if( (typemod & ASTNodePrint::MOD_SIZEMASK) == ASTNodePrint::MOD_64BIT ) {
+				s_DefaultModifier &= ~ASTNodePrint::MOD_TYPESIZEMASK;
+				s_DefaultModifier |= typemod;
+            }
+            else ret = false;
+            break;
+
+        case ASTNodePrint::MOD_BIN:
+        case ASTNodePrint::MOD_DEC:
+        case ASTNodePrint::MOD_HEX:
+        case ASTNodePrint::MOD_NEG:
+            switch( typemod & ASTNodePrint::MOD_SIZEMASK ) {
+            case ASTNodePrint::MOD_8BIT:
+            case ASTNodePrint::MOD_16BIT:
+            case ASTNodePrint::MOD_32BIT:
+            case ASTNodePrint::MOD_64BIT:
+            case ASTNodePrint::MOD_WORDSIZE:
+                s_DefaultModifier &= ~ASTNodePrint::MOD_TYPESIZEMASK;
+                s_DefaultModifier |= typemod;
+                break;
+
+            default:
+            	ret = false;
+            	break;
+            }
 
         default:
-            return false;
+            ret = false;
+            break;
         }
-
-    default:
-        return false;
     }
+
+    return ret;
 }

@@ -32,101 +32,15 @@ namespace {
 
 
 //////////////////////////////////////////////////////////////////////////////
-// class MPString
-//////////////////////////////////////////////////////////////////////////////
-
-class MPString {
-public:
-	MPString( Environment::array* array );
-
-	size_t get_length();
-
-	string get();
-	void set( string str );
-
-private:
-	typedef union {
-		uint64_t integer;
-		uint8_t string[8];
-	} element_t;
-
-	Environment::array* m_Array;
-	size_t m_ArraySize;
-};
-
-
-//////////////////////////////////////////////////////////////////////////////
-// class MPString implementation
-//////////////////////////////////////////////////////////////////////////////
-
-MPString::MPString( Environment::array* array )
-{
-	m_Array = array;
-	m_ArraySize = array->get_size();
-}
-
-size_t MPString::get_length()
-{
-	size_t len = 0;
-
-	for( size_t i = 0; i < m_ArraySize; i++ ) {
-		element_t value;
-		value.integer = m_Array->get(i);
-
-		for( size_t j = 0; j < 8; j++ ) {
-			if( value.string[j] ) len++;
-			else return len;
-		}
-	}
-
-	return len;
-}
-
-string MPString::get()
-{
-	string str;
-
-	for( size_t i = 0; i < m_ArraySize; i++ ) {
-		element_t value;
-		value.integer = m_Array->get(i);
-		for( size_t j = 0; j < 8; j++ ) {
-			uint8_t c = value.string[j];
-			if( c ) str += c;
-			else return str;
-		}
-	}
-
-	return str;
-}
-
-void MPString::set( string str )
-{
-	m_ArraySize = (str.length() + 7) / 8;
-	m_Array->resize( m_ArraySize );
-
-	for( size_t i = 0; i < m_ArraySize; i++ ) {
-		element_t value;
-		for( size_t j = 0; j < 8; j++ ) {
-			size_t pos = 8 * i + j;
-			value.string[j] = (pos < str.length()) ? str[pos] : 0;
-		}
-		m_Array->set( i, value.integer );
-	}
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
 // builtin function node creators
 //////////////////////////////////////////////////////////////////////////////
 
 ASTNode::ptr strcat_( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<3,0x07> >( location, env, args, [] ( const ASTNodeBuiltin<3,0x07>::args_t& args ) -> uint64_t {
-    	MPString dst( args[0].array );
-    	MPString src0( args[1].array );
-    	MPString src1( args[2].array );
-
-    	dst.set( src0.get() + src1.get() );
+        string str1 = ASTNodeString::get_string( args[1].array );
+        string str2 = ASTNodeString::get_string( args[2].array );
+        ASTNodeString::set_string( args[0].array, str1 + str2 );
 
     	return 0;
     });
@@ -135,16 +49,15 @@ ASTNode::ptr strcat_( const yylloc_t& location, Environment* env, const arglist_
 ASTNode::ptr substr( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<4,0x03> >( location, env, args, [] ( const ASTNodeBuiltin<4,0x03>::args_t& args ) -> uint64_t {
-    	MPString dst( args[0].array );
-    	string src = MPString( args[1].array ).get();
+    	string str = ASTNodeString::get_string( args[1].array );
     	uint64_t pos = args[2].value;
     	uint64_t len = args[3].value;
 
-    	if( pos < src.length() ) {
-    		if( len < src.length() ) dst.set( src.substr( pos, len ) );
-    		else dst.set( src.substr( pos ) );
+    	if( pos < str.length() ) {
+    		if( len < str.length() ) ASTNodeString::set_string( args[0].array, str.substr( pos, len ) );
+    		else ASTNodeString::set_string( args[0].array, str.substr( pos ) );
     	}
-    	else dst.set("");
+    	else ASTNodeString::set_string( args[0].array, "" );
 
     	return 0;
     });
@@ -153,8 +66,7 @@ ASTNode::ptr substr( const yylloc_t& location, Environment* env, const arglist_t
 ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
-    	MPString str( args[0].array );
-    	return str.get_length();
+        return ASTNodeString::get_length( args[0].array );
     });
 }
 

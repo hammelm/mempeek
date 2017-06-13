@@ -59,7 +59,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_IF T_THEN T_ELSE T_ENDIF
 %token T_WHILE T_DO T_ENDWHILE
 %token T_FOR T_TO T_STEP T_ENDFOR
-%token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_NOENDL
+%token T_PRINT T_DEC T_HEX T_BIN T_NEG T_FLOAT T_ARRAY T_STRING T_NOENDL
 %token T_SLEEP T_UNTIL T_NOW
 %token T_BREAK T_QUIT
 %token T_PRAGMA T_WORDSIZE T_LOADPATH
@@ -71,7 +71,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 
 %token T_8BIT T_16BIT T_32BIT T_64BIT
 
-%token T_IDENTIFIER T_CONSTANT T_FCONST T_STRING
+%token T_IDENTIFIER T_CONSTANT T_FCONST T_SCONST
 
 %token T_END_OF_STATEMENT 0
 
@@ -251,6 +251,7 @@ for_def : T_FOR plain_identifier T_FROM expression T_TO expression T_DO         
 assign_stmt : plain_identifier T_ASSIGN expression          { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node ); }
             | plain_identifier '[' expression ']'
               T_ASSIGN expression                           { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $3.node, $6.node ); }
+            | plain_identifier '[' ']' T_ASSIGN T_SCONST    { $$.node = make_shared<ASTNodeString>( @$, env, $1.value, $5.value.substr( 1, $5.value.length() - 2 ) ); }
             | plain_identifier '[' ']'
               T_ASSIGN plain_identifier '[' ']'             { $$.node = make_shared<ASTNodeAssign>( @$, env, $1.value, $5.value ); }
             | plain_identifier '[' ']'
@@ -283,20 +284,21 @@ comma_list : %empty                                     { $$.arglist.clear(); }
 
 map_stmt : T_MAP expression expression                  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node ); }
          | T_MAP expression expression T_AT expression  { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $5.node, $3.node ); }
-         | T_MAP expression expression T_STRING         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
-         | T_MAP expression expression T_STRING
+         | T_MAP expression expression T_SCONST         { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
+         | T_MAP expression expression T_SCONST
            T_AT expression                              { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $6.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
 
-pragma_stmt : T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
+pragma_stmt : T_PRAGMA T_PRINT print_array				{ env->set_default_modifier( $3.token ); }
+            | T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
             | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::MOD_WORDSIZE ); }
             | T_PRAGMA T_PRINT print_format print_size  { env->set_default_modifier( $3.token | $4.token ); }
             | T_PRAGMA T_WORDSIZE T_CONSTANT            { if( !env->set_default_size( env->parse_int( $3.value ) ) ) throw ASTExceptionSyntaxError( @3 ); }
-            | T_PRAGMA T_LOADPATH T_STRING              { string path = $3.value.substr( 1, $3.value.length() - 2 ); if( !env->add_include_path( path ) ) throw ASTExceptionFileNotFound( @3, path.c_str() ); }
+            | T_PRAGMA T_LOADPATH T_SCONST              { string path = $3.value.substr( 1, $3.value.length() - 2 ); if( !env->add_include_path( path ) ) throw ASTExceptionFileNotFound( @3, path.c_str() ); }
             ;
 
-import_stmt : T_IMPORT T_STRING                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), true ); }
-            | T_RUN T_STRING                            { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), false ); }
+import_stmt : T_IMPORT T_SCONST                         { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), true ); }
+            | T_RUN T_SCONST                            { $$.node = make_shared<ASTNodeImport>( @$, env, $2.value.substr( 1, $2.value.length() - 2 ), false ); }
             ;
 
 poke_stmt : poke_token expression expression                        { $$.node = make_shared<ASTNodePoke>( @$, env, $2.node, $3.node, $1.token ); }
@@ -318,12 +320,17 @@ print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.
            ;
 
 print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.token = env->get_default_modifier(); }
-           | print_args print_float                     { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_64BIT; }
-           | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_WORDSIZE; }
-           | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
+		   | print_args print_array						{ $$.node = $1.node, $$.token = ($$.token & ~ASTNodePrint::MOD_ARRAYMASK) | $2.token; }
+           | print_args print_float                     { $$.node = $1.node; $$.token = ($$.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_64BIT; }
+           | print_args print_format                    { $$.node = $1.node; $$.token = ($$.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_WORDSIZE; }
+           | print_args print_format print_size         { $$.node = $1.node; $$.token = ($$.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | $3.token; }
            | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.node, $$.token ) ); }
-           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
+           | print_args T_SCONST                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
+           | print_args plain_identifier '[' ']'        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, env, $2.value, $$.token ) ); }
            ;
+
+print_array : T_ARRAY									{ $$.token = ASTNodePrint::MOD_ARRAY; }
+            | T_STRING									{ $$.token = ASTNodePrint::MOD_STRING; }
 
 print_float : T_FLOAT                                   { $$.token = ASTNodePrint::MOD_FLOAT; }
             ;

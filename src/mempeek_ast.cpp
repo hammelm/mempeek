@@ -549,7 +549,7 @@ ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
-		 << hex << setw(2) << setfill('0') << modifier << dec << endl;
+		 << hex << setw(3) << setfill('0') << modifier << dec << endl;
 #endif
 
 	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
@@ -561,13 +561,37 @@ ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int
 	m_Modifier = modifier;
 }
 
+ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, Environment* env, std::string array, int modifier )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+	cerr << "AST[" << this << "]: creating ASTNodePrint array=" << array << " modifier=0x"
+		 << hex << setw(3) << setfill('0') << modifier << dec << endl;
+#endif
+
+	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
+	    modifier &= ~MOD_SIZEMASK;
+	    modifier |= size_to_mod( Environment::get_default_size() );
+	}
+
+	add_child( make_shared<ASTNodeArray>( yylloc, env, array ) );
+	m_Modifier = modifier;
+    m_IsArray = true;
+}
+
 uint64_t ASTNodePrint::execute()
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: executing ASTNodePrint" << endl;
 #endif
 
-	for( ASTNode::ptr node: get_children() ) print_value( cout, node->execute() );
+	for( ASTNode::ptr node: get_children() ) {
+        Environment::array* array;
+        uint64_t value = node->execute();
+        if( m_IsArray && node->get_array_result( array ) ) print_array( cout, array );
+        else print_value( cout, value );
+    }
+
 	cout << m_Text << flush;
 
 	return 0;
@@ -647,6 +671,32 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	}
 
 	}
+}
+
+void ASTNodePrint::print_array( std::ostream& out, Environment::array* array )
+{
+    const size_t size = array->get_size();
+
+    switch( m_Modifier & MOD_ARRAYMASK ) {
+    case MOD_ARRAY: {
+        if( size ) {
+            out << '[';
+            for( size_t i = 0; i < size; i++ ) {
+                out << ' ';
+                print_value( out, array->get(i) );
+            }
+            out << " ]";
+        }
+        else out << "[]";
+        break;
+    }
+
+    case MOD_STRING: {
+        out << ASTNodeString::get_string( array );
+        break;
+    }
+
+    }
 }
 
 
@@ -874,6 +924,86 @@ uint64_t ASTNodeAssignArg::execute()
     }
 
     return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeString implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeString::ASTNodeString( const yylloc_t& yylloc, Environment* env, std::string name, std::string str )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeString name=" << name << " str=" << str << endl;
+#endif
+
+    m_Array = env->alloc_array( name );
+    m_String = str;
+
+    if( !m_Array ) throw ASTExceptionNamingConflict( get_location(), name );
+}
+
+uint64_t ASTNodeString::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeString" << endl;
+#endif
+
+    set_string( m_Array, m_String );
+
+    return 0;
+}
+
+size_t ASTNodeString::get_length( const Environment::array* array )
+{
+    const size_t size = array->get_size();
+	size_t len = 0;
+
+	for( size_t i = 0; i < size; i++ ) {
+		element_t value;
+		value.integer = array->get(i);
+
+		for( size_t j = 0; j < 8; j++ ) {
+			if( value.string[j] ) len++;
+			else return len;
+		}
+	}
+
+	return len;
+}
+
+std::string ASTNodeString::get_string( const Environment::array* array )
+{
+    const size_t size = array->get_size();
+	string str;
+
+	for( size_t i = 0; i < size; i++ ) {
+		element_t value;
+		value.integer = array->get(i);
+		for( size_t j = 0; j < 8; j++ ) {
+			uint8_t c = value.string[j];
+			if( c ) str += c;
+			else return str;
+		}
+	}
+
+	return str;
+}
+
+void ASTNodeString::set_string( Environment::array* array, std::string str )
+{
+	const size_t size = (str.length() + 7) / 8;
+	array->resize( size );
+
+	for( size_t i = 0; i < size; i++ ) {
+		element_t value;
+		for( size_t j = 0; j < 8; j++ ) {
+			size_t pos = 8 * i + j;
+			value.string[j] = (pos < str.length()) ? str[pos] : 0;
+		}
+		array->set( i, value.integer );
+	}
 }
 
 
