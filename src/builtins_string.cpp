@@ -26,9 +26,17 @@
 #include "builtins.h"
 #include "mempeek_ast.h"
 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <regex>
+
 using namespace std;
 
 namespace {
+
+std::vector< std::string > TOKENS;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -63,6 +71,17 @@ ASTNode::ptr substr( const yylloc_t& location, Environment* env, const arglist_t
     });
 }
 
+ASTNode::ptr getline_( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
+    	string line;
+    	std::getline( cin, line );
+    	ASTNodeString::set_string( args[0].array, line );
+
+    	return 0;
+    });
+}
+
 ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
@@ -70,6 +89,53 @@ ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_
     });
 }
 
+void tokenize_string( string text, string separator )
+{
+	regex pattern( separator );
+	TOKENS.clear();
+
+	for_each( sregex_token_iterator( text.begin(), text.end(), pattern, -1 ),
+			  sregex_token_iterator(),
+			  [] ( string token )
+	{
+		TOKENS.push_back( token );
+	});
+}
+
+ASTNode::ptr tokenize( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+	if( args.size() == 1 ) {
+		return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
+			string text = ASTNodeString::get_string( args[0].array );
+
+			tokenize_string( text, "\\s+" );
+
+			return TOKENS.size();
+		});
+	}
+	else {
+	    return make_shared< ASTNodeBuiltin<2,0x03> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x03>::args_t& args ) -> uint64_t {
+	    	string text = ASTNodeString::get_string( args[0].array );
+	    	string separator = ASTNodeString::get_string( args[1].array );
+
+	    	tokenize_string( text, separator );
+
+	    	return TOKENS.size();
+	    });
+	}
+}
+
+ASTNode::ptr gettoken( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<2,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x01>::args_t& args ) -> uint64_t {
+    	uint64_t index = args[1].value;
+
+    	if( index <= TOKENS.size() ) ASTNodeString::set_string( args[0].array, TOKENS[index] );
+    	else ASTNodeString::set_string( args[0].array, "" );
+
+    	return 0;
+    });
+}
 
 } // anonymous namespace
 
@@ -81,10 +147,13 @@ ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_
 void Environment::register_string_functions( BuiltinManager* manager )
 {
     manager->register_function( "strlen", strlen_ );
+    manager->register_function( "tokenize", tokenize );
 }
 
 void Environment::register_string_arrayfuncs( BuiltinManager* manager )
 {
     manager->register_function( "strcat", strcat_ );
     manager->register_function( "substr", substr );
+    manager->register_function( "getline", getline_ );
+    manager->register_function( "gettoken", gettoken );
 }
