@@ -143,6 +143,24 @@ public:
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArrayBlock
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeArrayBlock : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeArrayBlock> ptr;
+
+    ASTNodeArrayBlock( const yylloc_t& yylloc, Environment* env, std::string result );
+
+    uint64_t execute() override;
+    bool get_array_result( Environment::array*& array ) override;
+
+private:
+    Environment::array* m_Array;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeSubroutine
 //////////////////////////////////////////////////////////////////////////////
 
@@ -705,20 +723,21 @@ inline ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::ASTNodeBuiltin( const yylloc_t& yy
    m_Builtin( builtin )
 {
 #ifdef ASTDEBUG
-    std::cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << "," << hex << SIGNATURE << dec << ">" << std::endl;
+    std::cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << "," << std::hex << SIGNATURE << std::dec << ">" << std::endl;
 #endif
 
     if( args.size() != NUM_ARGS ) throw ASTExceptionSyntaxError( yylloc );
 
     for( size_t i = 0; i < NUM_ARGS; i++ ) {
-        if( args[i].first ) {
+        if( args[i].second.empty() ) {
         	if( (SIGNATURE & (1 << i)) != 0 ) throw ASTExceptionSyntaxError( yylloc );
 			add_child( args[i].first );
 			is_const &= args[i].first->is_constant();
         }
         else {
         	if( (SIGNATURE & (1 << i)) == 0 ) throw ASTExceptionSyntaxError( yylloc );
-        	add_child( std::make_shared<ASTNodeArray>( yylloc, env, args[i].second ) );
+        	if( args[i].first ) add_child( args[i].first );
+        	else add_child( std::make_shared<ASTNodeArray>( yylloc, env, args[i].second ) );
         	is_const = false;
         }
     }
@@ -730,14 +749,17 @@ template< size_t NUM_ARGS, uint32_t SIGNATURE >
 inline uint64_t ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::execute()
 {
 #ifdef ASTDEBUG
-    std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << "," << hex << SIGNATURE << dec << ">" << std::endl;
+    std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << "," << std::hex << SIGNATURE << std::dec << ">" << std::endl;
 #endif
 
     assert( get_children().size() == NUM_ARGS );
 
     args_t args;
     for( size_t i = 0; i < NUM_ARGS; i++ ) {
-    	if( (SIGNATURE & (1 << i)) ) get_children()[i]->get_array_result( args[i].array );
+    	if( (SIGNATURE & (1 << i)) ) {
+    		get_children()[i]->execute();
+    		get_children()[i]->get_array_result( args[i].array );
+    	}
     	else args[i].value = get_children()[i]->execute();
     }
     return m_Builtin( args );
@@ -749,7 +771,7 @@ inline ASTNode::ptr ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::clone_to_const()
     if( !is_constant() ) return nullptr;
 
 #ifdef ASTDEBUG
-    cerr << "AST[" << this << "]: running const optimization" << endl;
+    std::cerr << "AST[" << this << "]: running const optimization" << std::endl;
 #endif
 
     return std::make_shared<ASTNodeConstant>( get_location(), compiletime_execute( this ) );

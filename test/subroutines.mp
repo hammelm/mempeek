@@ -15,6 +15,8 @@
 # 24
 # 120
 # 420 2226
+# 1 2 3 4
+# 1234
 # 0 0 0
 # 1 1
 # 2 2 2
@@ -82,6 +84,17 @@ endfunc
 print dec f( z * 10 ) noendl
 y := 15
 print " " dec f( z * 100 )
+
+defproc argorderp a b c d
+    print dec a " " b " " c " " d
+endproc
+
+deffunc argorderf( a, b, c, d )
+    return := 1000 * a + 100 * b + 10 * c + d
+endfunc
+
+argorderp 1 2 3 4
+print dec argorderf( 1, 2, 3, 4 )
 
 defproc exittest i
   print dec i noendl

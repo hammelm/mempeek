@@ -136,6 +136,43 @@ uint64_t ASTNodeBlock::execute()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArrayBlock implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeArrayBlock::ASTNodeArrayBlock( const yylloc_t& yylloc, Environment* env, std::string result )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeArrayBlock result=" << result << endl;
+#endif
+
+    m_Array = env->get_array( result );
+
+    if( !m_Array ) throw ASTExceptionUndefinedVar( get_location(), result );
+}
+
+uint64_t ASTNodeArrayBlock::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeArrayBlock" << endl;
+#endif
+
+	for( ASTNode::ptr node: get_children() ) {
+	    node->execute();
+        if( Environment::is_terminated() ) throw ASTExceptionTerminate();
+	}
+
+	return 0;
+}
+
+bool ASTNodeArrayBlock::get_array_result( Environment::array*& array )
+{
+    array = m_Array;
+    return true;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeSubroutine implementation
 //////////////////////////////////////////////////////////////////////////////
 

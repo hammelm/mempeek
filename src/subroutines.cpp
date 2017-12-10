@@ -180,13 +180,14 @@ std::shared_ptr<ASTNode> SubroutineManager::get_subroutine( const yylloc_t& loca
                                                                   subroutine->params, num_varargs, subroutine->retval );
 
     for( size_t i = 0; i < num_params; i++ ) {
-        if( args[i].first ) {
+        if( args[i].second.empty() ) {
             if( subroutine->params[i].is_array ) throw ASTExceptionSyntaxError( location );
             node->add_child( args[i].first );
         }
         else {
             if( !subroutine->params[i].is_array ) throw ASTExceptionSyntaxError( location );
-            node->add_child( make_shared<ASTNodeArray>( location, m_Environment, args[i].second ) );
+            if( args[i].first ) node->add_child( args[i].first );
+            else node->add_child( make_shared<ASTNodeArray>( location, m_Environment, args[i].second ) );
         }
     }
 

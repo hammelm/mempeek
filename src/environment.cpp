@@ -374,21 +374,18 @@ std::shared_ptr<ASTNode> Environment::get_arrayfunc( const yylloc_t& location, s
 		if( arg.second == ret ) ret_is_input = true;
 		retargs.push_back( arg );
 	}
+	if( ret_is_input ) retargs[0].second = "@return";
 
-	std::shared_ptr<ASTNode> block = make_shared<ASTNodeBlock>( location );
 	std::shared_ptr<ASTNode> zero = make_shared<ASTNodeConstant>( location, 0 );
-
-	if( ret_is_input ) {
-		retargs[0].second = "@return";
-		block->add_child( make_shared<ASTNodeDim>( location, this, retargs[0].second, zero ) );
-	}
-	else block->add_child( make_shared<ASTNodeDim>( location, this, ret, zero ) );
+	std::shared_ptr<ASTNode> init = make_shared<ASTNodeDim>( location, this, retargs[0].second, zero );
 
     std::shared_ptr<ASTNode> subroutine = m_BuiltinArrayfuncs->get_subroutine( location, name, retargs );
     if( !subroutine ) subroutine = m_ArrayfuncManager->get_subroutine( location, name, retargs );
     if( !subroutine ) throw ASTExceptionNamingConflict( location, name );
-    block->add_child( subroutine );
 
+	std::shared_ptr<ASTNode> block = make_shared<ASTNodeArrayBlock>( location, this, ret );
+    block->add_child( init );
+    block->add_child( subroutine );
     if( ret_is_input ) block->add_child( make_shared<ASTNodeAssign>( location, this, ret, retargs[0].second ) );
 
     return block;
