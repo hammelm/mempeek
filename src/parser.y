@@ -189,9 +189,10 @@ func_arg_list : %empty
               | func_arg_list ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
               ;
 
-proc_args : %empty                                      { $$.arglist.clear(); }
-          | proc_args expression                        { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $2.node, string("") ) ); }
-          | proc_args plain_identifier '[' ']'          { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $2.value ) ); }
+proc_args : %empty                                          { $$.arglist.clear(); }
+          | proc_args plain_identifier '(' func_args ')'    { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( yyfuncarg( @1, env, $2.value, $4.arglist, $$.arglist.size() ) ); }
+          | proc_args plain_identifier '[' ']'              { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $2.value ) ); }
+          | proc_args expression                            { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $2.node, string("") ) ); }
           ;
 
 func_args : %empty                                              { $$.arglist.clear(); }

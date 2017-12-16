@@ -6,6 +6,8 @@
 # [ 1 1 2 3 5 8 13 21 34 55 ]
 # 0
 # [ 3 4 6 9 14 22 35 56 90 145 ]
+# [ 8243401930537135974 25199 ]
+# [ 7093010423660638822 29281 ]
 
 defproc printarray a[]
     print "[" noendl
@@ -41,3 +43,15 @@ printarray fib[]
 
 fib[] := sum( fib[], 2 )
 printarray fib[]
+
+deffunc[] strcat3( a[], b[], c[] )
+    return[] := strcat( a[], strcat( b[], c[] ) )
+endfunc
+
+foo[] := "foo"
+bar[] := "bar"
+frob[] := "frob"
+
+x[] := strcat3( foo[], bar[], frob[] )
+printarray x[]
+printarray strcat3( frob[], foo[], bar[] )
