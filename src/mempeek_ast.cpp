@@ -992,6 +992,12 @@ uint64_t ASTNodeString::execute()
     return 0;
 }
 
+bool ASTNodeString::get_array_result( Environment::array*& array )
+{
+    array = m_Array;
+    return true;
+}
+
 size_t ASTNodeString::get_length( const Environment::array* array )
 {
     const size_t size = array->get_size();

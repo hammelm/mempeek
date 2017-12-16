@@ -34,6 +34,8 @@
 
 using namespace std;
 
+static size_t arrayarg_counter = 0;
+ 
 int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
 
 void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
@@ -50,6 +52,14 @@ arglist_t::value_type yyfuncarg( const yylloc_t& location, Environment* env, std
 		ASTNode::ptr node = env->get_arrayfunc( location, func, result, args );
 		return make_pair( node, result );
 	}
+}
+
+arglist_t::value_type yystringarg( const yylloc_t& location, Environment* env, std::string value, size_t argpos )
+{
+    string result = "@arg" + to_string( argpos );
+    env->alloc_array( result );
+    ASTNode::ptr node = make_shared<ASTNodeString>( location, env, result, value );
+    return make_pair( node, result );
 }
 
 %}
@@ -189,20 +199,20 @@ func_arg_list : %empty
               | func_arg_list ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
               ;
 
-proc_args : %empty                                          { $$.arglist.clear(); }
-          | proc_args plain_identifier '(' func_args ')'    { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( yyfuncarg( @1, env, $2.value, $4.arglist, $$.arglist.size() ) ); }
-          | proc_args plain_identifier '[' ']'              { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $2.value ) ); }
-          | proc_args expression                            { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $2.node, string("") ) ); }
+proc_args : %empty                                      { arrayarg_counter = 0; $$.arglist.clear(); }
+          | proc_args subroutine_arg                    { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( $2.arglist[0] ); }
           ;
 
-func_args : %empty                                              { $$.arglist.clear(); }
-          | plain_identifier '(' func_args ')'                  { $$.arglist.clear(); $$.arglist.push_back( yyfuncarg( @1, env, $1.value, $3.arglist, $$.arglist.size() ) ); }    
-          | plain_identifier '[' ']'                            { $$.arglist.clear(); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
-          | expression                                          { $$.arglist.clear(); $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
-          | func_args ',' plain_identifier '(' func_args ')'	{ $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( yyfuncarg( @1, env, $3.value, $5.arglist, $$.arglist.size() ) ); }    
-          | func_args ',' plain_identifier '[' ']'              { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $3.value ) ); }
-          | func_args ',' expression                            { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( make_pair( $3.node, string("") ) ); }
+func_args : %empty                                      { arrayarg_counter = 0; $$.arglist.clear(); }
+          | subroutine_arg                              { arrayarg_counter = 0; $$.arglist = std::move( $1.arglist ); }
+          | func_args ',' subroutine_arg                { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( $3.arglist[0] ); }
           ;
+
+subroutine_arg : T_SCONST                               { $$.arglist.clear(); $$.arglist.push_back( yystringarg( @$, env, $1.value.substr( 1, $1.value.length() - 2 ), arrayarg_counter++ ) ); }
+               | plain_identifier '(' func_args ')'     { $$.arglist.clear(); $$.arglist.push_back( yyfuncarg( @1, env, $1.value, $3.arglist, arrayarg_counter++ ) ); }
+               | plain_identifier '[' ']'               { $$.arglist.clear(); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
+               | expression                             { $$.arglist.clear(); $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
+               ;
 
 global_stmt : T_GLOBAL plain_identifier T_END_OF_STATEMENT          { if( !env->alloc_global_var( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }
             | T_GLOBAL plain_identifier '[' ']' T_END_OF_STATEMENT  { if( !env->alloc_global_array( $2.value ) ) throw ASTExceptionNamingConflict( @1, $2.value ); }

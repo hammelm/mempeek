@@ -248,6 +248,7 @@ public:
     ASTNodeString( const yylloc_t& yylloc, Environment* env, std::string name, std::string str );
 
     uint64_t execute() override;
+    bool get_array_result( Environment::array*& array ) override;
 
 	static size_t get_length( const Environment::array* array );
 	static std::string get_string( const Environment::array* array );
