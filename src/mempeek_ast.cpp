@@ -564,56 +564,31 @@ void ASTNodePoke::poke()
 //////////////////////////////////////////////////////////////////////////////
 
 ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc )
- : ASTNode( yylloc ),
-   m_Text( "\n" )
-{
-#ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint newline" << endl;
-#endif
-}
-
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, std::string text )
- : ASTNode( yylloc ),
-   m_Text( text )
-{
-#ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint text=\"" << text << "\"" << endl;
-#endif
-}
-
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
-		 << hex << setw(3) << setfill('0') << modifier << dec << endl;
+	cerr << "AST[" << this << "]: creating ASTNodePrint" << endl;
 #endif
+}
 
+void ASTNodePrint::add_arg( ASTNode::ptr node, int modifier )
+{
 	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
 	    modifier &= ~MOD_SIZEMASK;
 	    modifier |= size_to_mod( Environment::get_default_size() );
 	}
 
-	add_child( expression );
-	m_Modifier = modifier;
+	m_Args.push_back( { node, "", modifier } );
 }
 
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, Environment* env, std::string array, int modifier )
- : ASTNode( yylloc )
+void ASTNodePrint::add_arg( std::string text )
 {
-#ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint array=" << array << " modifier=0x"
-		 << hex << setw(3) << setfill('0') << modifier << dec << endl;
-#endif
+	m_Args.push_back( { nullptr, text, 0 } );
+}
 
-	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
-	    modifier &= ~MOD_SIZEMASK;
-	    modifier |= size_to_mod( Environment::get_default_size() );
-	}
-
-	add_child( make_shared<ASTNodeArray>( yylloc, env, array ) );
-	m_Modifier = modifier;
-    m_IsArray = true;
+void ASTNodePrint::set_endl( bool enable )
+{
+	m_PrintEndl = enable;
 }
 
 uint64_t ASTNodePrint::execute()
@@ -622,14 +597,20 @@ uint64_t ASTNodePrint::execute()
 	cerr << "AST[" << this << "]: executing ASTNodePrint" << endl;
 #endif
 
-	for( ASTNode::ptr node: get_children() ) {
-        Environment::array* array;
-        uint64_t value = node->execute();
-        if( m_IsArray && node->get_array_result( array ) ) print_array( cout, array );
-        else print_value( cout, value );
-    }
+	for( arg_t arg: m_Args ) {
+		if( arg.node ) {
+	        Environment::array* array;
+	        uint64_t value = arg.node->execute();
+	        if( (arg.mode & MOD_ARRAYMASK ) != 0 && arg.node->get_array_result( array ) ) print_array( cout, array, arg.mode );
+	        else print_value( cout, value, arg.mode );
+		}
+		else {
+			cout << arg.text;
+		}
+	}
 
-	cout << m_Text << flush;
+	if( m_PrintEndl ) cout << endl;
+	else cout << flush;
 
 	return 0;
 }
@@ -645,12 +626,12 @@ int ASTNodePrint::size_to_mod( int size )
 	}
 }
 
-void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
+void ASTNodePrint::print_value( std::ostream& out, uint64_t value, int modifier )
 {
 	int size = 0;
 	int64_t nvalue;
 
-	switch( m_Modifier & MOD_SIZEMASK ) {
+	switch( modifier & MOD_SIZEMASK ) {
 	case MOD_8BIT:
 		value &= 0xff;
 		nvalue = (int8_t)value;
@@ -675,7 +656,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 		break;
 	}
 
-	switch( m_Modifier & MOD_TYPEMASK ) {
+	switch( modifier & MOD_TYPEMASK ) {
 	case MOD_HEX: {
 		const ios_base::fmtflags oldflags = out.flags( ios::hex | ios::right | ios::fixed );
 		out << "0x" << setw( 2 * size ) << setfill('0') << value;
@@ -686,7 +667,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	case MOD_DEC:
 	case MOD_NEG: {
 		const ios_base::fmtflags oldflags = out.flags( ios::dec | ios::right | ios::fixed );
-		if( (m_Modifier & MOD_TYPEMASK) == MOD_DEC ) out << value;
+		if( (modifier & MOD_TYPEMASK) == MOD_DEC ) out << value;
 		else out << nvalue;
 		out.flags( oldflags );
 		break;
@@ -701,7 +682,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	}
 
 	case MOD_FLOAT: {
-	    assert( (m_Modifier & MOD_SIZEMASK) == MOD_64BIT );
+	    assert( (modifier & MOD_SIZEMASK) == MOD_64BIT );
 	    double d = *(double*)&value;
 	    out << d;
 	    break;
@@ -710,17 +691,17 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	}
 }
 
-void ASTNodePrint::print_array( std::ostream& out, Environment::array* array )
+void ASTNodePrint::print_array( std::ostream& out, Environment::array* array, int modifier )
 {
     const size_t size = array->get_size();
 
-    switch( m_Modifier & MOD_ARRAYMASK ) {
+    switch( modifier & MOD_ARRAYMASK ) {
     case MOD_ARRAY: {
         if( size ) {
             out << '[';
             for( size_t i = 0; i < size; i++ ) {
                 out << ' ';
-                print_value( out, array->get(i) );
+                print_value( out, array->get(i), modifier );
             }
             out << " ]";
         }

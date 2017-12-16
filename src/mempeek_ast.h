@@ -411,22 +411,29 @@ public:
 	};
 
 	ASTNodePrint( const yylloc_t& yylloc );
-	ASTNodePrint( const yylloc_t& yylloc, std::string text );
-	ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier );
-	ASTNodePrint( const yylloc_t& yylloc, Environment* env, std::string array, int modifier );
+
+	void add_arg( ASTNode::ptr node, int modifier );
+	void add_arg( std::string text );
+
+	void set_endl( bool enable );
 
 	uint64_t execute() override;
 
 	static int size_to_mod( int size );
 
 private:
-	void print_value( std::ostream& out, uint64_t value );
-	void print_array( std::ostream& out, Environment::array* array );
+	static void print_value( std::ostream& out, uint64_t value, int modifier );
+	static void print_array( std::ostream& out, Environment::array* array, int modifier );
 
-	int m_Modifier = MOD_DEC | MOD_32BIT | MOD_ARRAY;
-	std::string m_Text = "";
+	typedef struct {
+		ASTNode::ptr node;
+		std::string text;
+		int mode;
+	} arg_t;
 
-    bool m_IsArray = false;
+	std::vector< arg_t > m_Args;
+
+    bool m_PrintEndl = true;
 };
 
 

@@ -35,6 +35,7 @@
 using namespace std;
 
 static size_t arrayarg_counter = 0;
+static ASTNodePrint::ptr printnode = nullptr;
  
 int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
 
@@ -338,18 +339,23 @@ size_suffix : T_8BIT                                    { $$.token = $1.token; }
             | T_64BIT                                   { $$.token = $1.token; }
             ;
 
-print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.node->add_child( make_shared<ASTNodePrint>( @$ ) ); }
-           | T_PRINT print_args T_NOENDL                { $$.node = $2.node; }
+print_stmt : print_stmt_endl                            { $$.node = printnode; }
+           | print_stmt_endl T_NOENDL                   { $$.node = printnode; printnode->set_endl( false ); }
            ;
 
-print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.token = env->get_default_modifier(); }
-		   | print_args print_array						{ $$.node = $1.node, $$.token = ($$.token & ~ASTNodePrint::MOD_ARRAYMASK) | $2.token; }
-           | print_args print_float                     { $$.node = $1.node; $$.token = ($$.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_64BIT; }
-           | print_args print_format                    { $$.node = $1.node; $$.token = ($$.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_WORDSIZE; }
-           | print_args print_format print_size         { $$.node = $1.node; $$.token = ($$.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | $3.token; }
-           | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.node, $$.token ) ); }
-           | print_args T_SCONST                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
-           | print_args plain_identifier '[' ']'        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, env, $2.value, $$.token ) ); }
+print_stmt_endl : T_PRINT                               { printnode = make_shared<ASTNodePrint>( @$ ); arrayarg_counter = 0; }
+                  print_args
+                ;
+
+print_args : %empty                                     { $$.token = env->get_default_modifier(); }
+		   | print_args print_array						{ $$.token = ($1.token & ~ASTNodePrint::MOD_ARRAYMASK) | $2.token; }
+           | print_args print_float                     { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_64BIT; }
+           | print_args print_format                    { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_WORDSIZE; }
+           | print_args print_format print_size         { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | $3.token; }
+           | print_args T_SCONST                        { $$.token = $1.token; printnode->add_arg( $2.value.substr( 1, $2.value.length() - 2 ) ); }
+           | print_args plain_identifier '(' func_args ')'  { $$.token = $1.token; printnode->add_arg( yyfuncarg( @2, env, $2.value, $4.arglist, arrayarg_counter++ ).first, $$.token ); }
+           | print_args plain_identifier '[' ']'        { $$.token = $1.token; printnode->add_arg( make_shared<ASTNodeArray>( yylloc, env, $2.value ), $$.token ); }
+           | print_args expression                      { $$.token = $1.token; printnode->add_arg( $2.node, $$.token & ~ASTNodePrint::MOD_ARRAYMASK ); }
            ;
 
 print_array : T_ARRAY									{ $$.token = ASTNodePrint::MOD_ARRAY; }
