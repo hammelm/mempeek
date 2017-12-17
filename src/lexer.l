@@ -152,13 +152,15 @@ std::string parse_escape_characters( std::string str );
 "?"                     TOKEN( '?' )
 
 [a-zA-Z][a-zA-Z0-9_]*   TOKEN( T_IDENTIFIER )
+
 "0x"[0-9a-fA-F]+        TOKEN( T_CONSTANT )
 "0b"[01]+               TOKEN( T_CONSTANT )
 [0-9]+                  TOKEN( T_CONSTANT )
-\"(\\[rnt\"\\]|\\x[0-9a-fA-F]{2}|[^\\"])*\"  STRINGTOKEN( T_SCONST )
 
 [+-]?[0-9]*\.[0-9]+                 TOKEN( T_FCONST )
 [+-]?[0-9]*\.?[0-9]+[eE][+-]?[0-9]+ TOKEN( T_FCONST )
+
+\"(\\[rnt\"\\]|\\x[0-9a-fA-F]{2}|[^\\"])*\"  STRINGTOKEN( T_SCONST )
 
 .                       printf( "unknown token\n" ); yyterminate();
 

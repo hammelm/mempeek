@@ -28,6 +28,7 @@
 
 #include <iostream>
 #include <vector>
+#include <deque>
 #include <string>
 #include <algorithm>
 #include <regex>
@@ -89,6 +90,20 @@ ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_
     });
 }
 
+ASTNode::ptr str2int( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
+    	return Environment::parse_int( ASTNodeString::get_string( args[0].array ) );
+    });
+}
+
+ASTNode::ptr str2float( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
+    	return Environment::parse_float( ASTNodeString::get_string( args[0].array ) );
+    });
+}
+
 void tokenize_string( string text, string separator )
 {
 	regex pattern( separator );
@@ -137,6 +152,112 @@ ASTNode::ptr gettoken( const yylloc_t& location, Environment* env, const arglist
     });
 }
 
+ASTNode::ptr int2str( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<2,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x01>::args_t& args ) -> uint64_t {
+    	ostringstream ostr;
+    	ostr << args[1].value;
+
+    	ASTNodeString::set_string( args[0].array, ostr.str() );
+
+    	return 0;
+    });
+}
+
+ASTNode::ptr signed2str( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<2,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x01>::args_t& args ) -> uint64_t {
+    	int64_t value = args[1].value;
+
+    	ostringstream ostr;
+    	ostr << value;
+
+    	ASTNodeString::set_string( args[0].array, ostr.str() );
+
+    	return 0;
+    });
+}
+
+ASTNode::ptr hex2str( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+
+	if( args.size() == 2 ) {
+		return make_shared< ASTNodeBuiltin<2,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x01>::args_t& args ) -> uint64_t {
+			ostringstream ostr;
+			ostr << "0x" << hex << args[1].value;
+
+			ASTNodeString::set_string( args[0].array, ostr.str() );
+
+			return 0;
+		});
+	}
+	else {
+		return make_shared< ASTNodeBuiltin<3,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<3,0x01>::args_t& args ) -> uint64_t {
+			ostringstream ostr;
+			ostr << "0x" << hex << setw( args[2].value ) << setfill('0') << args[1].value;
+
+			ASTNodeString::set_string( args[0].array, ostr.str() );
+
+			return 0;
+		});
+	}
+}
+
+
+ASTNode::ptr bin2str( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+	if( args.size() == 2 ) {
+		return make_shared< ASTNodeBuiltin<2,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x01>::args_t& args ) -> uint64_t {
+			uint64_t value = args[1].value;
+
+			deque<char> bin;
+			do {
+				if( (value & 1) == 0 ) bin.push_front( '0' );
+				else bin.push_front( '1' );
+				value >>= 1;
+			} while( value );
+
+			bin.push_front( 'b' );
+			bin.push_front( '0' );
+
+			ASTNodeString::set_string( args[0].array, string( bin.begin(), bin.end() ) );
+
+			return 0;
+		});
+	}
+	else {
+		return make_shared< ASTNodeBuiltin<3,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<3,0x01>::args_t& args ) -> uint64_t {
+			uint64_t value = args[1].value;
+			uint64_t size = args[2].value;
+
+			ostringstream ostr;
+			ostr << "0b";
+			if( size ) {
+				while( size-- > 0 ) ostr << ((value & (1 << size)) ? '1' : '0');
+			}
+			else ostr << '0';
+
+			ASTNodeString::set_string( args[0].array, ostr.str() );
+
+			return 0;
+		});
+	}
+}
+
+ASTNode::ptr float2str( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<2,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x01>::args_t& args ) -> uint64_t {
+    	double value = *(double*)&(args[1].value);
+
+    	ostringstream ostr;
+    	ostr << value;
+
+    	ASTNodeString::set_string( args[0].array, ostr.str() );
+
+    	return 0;
+    });
+}
+
 } // anonymous namespace
 
 
@@ -147,6 +268,8 @@ ASTNode::ptr gettoken( const yylloc_t& location, Environment* env, const arglist
 void Environment::register_string_functions( BuiltinManager* manager )
 {
     manager->register_function( "strlen", strlen_ );
+    manager->register_function( "str2int", str2int );
+    manager->register_function( "str2float", str2float );
     manager->register_function( "tokenize", tokenize );
 }
 
@@ -156,4 +279,9 @@ void Environment::register_string_arrayfuncs( BuiltinManager* manager )
     manager->register_function( "substr", substr );
     manager->register_function( "getline", getline_ );
     manager->register_function( "gettoken", gettoken );
+    manager->register_function( "int2str", int2str );
+    manager->register_function( "signed2str", signed2str );
+    manager->register_function( "hex2str", hex2str );
+    manager->register_function( "bin2str", bin2str );
+    manager->register_function( "float2str", float2str );
 }
