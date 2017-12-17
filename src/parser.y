@@ -35,29 +35,41 @@
 using namespace std;
 
 static size_t arrayarg_counter = 0;
+static size_t arrayarg_depth = 0;
+
 static ASTNodePrint::ptr printnode = nullptr;
  
 int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
 
 void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
 
-arglist_t::value_type yyfuncarg( const yylloc_t& location, Environment* env, std::string func, const arglist_t& args, size_t argpos )
+void yyarg_start()
+{
+    arrayarg_depth++;
+}
+
+void yyarg_end()
+{
+    if( --arrayarg_depth == 0 ) arrayarg_counter = 0; 
+}
+
+arglist_t::value_type yyfuncarg( const yylloc_t& location, Environment* env, std::string func, const arglist_t& args )
 {
 	try {
 		ASTNode::ptr node = env->get_function( location, func, args );
 		return make_pair( node, string( "" ) );
 	}
 	catch( ASTExceptionNamingConflict& ) {
-		string result = "@arg" + to_string( argpos );
+		string result = "@arg" + to_string( arrayarg_counter++ );
 		env->alloc_array( result );
 		ASTNode::ptr node = env->get_arrayfunc( location, func, result, args );
 		return make_pair( node, result );
 	}
 }
 
-arglist_t::value_type yystringarg( const yylloc_t& location, Environment* env, std::string value, size_t argpos )
+arglist_t::value_type yystringarg( const yylloc_t& location, Environment* env, std::string value )
 {
-    string result = "@arg" + to_string( argpos );
+    string result = "@arg" + to_string( arrayarg_counter++ );
     env->alloc_array( result );
     ASTNode::ptr node = make_shared<ASTNodeString>( location, env, result, value );
     return make_pair( node, result );
@@ -200,17 +212,25 @@ func_arg_list : %empty
               | func_arg_list ',' plain_identifier '[' ']'  { env->set_subroutine_param( $3.value, true ); }
               ;
 
-proc_args : %empty                                      { arrayarg_counter = 0; $$.arglist.clear(); }
-          | proc_args subroutine_arg                    { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( $2.arglist[0] ); }
+proc_args :                                             { yyarg_start(); }
+            proc_args_items                             { $$.arglist = std::move( $2.arglist ); yyarg_end(); }
           ;
 
-func_args : %empty                                      { arrayarg_counter = 0; $$.arglist.clear(); }
-          | subroutine_arg                              { arrayarg_counter = 0; $$.arglist = std::move( $1.arglist ); }
-          | func_args ',' subroutine_arg                { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( $3.arglist[0] ); }
+proc_args_items : %empty                                { $$.arglist.clear(); }
+                | proc_args_items subroutine_arg        { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( $2.arglist[0] ); }
+                ;
+
+func_args : %empty                                      { $$.arglist.clear(); }
+          |                                             { yyarg_start(); }
+            func_args_items                             { $$.arglist = std::move( $2.arglist ); yyarg_end(); }
           ;
 
-subroutine_arg : T_SCONST                               { $$.arglist.clear(); $$.arglist.push_back( yystringarg( @$, env, $1.value.substr( 1, $1.value.length() - 2 ), arrayarg_counter++ ) ); }
-               | plain_identifier '(' func_args ')'     { $$.arglist.clear(); $$.arglist.push_back( yyfuncarg( @1, env, $1.value, $3.arglist, arrayarg_counter++ ) ); }
+func_args_items : subroutine_arg                        { $$.arglist = std::move( $1.arglist ); }
+                | func_args_items ',' subroutine_arg    { $$.arglist = std::move( $1.arglist ); $$.arglist.push_back( $3.arglist[0] ); }
+                ;
+
+subroutine_arg : T_SCONST                               { $$.arglist.clear(); $$.arglist.push_back( yystringarg( @$, env, $1.value.substr( 1, $1.value.length() - 2 ) ) ); }
+               | plain_identifier '(' func_args ')'     { $$.arglist.clear(); $$.arglist.push_back( yyfuncarg( @1, env, $1.value, $3.arglist ) ); }
                | plain_identifier '[' ']'               { $$.arglist.clear(); $$.arglist.push_back( make_pair( ASTNode::ptr(nullptr), $1.value ) ); }
                | expression                             { $$.arglist.clear(); $$.arglist.push_back( make_pair( $1.node, string("") ) ); }
                ;
@@ -343,19 +363,19 @@ print_stmt : print_stmt_endl                            { $$.node = printnode; }
            | print_stmt_endl T_NOENDL                   { $$.node = printnode; printnode->set_endl( false ); }
            ;
 
-print_stmt_endl : T_PRINT                               { printnode = make_shared<ASTNodePrint>( @$ ); arrayarg_counter = 0; }
-                  print_args
+print_stmt_endl : T_PRINT                               { printnode = make_shared<ASTNodePrint>( @$ ); yyarg_start(); }
+                  print_args                            { yyarg_end(); }
                 ;
 
-print_args : %empty                                     { $$.token = env->get_default_modifier(); }
-		   | print_args print_array						{ $$.token = ($1.token & ~ASTNodePrint::MOD_ARRAYMASK) | $2.token; }
-           | print_args print_float                     { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_64BIT; }
-           | print_args print_format                    { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_WORDSIZE; }
-           | print_args print_format print_size         { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | $3.token; }
-           | print_args T_SCONST                        { $$.token = $1.token; printnode->add_arg( $2.value.substr( 1, $2.value.length() - 2 ) ); }
-           | print_args plain_identifier '(' func_args ')'  { $$.token = $1.token; printnode->add_arg( yyfuncarg( @2, env, $2.value, $4.arglist, arrayarg_counter++ ).first, $$.token ); }
-           | print_args plain_identifier '[' ']'        { $$.token = $1.token; printnode->add_arg( make_shared<ASTNodeArray>( yylloc, env, $2.value ), $$.token ); }
-           | print_args expression                      { $$.token = $1.token; printnode->add_arg( $2.node, $$.token & ~ASTNodePrint::MOD_ARRAYMASK ); }
+print_args : %empty                                         { $$.token = env->get_default_modifier(); }
+		   | print_args print_array		 	       			{ $$.token = ($1.token & ~ASTNodePrint::MOD_ARRAYMASK) | $2.token; }
+           | print_args print_float                         { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_64BIT; }
+           | print_args print_format                        { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_WORDSIZE; }
+           | print_args print_format print_size             { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | $3.token; }
+           | print_args T_SCONST                            { $$.token = $1.token; printnode->add_arg( $2.value.substr( 1, $2.value.length() - 2 ) ); }
+           | print_args plain_identifier '(' func_args ')'  { $$.token = $1.token; printnode->add_arg( yyfuncarg( @2, env, $2.value, $4.arglist ).first, $$.token ); }
+           | print_args plain_identifier '[' ']'            { $$.token = $1.token; printnode->add_arg( make_shared<ASTNodeArray>( yylloc, env, $2.value ), $$.token ); }
+           | print_args expression                          { $$.token = $1.token; printnode->add_arg( $2.node, $$.token & ~ASTNodePrint::MOD_ARRAYMASK ); }
            ;
 
 print_array : T_ARRAY									{ $$.token = ASTNodePrint::MOD_ARRAY; }

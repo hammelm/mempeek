@@ -7,7 +7,8 @@
 # 0
 # [ 3 4 6 9 14 22 35 56 90 145 ]
 # [ 8243401930537135974 25199 ]
-# [ 7093010423660638822 29281 ]
+# [ 7093010423660245606 108256570012257 ]
+# 12345
 
 defproc printarray a[]
     print "[" noendl
@@ -54,4 +55,5 @@ frob[] := "frob"
 
 x[] := strcat3( foo[], bar[], frob[] )
 printarray x[]
-printarray strcat3( frob[], foo[], bar[] )
+printarray strcat3( "frib", foo[], strcat( bar[], "frub" ) )
+print string strcat( strcat( "1", "2" ), strcat( strcat( "3", "4" ), "5" ) )
