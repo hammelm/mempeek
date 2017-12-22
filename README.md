@@ -435,8 +435,8 @@ literals can be used in assignments or as subroutine arguments instead of arrays
 following functions are available for string handling:
 
         strlen( str[] )                     return the string length in bytes
-        strcmp( str1[], str2[] )            compare strings lexicographically and return -1 / 0 / 1
-                                            if str1 comes before / is equal to / comes after str2
+        strcmp( str1[], str2[] )            compare strings lexicographically and return 0 / 1 / 2
+                                            when str1 is before / is equal to / is after str2
         str2int( str[] )                    convert the string to an integer
         str2float( str[] )                  convert the string to a float
         tokenize( str[] [, delimiter[]] )   split up str into tokens using the optional

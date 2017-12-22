@@ -10,6 +10,8 @@
 # [ 7093010423660245606 108256570012257 ]
 # 12345
 
+pragma wordsize 64
+
 defproc printarray a[]
     print "[" noendl
     for i from 0 to a[?] - 1 do print " " dec a[i] noendl

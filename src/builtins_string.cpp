@@ -98,9 +98,9 @@ ASTNode::ptr strcmp_( const yylloc_t& location, Environment* env, const arglist_
 
 		int ret = strcmp( str1.c_str(), str2.c_str() );
 
-		if( ret < 0 ) return -1;
-		else if( ret > 0 ) return +1;
-		else return 0;
+		if( ret < 0 ) return 0;
+		else if( ret > 0 ) return 2;
+		else return 1;
     });
 }
 
@@ -159,7 +159,7 @@ ASTNode::ptr gettoken( const yylloc_t& location, Environment* env, const arglist
     return make_shared< ASTNodeBuiltin<2,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x01>::args_t& args ) -> uint64_t {
     	uint64_t index = args[1].value;
 
-    	if( index <= TOKENS.size() ) ASTNodeString::set_string( args[0].array, TOKENS[index] );
+    	if( index < TOKENS.size() ) ASTNodeString::set_string( args[0].array, TOKENS[index] );
     	else ASTNodeString::set_string( args[0].array, "" );
 
     	return 0;
@@ -242,16 +242,19 @@ ASTNode::ptr bin2str( const yylloc_t& location, Environment* env, const arglist_
 	else {
 		return make_shared< ASTNodeBuiltin<3,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<3,0x01>::args_t& args ) -> uint64_t {
 			uint64_t value = args[1].value;
-			uint64_t size = args[2].value;
+			ssize_t size = args[2].value;
 
-			ostringstream ostr;
-			ostr << "0b";
-			if( size ) {
-				while( size-- > 0 ) ostr << ((value & (1 << size)) ? '1' : '0');
-			}
-			else ostr << '0';
+			deque<char> bin;
+			do {
+				if( (value & 1) == 0 ) bin.push_front( '0' );
+				else bin.push_front( '1' );
+				value >>= 1;
+			} while( --size > 0 || value );
 
-			ASTNodeString::set_string( args[0].array, ostr.str() );
+			bin.push_front( 'b' );
+			bin.push_front( '0' );
+
+			ASTNodeString::set_string( args[0].array, string( bin.begin(), bin.end() ) );
 
 			return 0;
 		});
