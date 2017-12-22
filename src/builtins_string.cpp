@@ -90,6 +90,20 @@ ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_
     });
 }
 
+ASTNode::ptr strcmp_( const yylloc_t& location, Environment* env, const arglist_t& args )
+{
+    return make_shared< ASTNodeBuiltin<2,0x03> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x03>::args_t& args ) -> uint64_t {
+		string str1 = ASTNodeString::get_string( args[0].array );
+		string str2 = ASTNodeString::get_string( args[1].array );
+
+		int ret = strcmp( str1.c_str(), str2.c_str() );
+
+		if( ret < 0 ) return -1;
+		else if( ret > 0 ) return +1;
+		else return 0;
+    });
+}
+
 ASTNode::ptr str2int( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
@@ -268,6 +282,7 @@ ASTNode::ptr float2str( const yylloc_t& location, Environment* env, const arglis
 void Environment::register_string_functions( BuiltinManager* manager )
 {
     manager->register_function( "strlen", strlen_ );
+    manager->register_function( "strcmp", strcmp_ );
     manager->register_function( "str2int", str2int );
     manager->register_function( "str2float", str2float );
     manager->register_function( "tokenize", tokenize );

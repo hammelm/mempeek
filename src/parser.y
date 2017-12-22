@@ -333,7 +333,7 @@ map_stmt : T_MAP expression expression                  { $$.node = make_shared<
            T_AT expression                              { $$.node = make_shared<ASTNodeMap>( @$, env, $2.node, $6.node, $3.node, $4.value.substr( 1, $4.value.length() - 2 ) ); }
          ;
 
-pragma_stmt : T_PRAGMA T_PRINT print_array				{ env->set_default_modifier( $3.token ); }
+pragma_stmt : T_PRAGMA T_PRINT print_array              { env->set_default_modifier( $3.token ); }
             | T_PRAGMA T_PRINT print_float              { env->set_default_modifier( $3.token | ASTNodePrint::MOD_64BIT ); }
             | T_PRAGMA T_PRINT print_format             { env->set_default_modifier( $3.token | ASTNodePrint::MOD_WORDSIZE ); }
             | T_PRAGMA T_PRINT print_format print_size  { env->set_default_modifier( $3.token | $4.token ); }
@@ -368,7 +368,7 @@ print_stmt_endl : T_PRINT                               { printnode = make_share
                 ;
 
 print_args : %empty                                         { $$.token = env->get_default_modifier(); }
-		   | print_args print_array		 	       			{ $$.token = ($1.token & ~ASTNodePrint::MOD_ARRAYMASK) | $2.token; }
+           | print_args print_array                         { $$.token = ($1.token & ~ASTNodePrint::MOD_ARRAYMASK) | $2.token; }
            | print_args print_float                         { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_64BIT; }
            | print_args print_format                        { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | ASTNodePrint::MOD_WORDSIZE; }
            | print_args print_format print_size             { $$.token = ($1.token & ~ASTNodePrint::MOD_TYPESIZEMASK) | $2.token | $3.token; }
@@ -378,8 +378,8 @@ print_args : %empty                                         { $$.token = env->ge
            | print_args expression                          { $$.token = $1.token; printnode->add_arg( $2.node, $$.token & ~ASTNodePrint::MOD_ARRAYMASK ); }
            ;
 
-print_array : T_ARRAY									{ $$.token = ASTNodePrint::MOD_ARRAY; }
-            | T_STRING									{ $$.token = ASTNodePrint::MOD_STRING; }
+print_array : T_ARRAY                                   { $$.token = ASTNodePrint::MOD_ARRAY; }
+            | T_STRING                                  { $$.token = ASTNodePrint::MOD_STRING; }
 
 print_float : T_FLOAT                                   { $$.token = ASTNodePrint::MOD_FLOAT; }
             ;
