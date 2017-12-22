@@ -26,6 +26,7 @@
 %{
 
 #include "mempeek_parser.h"
+#include "mempeek_exceptions.h"
 #include "parser.h"
 
 #include <string>
@@ -158,7 +159,7 @@ std::string parse_escape_characters( std::string str );
 [+-]?[0-9]*\.[0-9]+                 TOKEN( T_FCONST )
 [+-]?[0-9]*\.?[0-9]+[eE][+-]?[0-9]+ TOKEN( T_FCONST )
 
-.                       printf( "unknown token\n" ); yyterminate();
+.                       throw ASTExceptionSyntaxError( { yyget_extra( yyscanner ), yylineno, yylineno } );
 
 %%
 
