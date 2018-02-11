@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -1261,6 +1261,8 @@ uint64_t ASTNodeBinaryOperator::execute()
 	case T_MUL: return r0 * r1;
 	case T_DIV: if( r1 != 0 ) return r0 / r1; else throw ASTExceptionDivisionByZero( get_location() );
 	case T_MOD: if( r1 != 0 ) return r0 % r1; else throw ASTExceptionDivisionByZero( get_location() );
+	case T_SDIV: if( r1 != 0 ) return ((int64_t)r0 / (int64_t)r1); else throw ASTExceptionDivisionByZero( get_location() );
+	case T_SMOD: if( r1 != 0 ) return ((int64_t)r0 % (int64_t)r1); else throw ASTExceptionDivisionByZero( get_location() );
 	case T_LSHIFT: return r0 << r1;
 	case T_RSHIFT: return r0 >> r1;
 	case T_LT: return (r0 < r1) ? 0xffffffffffffffff : 0;

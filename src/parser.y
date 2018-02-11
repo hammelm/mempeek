@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -66,7 +66,7 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 %token T_PRAGMA T_WORDSIZE T_LOADPATH
 
 %token T_BIT_NOT T_LOG_NOT T_BIT_AND T_LOG_AND T_BIT_XOR T_LOG_XOR T_BIT_OR T_LOG_OR
-%token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD
+%token T_LSHIFT T_RSHIFT T_PLUS T_MINUS T_MUL T_DIV T_MOD T_SDIV T_SMOD
 %token T_LT T_GT T_LE T_GE T_EQ T_NE T_SLT T_SGT T_SLE T_SGE
 %token T_ASSIGN
 
@@ -382,6 +382,8 @@ add_expr : add_expr T_PLUS mul_expr                     { $$.node = make_shared<
 mul_expr : mul_expr T_MUL shift_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | mul_expr T_DIV shift_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | mul_expr T_MOD shift_expr                    { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+         | mul_expr T_SDIV shift_expr                   { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
+         | mul_expr T_SMOD shift_expr                   { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | mul_expr T_BIT_AND shift_expr                { $$.node = make_shared<ASTNodeBinaryOperator>( @$, $1.node, $3.node, $2.token ); }
          | shift_expr                                   { $$.node = $1.node; }
          ;

@@ -133,6 +133,15 @@ Arithmetic operators:
         <expr1> % <expr2>       remainder of dividing <expr1> by <expr2>
         - <expr>                negate <expr> (calculate two's complement)
 
+Addition, substraction, and multiplication results are identical for signed and unsigned
+operands, whereas the division and remainder operators have different results. Therefore
+signed division and remainder operators are provided which treat their operands as signed
+integers in two's complement. The division result is always truncated towards zero, and
+the remainder fulfills the equation `(x -/ y) * y + (x -% y) == x`.
+
+        <expr1> -/ <expr2>      signed division of <expr1> with <expr2>
+        <expr1> -% <expr2>      signed remainder of dividing <expr1> by <expr2>
+
 Bit manipulation operators:
 
         <expr1> << <expr2>      left shift <expr1> by <expr2> bits
@@ -142,7 +151,7 @@ Bit manipulation operators:
         <expr1> ^ <expr2>       bitwise XOR of <expr1> and <expr2>
         ~ <expr>                bitwise NOT of <expr>
 
-Boolean operators (expressions are treated as true or false by these operators, a value of
+Boolean operators (expressions are treated as true or false by these operators. A value of
 zero is false, all other values are true. The result of logical operators is 0 for false
 and -1 for true ):
 
@@ -174,7 +183,7 @@ operator precedence
 the operators have the following precedences, with higher precedence listed first:
 
         1:  ! ~ - (unary)
-        2:  * / % &
+        2:  * / % -/ -% &
         3:  + - | ^
         4:  << >>
         5:  < <= > >= == != -< -<= -> ->=

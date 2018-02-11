@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -117,6 +117,9 @@ std::string parse_escape_characters( std::string str );
 "%"                     TOKEN( T_MOD )
 "<<"                    TOKEN( T_LSHIFT )
 ">>"                    TOKEN( T_RSHIFT )
+
+"-/"                    TOKEN( T_SDIV )
+"-%"                    TOKEN( T_SMOD )
 
 "&"                     TOKEN( T_BIT_AND )
 "|"                     TOKEN( T_BIT_OR )
