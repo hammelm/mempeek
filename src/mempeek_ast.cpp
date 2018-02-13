@@ -136,6 +136,43 @@ uint64_t ASTNodeBlock::execute()
 
 
 //////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArrayBlock implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeArrayBlock::ASTNodeArrayBlock( const yylloc_t& yylloc, Environment* env, std::string result )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeArrayBlock result=" << result << endl;
+#endif
+
+    m_Array = env->get_array( result );
+
+    if( !m_Array ) throw ASTExceptionUndefinedVar( get_location(), result );
+}
+
+uint64_t ASTNodeArrayBlock::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeArrayBlock" << endl;
+#endif
+
+	for( ASTNode::ptr node: get_children() ) {
+	    node->execute();
+        if( Environment::is_terminated() ) throw ASTExceptionTerminate();
+	}
+
+	return 0;
+}
+
+bool ASTNodeArrayBlock::get_array_result( Environment::array*& array )
+{
+    array = m_Array;
+    return true;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
 // class ASTNodeSubroutine implementation
 //////////////////////////////////////////////////////////////////////////////
 
@@ -527,38 +564,31 @@ void ASTNodePoke::poke()
 //////////////////////////////////////////////////////////////////////////////
 
 ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc )
- : ASTNode( yylloc ),
-   m_Text( "\n" )
-{
-#ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint newline" << endl;
-#endif
-}
-
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, std::string text )
- : ASTNode( yylloc ),
-   m_Text( text )
-{
-#ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint text=\"" << text << "\"" << endl;
-#endif
-}
-
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier )
  : ASTNode( yylloc )
 {
 #ifdef ASTDEBUG
-	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
-		 << hex << setw(2) << setfill('0') << modifier << dec << endl;
+	cerr << "AST[" << this << "]: creating ASTNodePrint" << endl;
 #endif
+}
 
+void ASTNodePrint::add_arg( ASTNode::ptr node, int modifier )
+{
 	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
 	    modifier &= ~MOD_SIZEMASK;
 	    modifier |= size_to_mod( Environment::get_default_size() );
 	}
 
-	add_child( expression );
-	m_Modifier = modifier;
+	m_Args.push_back( { node, "", modifier } );
+}
+
+void ASTNodePrint::add_arg( std::string text )
+{
+	m_Args.push_back( { nullptr, text, 0 } );
+}
+
+void ASTNodePrint::set_endl( bool enable )
+{
+	m_PrintEndl = enable;
 }
 
 uint64_t ASTNodePrint::execute()
@@ -567,8 +597,20 @@ uint64_t ASTNodePrint::execute()
 	cerr << "AST[" << this << "]: executing ASTNodePrint" << endl;
 #endif
 
-	for( ASTNode::ptr node: get_children() ) print_value( cout, node->execute() );
-	cout << m_Text << flush;
+	for( arg_t arg: m_Args ) {
+		if( arg.node ) {
+	        Environment::array* array;
+	        uint64_t value = arg.node->execute();
+	        if( (arg.mode & MOD_ARRAYMASK ) != 0 && arg.node->get_array_result( array ) ) print_array( cout, array, arg.mode );
+	        else print_value( cout, value, arg.mode );
+		}
+		else {
+			cout << arg.text;
+		}
+	}
+
+	if( m_PrintEndl ) cout << endl;
+	else cout << flush;
 
 	return 0;
 }
@@ -584,12 +626,12 @@ int ASTNodePrint::size_to_mod( int size )
 	}
 }
 
-void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
+void ASTNodePrint::print_value( std::ostream& out, uint64_t value, int modifier )
 {
 	int size = 0;
 	int64_t nvalue;
 
-	switch( m_Modifier & MOD_SIZEMASK ) {
+	switch( modifier & MOD_SIZEMASK ) {
 	case MOD_8BIT:
 		value &= 0xff;
 		nvalue = (int8_t)value;
@@ -614,7 +656,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 		break;
 	}
 
-	switch( m_Modifier & MOD_TYPEMASK ) {
+	switch( modifier & MOD_TYPEMASK ) {
 	case MOD_HEX: {
 		const ios_base::fmtflags oldflags = out.flags( ios::hex | ios::right | ios::fixed );
 		out << "0x" << setw( 2 * size ) << setfill('0') << value;
@@ -625,7 +667,7 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	case MOD_DEC:
 	case MOD_NEG: {
 		const ios_base::fmtflags oldflags = out.flags( ios::dec | ios::right | ios::fixed );
-		if( (m_Modifier & MOD_TYPEMASK) == MOD_DEC ) out << value;
+		if( (modifier & MOD_TYPEMASK) == MOD_DEC ) out << value;
 		else out << nvalue;
 		out.flags( oldflags );
 		break;
@@ -640,13 +682,39 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 	}
 
 	case MOD_FLOAT: {
-	    assert( (m_Modifier & MOD_SIZEMASK) == MOD_64BIT );
+	    assert( (modifier & MOD_SIZEMASK) == MOD_64BIT );
 	    double d = *(double*)&value;
 	    out << d;
 	    break;
 	}
 
 	}
+}
+
+void ASTNodePrint::print_array( std::ostream& out, Environment::array* array, int modifier )
+{
+    const size_t size = array->get_size();
+
+    switch( modifier & MOD_ARRAYMASK ) {
+    case MOD_ARRAY: {
+        if( size ) {
+            out << '[';
+            for( size_t i = 0; i < size; i++ ) {
+                out << ' ';
+                print_value( out, array->get(i), modifier );
+            }
+            out << " ]";
+        }
+        else out << "[]";
+        break;
+    }
+
+    case MOD_STRING: {
+        out << ASTNodeString::get_string( array );
+        break;
+    }
+
+    }
 }
 
 
@@ -874,6 +942,92 @@ uint64_t ASTNodeAssignArg::execute()
     }
 
     return 0;
+}
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeString implementation
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNodeString::ASTNodeString( const yylloc_t& yylloc, Environment* env, std::string name, std::string str )
+ : ASTNode( yylloc )
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: creating ASTNodeString name=" << name << " str=" << str << endl;
+#endif
+
+    m_Array = env->alloc_array( name );
+    m_String = str;
+
+    if( !m_Array ) throw ASTExceptionNamingConflict( get_location(), name );
+}
+
+uint64_t ASTNodeString::execute()
+{
+#ifdef ASTDEBUG
+    cerr << "AST[" << this << "]: executing ASTNodeString" << endl;
+#endif
+
+    set_string( m_Array, m_String );
+
+    return 0;
+}
+
+bool ASTNodeString::get_array_result( Environment::array*& array )
+{
+    array = m_Array;
+    return true;
+}
+
+size_t ASTNodeString::get_length( const Environment::array* array )
+{
+    const size_t size = array->get_size();
+	size_t len = 0;
+
+	for( size_t i = 0; i < size; i++ ) {
+		element_t value;
+		value.integer = array->get(i);
+
+		for( size_t j = 0; j < 8; j++ ) {
+			if( value.string[j] ) len++;
+			else return len;
+		}
+	}
+
+	return len;
+}
+
+std::string ASTNodeString::get_string( const Environment::array* array )
+{
+    const size_t size = array->get_size();
+	string str;
+
+	for( size_t i = 0; i < size; i++ ) {
+		element_t value;
+		value.integer = array->get(i);
+		for( size_t j = 0; j < 8; j++ ) {
+			uint8_t c = value.string[j];
+			if( c ) str += c;
+			else return str;
+		}
+	}
+
+	return str;
+}
+
+void ASTNodeString::set_string( Environment::array* array, std::string str )
+{
+	const size_t size = (str.length() + 7) / 8;
+	array->resize( size );
+
+	for( size_t i = 0; i < size; i++ ) {
+		element_t value;
+		for( size_t j = 0; j < 8; j++ ) {
+			size_t pos = 8 * i + j;
+			value.string[j] = (pos < str.length()) ? str[pos] : 0;
+		}
+		array->set( i, value.integer );
+	}
 }
 
 

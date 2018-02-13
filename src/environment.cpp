@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -49,7 +49,7 @@ using namespace std;
 int Environment::s_DefaultSize = (sizeof(void*) == 8) ? T_64BIT : ((sizeof(void*) == 2) ? T_16BIT : T_32BIT);
 std::stack<int> Environment::s_DefaultSizeStack;
 
-int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE;
+int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE | ASTNodePrint::MOD_ARRAY;
 std::stack<int> Environment::s_DefaultModifierStack;
 
 std::stack< std::vector< std::pair< uint64_t, Environment::array* > > > Environment::s_ArgStack;
@@ -62,7 +62,12 @@ Environment::Environment()
     m_GlobalVars = new VarManager;
     m_GlobalArrays = new ArrayManager;
 
-    m_BuiltinManager = new BuiltinManager;
+    m_BuiltinFunctions = new BuiltinManager( this );
+    m_BuiltinArrayfuncs = new BuiltinManager( this );
+
+    register_float_functions( m_BuiltinFunctions );
+    register_string_functions( m_BuiltinFunctions );
+    register_string_arrayfuncs( m_BuiltinArrayfuncs );
 
     m_ProcedureManager = new SubroutineManager( this );
     m_FunctionManager = new SubroutineManager( this );
@@ -77,7 +82,8 @@ Environment::~Environment()
 	delete m_FunctionManager;
 	delete m_ArrayfuncManager;
 
-	delete m_BuiltinManager;
+	delete m_BuiltinFunctions;
+	delete m_BuiltinArrayfuncs;
 
     delete m_GlobalArrays;
 	delete m_GlobalVars;
@@ -229,7 +235,8 @@ std::set< std::string > Environment::get_autocompletion( std::string prefix )
 {
     set< string > completions;
 
-    m_BuiltinManager->get_autocompletion( completions, prefix );
+    m_BuiltinFunctions->get_autocompletion( completions, prefix );
+    m_BuiltinArrayfuncs->get_autocompletion( completions, prefix );
     m_FunctionManager->get_autocompletion( completions, prefix );
     m_ArrayfuncManager->get_autocompletion( completions, prefix );
     // m_ProcedureManager is skipped intentionally; procedures are more like keywords than variables
@@ -275,7 +282,8 @@ void Environment::enter_subroutine_context( const yylloc_t& location, std::strin
 {
     assert( m_SubroutineContext == nullptr && m_LocalVars == nullptr && m_LocalArrays == nullptr );
 
-    if( m_BuiltinManager->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    if( m_BuiltinFunctions->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
+    if( m_BuiltinArrayfuncs->has_subroutine( name ) ) throw ASTExceptionNamingConflict( location, name );
 
     switch( type ) {
     case PROCEDURE:
@@ -348,7 +356,7 @@ std::shared_ptr<ASTNode> Environment::get_procedure( const yylloc_t& location, s
 
 std::shared_ptr<ASTNode> Environment::get_function( const yylloc_t& location, std::string name, const arglist_t& args )
 {
-    std::shared_ptr<ASTNode> node = m_BuiltinManager->get_subroutine( location, name, args );
+    std::shared_ptr<ASTNode> node = m_BuiltinFunctions->get_subroutine( location, name, args );
     if( node ) return node;
 
     node = m_FunctionManager->get_subroutine( location, name, args );
@@ -366,20 +374,18 @@ std::shared_ptr<ASTNode> Environment::get_arrayfunc( const yylloc_t& location, s
 		if( arg.second == ret ) ret_is_input = true;
 		retargs.push_back( arg );
 	}
+	if( ret_is_input ) retargs[0].second = "@return";
 
-	std::shared_ptr<ASTNode> block = make_shared<ASTNodeBlock>( location );
 	std::shared_ptr<ASTNode> zero = make_shared<ASTNodeConstant>( location, 0 );
+	std::shared_ptr<ASTNode> init = make_shared<ASTNodeDim>( location, this, retargs[0].second, zero );
 
-	if( ret_is_input ) {
-		retargs[0].second = "@return";
-		block->add_child( make_shared<ASTNodeDim>( location, this, retargs[0].second, zero ) );
-	}
-	else block->add_child( make_shared<ASTNodeDim>( location, this, ret, zero ) );
-
-    std::shared_ptr<ASTNode> subroutine = m_ArrayfuncManager->get_subroutine( location, name, retargs );
+    std::shared_ptr<ASTNode> subroutine = m_BuiltinArrayfuncs->get_subroutine( location, name, retargs );
+    if( !subroutine ) subroutine = m_ArrayfuncManager->get_subroutine( location, name, retargs );
     if( !subroutine ) throw ASTExceptionNamingConflict( location, name );
-    block->add_child( subroutine );
 
+	std::shared_ptr<ASTNode> block = make_shared<ASTNodeArrayBlock>( location, this, ret );
+    block->add_child( init );
+    block->add_child( subroutine );
     if( ret_is_input ) block->add_child( make_shared<ASTNodeAssign>( location, this, ret, retargs[0].second ) );
 
     return block;
@@ -462,30 +468,59 @@ bool Environment::set_default_size( int size )
 
 bool Environment::set_default_modifier( int modifier )
 {
-    switch( modifier & ASTNodePrint::MOD_TYPEMASK ) {
-    case ASTNodePrint::MOD_FLOAT:
-        if( (modifier & ASTNodePrint::MOD_SIZEMASK) != ASTNodePrint::MOD_64BIT ) return false;
-        s_DefaultModifier = modifier;
-        return true;
+    int arraymod = modifier & ASTNodePrint::MOD_ARRAYMASK;
+    int typemod = modifier & ASTNodePrint::MOD_TYPESIZEMASK;
 
-    case ASTNodePrint::MOD_BIN:
-    case ASTNodePrint::MOD_DEC:
-    case ASTNodePrint::MOD_HEX:
-    case ASTNodePrint::MOD_NEG:
-        switch( modifier & ASTNodePrint::MOD_SIZEMASK ) {
-        case ASTNodePrint::MOD_8BIT:
-        case ASTNodePrint::MOD_16BIT:
-        case ASTNodePrint::MOD_32BIT:
-        case ASTNodePrint::MOD_64BIT:
-        case ASTNodePrint::MOD_WORDSIZE:
-            s_DefaultModifier = modifier;
-            return true;
+    bool ret = true;
+
+    if( arraymod ) {
+    	switch( arraymod ) {
+    	case ASTNodePrint::MOD_ARRAY:
+    	case ASTNodePrint::MOD_STRING:
+    		s_DefaultModifier &= ~ASTNodePrint::MOD_ARRAYMASK;
+			s_DefaultModifier |= arraymod;
+    		break;
+
+    	default:
+    		ret = false;
+    		break;
+    	}
+    }
+
+    if( typemod ) {
+        switch( typemod & ASTNodePrint::MOD_TYPEMASK ) {
+        case ASTNodePrint::MOD_FLOAT:
+            if( (typemod & ASTNodePrint::MOD_SIZEMASK) == ASTNodePrint::MOD_64BIT ) {
+				s_DefaultModifier &= ~ASTNodePrint::MOD_TYPESIZEMASK;
+				s_DefaultModifier |= typemod;
+            }
+            else ret = false;
+            break;
+
+        case ASTNodePrint::MOD_BIN:
+        case ASTNodePrint::MOD_DEC:
+        case ASTNodePrint::MOD_HEX:
+        case ASTNodePrint::MOD_NEG:
+            switch( typemod & ASTNodePrint::MOD_SIZEMASK ) {
+            case ASTNodePrint::MOD_8BIT:
+            case ASTNodePrint::MOD_16BIT:
+            case ASTNodePrint::MOD_32BIT:
+            case ASTNodePrint::MOD_64BIT:
+            case ASTNodePrint::MOD_WORDSIZE:
+                s_DefaultModifier &= ~ASTNodePrint::MOD_TYPESIZEMASK;
+                s_DefaultModifier |= typemod;
+                break;
+
+            default:
+            	ret = false;
+            	break;
+            }
 
         default:
-            return false;
+            ret = false;
+            break;
         }
-
-    default:
-        return false;
     }
+
+    return ret;
 }

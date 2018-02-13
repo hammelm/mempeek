@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016-2017, Martin Hammel
+/*  Copyright (c) 2016-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without

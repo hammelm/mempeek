@@ -90,6 +90,8 @@ std::string parse_escape_characters( std::string str );
 "bin"                   TOKEN( T_BIN )
 "neg"                   TOKEN( T_NEG )
 "float"                 TOKEN( T_FLOAT )
+"array"                 TOKEN( T_ARRAY )
+"string"                TOKEN( T_STRING )
 "noendl"                TOKEN( T_NOENDL )
 "sleep"                 TOKEN( T_SLEEP )
 "until"                 TOKEN( T_UNTIL )
@@ -154,13 +156,15 @@ std::string parse_escape_characters( std::string str );
 "?"                     TOKEN( '?' )
 
 [a-zA-Z][a-zA-Z0-9_]*   TOKEN( T_IDENTIFIER )
+
 "0x"[0-9a-fA-F]+        TOKEN( T_CONSTANT )
 "0b"[01]+               TOKEN( T_CONSTANT )
 [0-9]+                  TOKEN( T_CONSTANT )
-\"(\\[rnt\"\\]|\\x[0-9a-fA-F]{2}|[^\\"])*\"  STRINGTOKEN( T_STRING )
 
 [+-]?[0-9]*\.[0-9]+                 TOKEN( T_FCONST )
 [+-]?[0-9]*\.?[0-9]+[eE][+-]?[0-9]+ TOKEN( T_FCONST )
+
+\"(\\[rnt\"\\]|\\x[0-9a-fA-F]{2}|[^\\"])*\"  STRINGTOKEN( T_SCONST )
 
 .                       throw ASTExceptionSyntaxError( { yyget_extra( yyscanner ), yylineno, yylineno } );
 

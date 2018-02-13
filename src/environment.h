@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -126,12 +126,17 @@ public:
     static uint64_t parse_float( std::string str, bool& is_ok );
 
 private:
+    void register_float_functions( BuiltinManager* manager );
+    void register_string_functions( BuiltinManager* manager );
+    void register_string_arrayfuncs( BuiltinManager* manager );
+
     VarManager* m_GlobalVars;
     ArrayManager* m_GlobalArrays;
 
 	std::map< void*, MMap* > m_Mappings;
 
-	BuiltinManager* m_BuiltinManager;
+	BuiltinManager* m_BuiltinFunctions;
+	BuiltinManager* m_BuiltinArrayfuncs;
 
 	SubroutineManager* m_ProcedureManager;
 	SubroutineManager* m_FunctionManager;

@@ -205,10 +205,10 @@ numbers in scientific notation using the common *e* notation (e.g. *6.022e-23*).
 point literals can be used in expressions and are transformed to a 64 bit value in IEEE
 754 double precision encoding.
 
-String literals are only allowed in print commands and consist of printable ASCII
-characters between two double quotes. The backslash character has a special meaning and
-is used to escape some special characters which cannot be encoded as printable ASCII
-characters:
+String literals are only allowed in print commands, assignments, and as subroutine
+arguments and consist of printable ASCII characters between two double quotes. The
+backslash character has a special meaning and is used to escape some special characters
+which cannot be encoded as printable ASCII characters:
 
         \n    newline
         \r    carriage return
@@ -277,7 +277,7 @@ is encountered within the loop, the loop is left immediately.
 output
 ------
 
-        print [<modifier>] (<expression> | "string") ... [noendl]
+        print [<modifier>] (<expression> | array[] | "string") ... [noendl]
 
 Print the result of evaluating *expression* to the console, or print a string. When several
 expressions or strings are given, they are concatenated into one line. The modifiers can be
@@ -289,6 +289,12 @@ modifiers can be used within the same print command. The default modifier for ea
 command is "hex" with the default bit size of the system. The print command does add a
 newline at the end of an output line. The last parameter of the print command can be the
 modifier "noendl" which suppresses the newline.
+
+When called on arrays or functions returning arrays, the print command writes the array
+content using the currently active modifier. Two more modifiers "array" and "string" are
+available for array parameters. The default modifier is "array" which writes the array
+content between square brackets, the modifier "string" treats arrays as strings and writes
+the ASCII string contained in the array.
 
 mapping physical memory
 -----------------------
@@ -360,7 +366,9 @@ Parameters are either scalars or arrays. To use arrays as function parameters, e
 square brackets must be added to the parameter name. Scalar parameters are passed by
 value, and arrays are passed by reference. When changing an array in a function or
 procedure, the array is also changed in the scope of the caller. This is not the case for
-scalar variables.
+scalar variables. Instead of arrays it is possible to add array functions or string literals
+as subroutine parameters. A temporary array is created in this case to hold the function
+result or string literal.
 
 Variables which are defined within the subroutine body are not visible outside of the
 subroutine body, and variables defined outside of the subroutine body are not visible
@@ -424,6 +432,38 @@ the following functions:
 The keyword "args" can be used in the toplevel scope of a mempeek script to retrieve
 parameters which were defined on the mempeek command line using the option -a.
 
+strings
+-------
+
+Mempeek can treat arrays as strings. The content of the array is treated as contiguous
+memory and the content is a zero terminated ASCII string. The length of the string is the
+number of bytes until the first zero byte and is not connected to the size of the array.
+When mempeek creates arrays to hold strings, the array size is chosen to be the smallest
+size possible to hold the string, padded with zero bytes at the end if necessary. String
+literals can be used in assignments or as subroutine arguments instead of arrays. The
+following functions are available for string handling:
+
+        strlen( str[] )                     return the string length in bytes
+        strcmp( str1[], str2[] )            compare strings lexicographically and return 0 / 1 / 2
+                                            when str1 is before / is equal to / is after str2
+        str2int( str[] )                    convert the string to an integer
+        str2float( str[] )                  convert the string to a float
+        tokenize( str[] [, delimiter[]] )   split up str into tokens using the optional
+                                            regexp delimiter (default is whitespace), and
+                                            return the number of tokens
+
+        strcat( str1[], str2[] )            concatenate the two strings
+        substr( str[], pos, len )           return the substring starting at byte pos
+                                            and length len
+        getline()                           wait for console input and return entered
+                                            text until return is pressed
+        gettoken( i )                       return token i after calling tokenize()
+        int2str( value )                    convert value to an unsigned decimal string
+        signed2str( value )                 convert value to a signed decimal string
+        hex2str( value [, digits] )         convert value to a hexadecimal string
+        bin2str( value [, digits] )         convert value to a binary string
+        float2str( value )                  convert value to a floating point string
+
 floating point numbers
 ----------------------
 
@@ -450,7 +490,7 @@ arithmetic and conversion functions are available:
         fabs( a )           calculate | a |
         ffloor( a )         returns largest integer not greater than a
         fceil( a )          returns smallest integer not less than a
-		fround( a )         rounds a to the nearest integer, away from zero
+        fround( a )         rounds a to the nearest integer, away from zero
 
 IEEE 754 encoding preserves the ordering of floating point values when treated as integer
 values in two's complement. Therefore the signed integer comparison operators can be used

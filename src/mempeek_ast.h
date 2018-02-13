@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -91,15 +91,20 @@ private:
 // class ASTNodeBuiltin
 //////////////////////////////////////////////////////////////////////////////
 
-template< size_t NUM_ARGS >
+template< size_t NUM_ARGS , uint32_t SIGNATURE = 0 >
 class ASTNodeBuiltin : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeBuiltin> ptr;
-    typedef uint64_t args_t[NUM_ARGS];
+    typedef union {
+    	uint64_t value;
+    	Environment::array* array;
+    } args_t[NUM_ARGS];
 
-    ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin );
+    ASTNodeBuiltin( const yylloc_t& yylloc, Environment* env, const arglist_t& args, std::function< uint64_t( const args_t& ) > builtin, bool is_const = !SIGNATURE );
 
     uint64_t execute() override;
+
+	virtual ASTNode::ptr clone_to_const() override;
 
 private:
     std::function< uint64_t( const args_t& ) > m_Builtin;
@@ -134,6 +139,24 @@ public:
 	ASTNodeBlock( const yylloc_t& yylloc );
 
 	uint64_t execute() override;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeArrayBlock
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeArrayBlock : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeArrayBlock> ptr;
+
+    ASTNodeArrayBlock( const yylloc_t& yylloc, Environment* env, std::string result );
+
+    uint64_t execute() override;
+    bool get_array_result( Environment::array*& array ) override;
+
+private:
+    Environment::array* m_Array;
 };
 
 
@@ -211,6 +234,34 @@ public:
 private:
     Environment* m_Env;
     Environment::array* m_Array;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////
+// class ASTNodeString
+//////////////////////////////////////////////////////////////////////////////
+
+class ASTNodeString : public ASTNode {
+public:
+    typedef std::shared_ptr<ASTNodeString> ptr;
+
+    ASTNodeString( const yylloc_t& yylloc, Environment* env, std::string name, std::string str );
+
+    uint64_t execute() override;
+    bool get_array_result( Environment::array*& array ) override;
+
+	static size_t get_length( const Environment::array* array );
+	static std::string get_string( const Environment::array* array );
+	static void set_string( Environment::array* array, std::string str );
+
+private:
+	typedef union {
+		uint64_t integer;
+		uint8_t string[8];
+	} element_t;
+
+    Environment::array* m_Array;
+    std::string m_String;
 };
 
 
@@ -350,23 +401,39 @@ public:
 		MOD_64BIT = 0x40,
         MOD_WORDSIZE = 0x50,
 
-		MOD_SIZEMASK = 0xf0,
-		MOD_TYPEMASK = 0x0f
+        MOD_ARRAY = 0x100,
+        MOD_STRING = 0x200,
+
+        MOD_ARRAYMASK = 0xf00,
+		MOD_SIZEMASK = 0x0f0,
+		MOD_TYPEMASK = 0x00f,
+		MOD_TYPESIZEMASK = 0x0ff
 	};
 
 	ASTNodePrint( const yylloc_t& yylloc );
-	ASTNodePrint( const yylloc_t& yylloc, std::string text );
-	ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier );
+
+	void add_arg( ASTNode::ptr node, int modifier );
+	void add_arg( std::string text );
+
+	void set_endl( bool enable );
 
 	uint64_t execute() override;
 
 	static int size_to_mod( int size );
 
 private:
-	void print_value( std::ostream& out, uint64_t value );
+	static void print_value( std::ostream& out, uint64_t value, int modifier );
+	static void print_array( std::ostream& out, Environment::array* array, int modifier );
 
-	int m_Modifier = MOD_DEC | MOD_32BIT;
-	std::string m_Text = "";
+	typedef struct {
+		ASTNode::ptr node;
+		std::string text;
+		int mode;
+	} arg_t;
+
+	std::vector< arg_t > m_Args;
+
+    bool m_PrintEndl = true;
 };
 
 
@@ -655,28 +722,67 @@ inline uint64_t ASTNode::compiletime_execute( ASTNode::ptr node )
 // class ASTNodeBuiltin template functions
 //////////////////////////////////////////////////////////////////////////////
 
-template< size_t NUM_ARGS >
-inline ASTNodeBuiltin< NUM_ARGS >::ASTNodeBuiltin( const yylloc_t& yylloc, std::function< uint64_t( const args_t& ) > builtin )
+#include "mempeek_exceptions.h"
+
+template< size_t NUM_ARGS, uint32_t SIGNATURE >
+inline ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::ASTNodeBuiltin( const yylloc_t& yylloc, Environment* env, const arglist_t& args,
+		                                                      std::function< uint64_t( const args_t& ) > builtin, bool is_const )
  : ASTNode( yylloc ),
    m_Builtin( builtin )
 {
 #ifdef ASTDEBUG
-    std::cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
+    std::cerr << "AST[" << this << "]: creating ASTNodeBuiltin<" << NUM_ARGS << "," << std::hex << SIGNATURE << std::dec << ">" << std::endl;
 #endif
+
+    if( args.size() != NUM_ARGS ) throw ASTExceptionSyntaxError( yylloc );
+
+    for( size_t i = 0; i < NUM_ARGS; i++ ) {
+        if( args[i].second.empty() ) {
+        	if( (SIGNATURE & (1 << i)) != 0 ) throw ASTExceptionSyntaxError( yylloc );
+			add_child( args[i].first );
+			is_const &= args[i].first->is_constant();
+        }
+        else {
+        	if( (SIGNATURE & (1 << i)) == 0 ) throw ASTExceptionSyntaxError( yylloc );
+        	if( args[i].first ) add_child( args[i].first );
+        	else add_child( std::make_shared<ASTNodeArray>( yylloc, env, args[i].second ) );
+        	is_const = false;
+        }
+    }
+
+    if( is_const ) set_constant();
 }
 
-template< size_t NUM_ARGS >
-inline uint64_t ASTNodeBuiltin< NUM_ARGS >::execute()
+template< size_t NUM_ARGS, uint32_t SIGNATURE >
+inline uint64_t ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::execute()
 {
 #ifdef ASTDEBUG
-    std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << ">" << std::endl;
+    std::cerr << "AST[" << this << "]: executing ASTNodeBuiltin<" << NUM_ARGS << "," << std::hex << SIGNATURE << std::dec << ">" << std::endl;
 #endif
 
     assert( get_children().size() == NUM_ARGS );
 
-    uint64_t args[ NUM_ARGS ];
-    for( size_t i = 0; i < NUM_ARGS; i++ ) args[i] = get_children()[i]->execute();
+    args_t args;
+    for( size_t i = 0; i < NUM_ARGS; i++ ) {
+    	if( (SIGNATURE & (1 << i)) ) {
+    		get_children()[i]->execute();
+    		get_children()[i]->get_array_result( args[i].array );
+    	}
+    	else args[i].value = get_children()[i]->execute();
+    }
     return m_Builtin( args );
+}
+
+template< size_t NUM_ARGS, uint32_t SIGNATURE >
+inline ASTNode::ptr ASTNodeBuiltin< NUM_ARGS, SIGNATURE >::clone_to_const()
+{
+    if( !is_constant() ) return nullptr;
+
+#ifdef ASTDEBUG
+    std::cerr << "AST[" << this << "]: running const optimization" << std::endl;
+#endif
+
+    return std::make_shared<ASTNodeConstant>( get_location(), compiletime_execute( this ) );
 }
 
 

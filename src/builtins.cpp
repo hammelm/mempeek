@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016-2017, Martin Hammel
+/*  Copyright (c) 2016-2018, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -34,220 +34,12 @@ using namespace std;
 
 
 //////////////////////////////////////////////////////////////////////////////
-// floating point builtin functions
-//////////////////////////////////////////////////////////////////////////////
-
-static ASTNode::ptr int2float( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = args[0];
-        return *(int64_t*)&d1;
-    });
-}
-
-static ASTNode::ptr float2int( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        return (uint64_t)(int64_t)d1;
-    });
-}
-
-static ASTNode::ptr fadd( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<2> >( location, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = *(double*)(args + 1);
-        double d3 = d1 + d2;
-        return *(uint64_t*)&d3;
-    });
-}
-
-static ASTNode::ptr fsub( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<2> >( location, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = *(double*)(args + 1);
-        double d3 = d1 - d2;
-        return *(uint64_t*)&d3;
-    });
-}
-
-static ASTNode::ptr fmul( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<2> >( location, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = *(double*)(args + 1);
-        double d3 = d1 * d2;
-        return *(uint64_t*)&d3;
-    });
-}
-
-static ASTNode::ptr fdiv( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<2> >( location, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = *(double*)(args + 1);
-        double d3 = d1 / d2;
-        return *(uint64_t*)&d3;
-    });
-}
-
-static ASTNode::ptr fsqrt( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = sqrt( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fpow( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<2> >( location, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = *(double*)(args + 1);
-        double d3 = pow( d1, d2 );
-        return *(uint64_t*)&d3;
-    });
-}
-
-static ASTNode::ptr fexp( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = exp( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr flog( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = log( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fsin( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = sin( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fcos( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = cos( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr ftan( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = tan( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fasin( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = asin( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr facos( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = acos( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fatan( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = atan( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fabs_( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = fabs( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr ffloor( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = floor( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fceil( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = ceil( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-static ASTNode::ptr fround( const yylloc_t& location )
-{
-    return make_shared< ASTNodeBuiltin<1> >( location, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
-        double d1 = *(double*)(args + 0);
-        double d2 = round( d1 );
-        return *(uint64_t*)&d2;
-    });
-}
-
-
-//////////////////////////////////////////////////////////////////////////////
 // class BuiltinManager implementation
 //////////////////////////////////////////////////////////////////////////////
 
-BuiltinManager::BuiltinManager()
-{
-    m_Builtins[ "int2float" ] = make_pair< size_t, nodecreator_t >( 1, int2float );
-    m_Builtins[ "float2int" ] = make_pair< size_t, nodecreator_t >( 1, float2int );
-    m_Builtins[ "fadd" ] = make_pair< size_t, nodecreator_t >( 2, fadd );
-    m_Builtins[ "fsub" ] = make_pair< size_t, nodecreator_t >( 2, fsub );
-    m_Builtins[ "fmul" ] = make_pair< size_t, nodecreator_t >( 2, fmul );
-    m_Builtins[ "fdiv" ] = make_pair< size_t, nodecreator_t >( 2, fdiv );
-    m_Builtins[ "fsqrt" ] = make_pair< size_t, nodecreator_t >( 1, fsqrt );
-    m_Builtins[ "fpow" ] = make_pair< size_t, nodecreator_t >( 2, fpow );
-    m_Builtins[ "flog" ] = make_pair< size_t, nodecreator_t >( 1, flog );
-    m_Builtins[ "fexp" ] = make_pair< size_t, nodecreator_t >( 1, fexp );
-    m_Builtins[ "fsin" ] = make_pair< size_t, nodecreator_t >( 1, fsin );
-    m_Builtins[ "fcos" ] = make_pair< size_t, nodecreator_t >( 1, fcos );
-    m_Builtins[ "ftan" ] = make_pair< size_t, nodecreator_t >( 1, ftan );
-    m_Builtins[ "fasin" ] = make_pair< size_t, nodecreator_t >( 1, fasin );
-    m_Builtins[ "facos" ] = make_pair< size_t, nodecreator_t >( 1, facos );
-    m_Builtins[ "fatan" ] = make_pair< size_t, nodecreator_t >( 1, fatan );
-    m_Builtins[ "fabs" ] = make_pair< size_t, nodecreator_t >( 1, fabs_ );
-    m_Builtins[ "ffloor" ] = make_pair< size_t, nodecreator_t >( 1, ffloor );
-    m_Builtins[ "fceil" ] = make_pair< size_t, nodecreator_t >( 1, fceil );
-    m_Builtins[ "fround" ] = make_pair< size_t, nodecreator_t >( 1, fround );
-}
+BuiltinManager::BuiltinManager( Environment* env )
+ : m_Env( env )
+{}
 
 void BuiltinManager::get_autocompletion( std::set< std::string >& completions, std::string prefix )
 {
@@ -262,17 +54,13 @@ std::shared_ptr<ASTNode> BuiltinManager::get_subroutine( const yylloc_t& locatio
     auto iter = m_Builtins.find( name );
     if( iter == m_Builtins.end() ) return nullptr;
 
-    if( iter->second.first != args.size() ) throw ASTExceptionSyntaxError( location );
+    std::shared_ptr<ASTNode> node = iter->second( location, m_Env, args );
 
-    ASTNode::ptr node = iter->second.second( location );
+    return node->is_constant() ? node->clone_to_const() : node;
+}
 
-    bool is_const = true;
-    for( auto arg: args ) {
-        if( !arg.first ) throw ASTExceptionSyntaxError( location );
-        node->add_child( arg.first );
-        is_const &= arg.first->is_constant();
-    }
-
-    if( is_const ) return make_shared< ASTNodeConstant >( location, node->execute() );
-    else return node;
+void BuiltinManager::register_function( std::string name, nodecreator_t creator )
+{
+    auto ret = m_Builtins.insert( make_pair( name, creator ) );
+    assert( ret.second );
 }
