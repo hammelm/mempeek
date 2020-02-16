@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016-2018, Martin Hammel
+/*  Copyright (c) 2016-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -30,8 +30,14 @@
 
 using namespace std;
 
+namespace builtins {
 
-static ASTNode::ptr int2float( const yylloc_t& location, Environment* env, const arglist_t& args )
+
+//////////////////////////////////////////////////////////////////////////////
+// builtin function node creators
+//////////////////////////////////////////////////////////////////////////////
+
+ASTNode::ptr int2float( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = args[0].value;
@@ -39,7 +45,7 @@ static ASTNode::ptr int2float( const yylloc_t& location, Environment* env, const
     });
 }
 
-static ASTNode::ptr float2int( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr float2int( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -47,7 +53,7 @@ static ASTNode::ptr float2int( const yylloc_t& location, Environment* env, const
     });
 }
 
-static ASTNode::ptr fadd( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fadd( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<2> >( location, env, args, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -57,7 +63,7 @@ static ASTNode::ptr fadd( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fsub( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fsub( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<2> >( location, env, args, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -67,7 +73,7 @@ static ASTNode::ptr fsub( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fmul( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fmul( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<2> >( location, env, args, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -77,7 +83,7 @@ static ASTNode::ptr fmul( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fdiv( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fdiv( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<2> >( location, env, args, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -87,7 +93,7 @@ static ASTNode::ptr fdiv( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fsqrt( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fsqrt( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -96,7 +102,7 @@ static ASTNode::ptr fsqrt( const yylloc_t& location, Environment* env, const arg
     });
 }
 
-static ASTNode::ptr fpow( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fpow( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<2> >( location, env, args, [] ( const ASTNodeBuiltin<2>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -106,7 +112,7 @@ static ASTNode::ptr fpow( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fexp( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fexp( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -115,7 +121,7 @@ static ASTNode::ptr fexp( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr flog( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr flog( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -124,7 +130,7 @@ static ASTNode::ptr flog( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fsin( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fsin( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -133,7 +139,7 @@ static ASTNode::ptr fsin( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fcos( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fcos( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -142,7 +148,7 @@ static ASTNode::ptr fcos( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr ftan( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr ftan( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -151,7 +157,7 @@ static ASTNode::ptr ftan( const yylloc_t& location, Environment* env, const argl
     });
 }
 
-static ASTNode::ptr fasin( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fasin( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -160,7 +166,7 @@ static ASTNode::ptr fasin( const yylloc_t& location, Environment* env, const arg
     });
 }
 
-static ASTNode::ptr facos( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr facos( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -169,7 +175,7 @@ static ASTNode::ptr facos( const yylloc_t& location, Environment* env, const arg
     });
 }
 
-static ASTNode::ptr fatan( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fatan( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -178,16 +184,16 @@ static ASTNode::ptr fatan( const yylloc_t& location, Environment* env, const arg
     });
 }
 
-static ASTNode::ptr fabs_( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fabs( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
-        double d2 = fabs( d1 );
+        double d2 = ::fabs( d1 );
         return *(uint64_t*)&d2;
     });
 }
 
-static ASTNode::ptr ffloor( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr ffloor( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -196,7 +202,7 @@ static ASTNode::ptr ffloor( const yylloc_t& location, Environment* env, const ar
     });
 }
 
-static ASTNode::ptr fceil( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fceil( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -205,7 +211,7 @@ static ASTNode::ptr fceil( const yylloc_t& location, Environment* env, const arg
     });
 }
 
-static ASTNode::ptr fround( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr fround( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1> >( location, env, args, [] ( const ASTNodeBuiltin<1>::args_t& args ) -> uint64_t {
         double d1 = *(double*)(args + 0);
@@ -214,26 +220,33 @@ static ASTNode::ptr fround( const yylloc_t& location, Environment* env, const ar
     });
 }
 
+} // namespace builtins
+
+
+//////////////////////////////////////////////////////////////////////////////
+// Environment register functions
+//////////////////////////////////////////////////////////////////////////////
+
 void Environment::register_float_functions( BuiltinManager* manager )
 {
-    manager->register_function( "int2float", int2float );
-    manager->register_function( "float2int", float2int );
-    manager->register_function( "fadd", fadd );
-    manager->register_function( "fsub", fsub );
-    manager->register_function( "fmul", fmul );
-    manager->register_function( "fdiv", fdiv );
-    manager->register_function( "fsqrt", fsqrt );
-    manager->register_function( "fpow", fpow );
-    manager->register_function( "flog", flog );
-    manager->register_function( "fexp", fexp );
-    manager->register_function( "fsin", fsin );
-    manager->register_function( "fcos", fcos );
-    manager->register_function( "ftan", ftan );
-    manager->register_function( "fasin", fasin );
-    manager->register_function( "facos", facos );
-    manager->register_function( "fatan", fatan );
-    manager->register_function( "fabs", fabs_ );
-    manager->register_function( "ffloor", ffloor );
-    manager->register_function( "fceil", fceil );
-    manager->register_function( "fround", fround );
+    manager->register_function( "int2float", builtins::int2float );
+    manager->register_function( "float2int", builtins::float2int );
+    manager->register_function( "fadd", builtins::fadd );
+    manager->register_function( "fsub", builtins::fsub );
+    manager->register_function( "fmul", builtins::fmul );
+    manager->register_function( "fdiv", builtins::fdiv );
+    manager->register_function( "fsqrt", builtins::fsqrt );
+    manager->register_function( "fpow", builtins::fpow );
+    manager->register_function( "flog", builtins::flog );
+    manager->register_function( "fexp", builtins::fexp );
+    manager->register_function( "fsin", builtins::fsin );
+    manager->register_function( "fcos", builtins::fcos );
+    manager->register_function( "ftan", builtins::ftan );
+    manager->register_function( "fasin", builtins::fasin );
+    manager->register_function( "facos", builtins::facos );
+    manager->register_function( "fatan", builtins::fatan );
+    manager->register_function( "fabs", builtins::fabs );
+    manager->register_function( "ffloor", builtins::ffloor );
+    manager->register_function( "fceil", builtins::fceil );
+    manager->register_function( "fround", builtins::fround );
 }

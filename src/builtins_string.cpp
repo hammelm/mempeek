@@ -1,4 +1,4 @@
-/*  Copyright (c) 2017-2018, Martin Hammel
+/*  Copyright (c) 2017-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -35,7 +35,7 @@
 
 using namespace std;
 
-namespace {
+namespace builtins {
 
 std::vector< std::string > TOKENS;
 
@@ -44,7 +44,7 @@ std::vector< std::string > TOKENS;
 // builtin function node creators
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNode::ptr strcat_( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr strcat( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<3,0x07> >( location, env, args, [] ( const ASTNodeBuiltin<3,0x07>::args_t& args ) -> uint64_t {
         string str1 = ASTNodeString::get_string( args[1].array );
@@ -72,7 +72,7 @@ ASTNode::ptr substr( const yylloc_t& location, Environment* env, const arglist_t
     });
 }
 
-ASTNode::ptr getline_( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr getline( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
     	string line;
@@ -83,20 +83,20 @@ ASTNode::ptr getline_( const yylloc_t& location, Environment* env, const arglist
     });
 }
 
-ASTNode::ptr strlen_( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr strlen( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<1,0x01> >( location, env, args, [] ( const ASTNodeBuiltin<1,0x01>::args_t& args ) -> uint64_t {
         return ASTNodeString::get_length( args[0].array );
     });
 }
 
-ASTNode::ptr strcmp_( const yylloc_t& location, Environment* env, const arglist_t& args )
+ASTNode::ptr strcmp( const yylloc_t& location, Environment* env, const arglist_t& args )
 {
     return make_shared< ASTNodeBuiltin<2,0x03> >( location, env, args, [] ( const ASTNodeBuiltin<2,0x03>::args_t& args ) -> uint64_t {
 		string str1 = ASTNodeString::get_string( args[0].array );
 		string str2 = ASTNodeString::get_string( args[1].array );
 
-		int ret = strcmp( str1.c_str(), str2.c_str() );
+		int ret = ::strcmp( str1.c_str(), str2.c_str() );
 
 		if( ret < 0 ) return 0;
 		else if( ret > 0 ) return 2;
@@ -275,7 +275,7 @@ ASTNode::ptr float2str( const yylloc_t& location, Environment* env, const arglis
     });
 }
 
-} // anonymous namespace
+} // namespace builtins
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -284,22 +284,22 @@ ASTNode::ptr float2str( const yylloc_t& location, Environment* env, const arglis
 
 void Environment::register_string_functions( BuiltinManager* manager )
 {
-    manager->register_function( "strlen", strlen_ );
-    manager->register_function( "strcmp", strcmp_ );
-    manager->register_function( "str2int", str2int );
-    manager->register_function( "str2float", str2float );
-    manager->register_function( "tokenize", tokenize );
+    manager->register_function( "strlen", builtins::strlen );
+    manager->register_function( "strcmp", builtins::strcmp );
+    manager->register_function( "str2int", builtins::str2int );
+    manager->register_function( "str2float", builtins::str2float );
+    manager->register_function( "tokenize", builtins::tokenize );
 }
 
 void Environment::register_string_arrayfuncs( BuiltinManager* manager )
 {
-    manager->register_function( "strcat", strcat_ );
-    manager->register_function( "substr", substr );
-    manager->register_function( "getline", getline_ );
-    manager->register_function( "gettoken", gettoken );
-    manager->register_function( "int2str", int2str );
-    manager->register_function( "signed2str", signed2str );
-    manager->register_function( "hex2str", hex2str );
-    manager->register_function( "bin2str", bin2str );
-    manager->register_function( "float2str", float2str );
+    manager->register_function( "strcat", builtins::strcat );
+    manager->register_function( "substr", builtins::substr );
+    manager->register_function( "getline", builtins::getline );
+    manager->register_function( "gettoken", builtins::gettoken );
+    manager->register_function( "int2str", builtins::int2str );
+    manager->register_function( "signed2str", builtins::signed2str );
+    manager->register_function( "hex2str", builtins::hex2str );
+    manager->register_function( "bin2str", builtins::bin2str );
+    manager->register_function( "float2str", builtins::float2str );
 }
