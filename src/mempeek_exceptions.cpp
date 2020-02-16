@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2018, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -95,7 +95,7 @@ void ASTException::create_msg( const char* msg, std::vector< std::string >& args
 {
     string what = "";
     int param = 0;
-    enum { TEXT, PARAM_START, PARAM_PENDING, PARAM_COMPLETED } state = TEXT;
+    enum { TEXT, PARAM_START, PARAM_PENDING } state = TEXT;
 
     do {
     	char c = *msg;

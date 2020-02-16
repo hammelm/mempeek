@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016-2018, Martin Hammel
+/*  Copyright (c) 2016-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -112,7 +112,7 @@ const uint8_t* MD5::get_checksum() const
 
 void MD5::calc_hash()
 {
-    register uint32_t* in = (uint32_t*)m_Buffer;
+    uint32_t* in = (uint32_t*)m_Buffer;
 
 #ifdef BIG_ENDIAN
     for( int i = 0; i < 64; ) {
@@ -126,10 +126,10 @@ void MD5::calc_hash()
     }
 #endif
 
-    register uint32_t a = m_Hash[0];
-    register uint32_t b = m_Hash[1];
-    register uint32_t c = m_Hash[2];
-    register uint32_t d = m_Hash[3];
+    uint32_t a = m_Hash[0];
+    uint32_t b = m_Hash[1];
+    uint32_t c = m_Hash[2];
+    uint32_t d = m_Hash[3];
 
     MD5STEP( F1, a, b, c, d, in[0] + 0xd76aa478, 7 );
     MD5STEP( F1, d, a, b, c, in[1] + 0xe8c7b756, 12 );
