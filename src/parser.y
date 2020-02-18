@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2018, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -88,15 +88,15 @@ void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { 
 start : toplevel_block                                  { yyroot = $1.node; }
       ;
 
-toplevel_block : toplevel_statement                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.node->add_child( $1.node ); }
+toplevel_block : toplevel_statement                     { $$.node = make_shared<ASTNodeBlock>( @$, env ); $$.node->add_child( $1.node ); }
                | toplevel_block toplevel_statement      { $$.node = $1.node; $$.node->add_child( $2.node ); }
                ;
 
-block : statement                                       { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.node->add_child( $1.node ); }
+block : statement                                       { $$.node = make_shared<ASTNodeBlock>( @$, env ); $$.node->add_child( $1.node ); }
       | block statement                                 { $$.node = $1.node; $$.node->add_child( $2.node ); }
       ;
 
-subroutine_block :                                          { $$.node = make_shared<ASTNodeBlock>( @$ ); env->set_subroutine_body( $$.node ); }
+subroutine_block :                                          { $$.node = make_shared<ASTNodeBlock>( @$, env ); env->set_subroutine_body( $$.node ); }
                    subroutine_statement                     { $$.node = $1.node; $$.node->add_child( $2.node ); }
                  | subroutine_block subroutine_statement    { $$.node = $1.node; $$.node->add_child( $2.node ); }
                  ;
@@ -264,7 +264,7 @@ assign_stmt : plain_identifier T_ASSIGN expression          { $$.node = make_sha
 
 def_stmt : T_DEF plain_identifier expression                                    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
          | T_DEF struct_identifier expression                                   { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node ); }
-         | T_DEF struct_identifier '{' expression '}' expression                { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $4.node, $6.node, Environment::get_default_size() ); }
+         | T_DEF struct_identifier '{' expression '}' expression                { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $4.node, $6.node, env->get_default_size() ); }
          | T_DEF struct_identifier size_suffix '{' expression '}' expression    { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $5.node, $7.node, $3.token ); }
          | T_DEF plain_identifier expression T_FROM plain_identifier            { $$.node = make_shared<ASTNodeDef>( @$, env, $2.value, $3.node, $5.value ); }
          ;
@@ -304,7 +304,7 @@ poke_stmt : poke_token expression expression                        { $$.node = 
           | poke_token expression expression T_MASK expression      { $$.node = make_shared<ASTNodePoke>( @$, env, $2.node, $3.node, $5.node, $1.token ); }
           ;
 
-poke_token : T_POKE                                     { $$.token = Environment::get_default_size(); }
+poke_token : T_POKE                                     { $$.token = env->get_default_size(); }
            | T_POKE size_suffix                         { $$.token = $2.token; }
            ;
 
@@ -314,16 +314,16 @@ size_suffix : T_8BIT                                    { $$.token = $1.token; }
             | T_64BIT                                   { $$.token = $1.token; }
             ;
 
-print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.node->add_child( make_shared<ASTNodePrint>( @$ ) ); }
+print_stmt : T_PRINT print_args                         { $$.node = $2.node; $$.node->add_child( make_shared<ASTNodePrint>( @$, env ) ); }
            | T_PRINT print_args T_NOENDL                { $$.node = $2.node; }
            ;
 
-print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$ ); $$.token = env->get_default_modifier(); }
+print_args : %empty                                     { $$.node = make_shared<ASTNodeBlock>( @$, env ); $$.token = env->get_default_modifier(); }
            | print_args print_float                     { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_64BIT; }
            | print_args print_format                    { $$.node = $1.node; $$.token = $2.token | ASTNodePrint::MOD_WORDSIZE; }
            | print_args print_format print_size         { $$.node = $1.node; $$.token = $2.token | $3.token; }
-           | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.node, $$.token ) ); }
-           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
+           | print_args expression                      { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, env, $2.node, $$.token ) ); }
+           | print_args T_STRING                        { $$.node = $1.node; $$.token = $1.token; $$.node->add_child( make_shared<ASTNodePrint>( @2, env, $2.value.substr( 1, $2.value.length() - 2 ) ) ); }
            ;
 
 print_float : T_FLOAT                                   { $$.token = ASTNodePrint::MOD_FLOAT; }
@@ -341,8 +341,8 @@ print_size : T_8BIT                                     { $$.token = ASTNodePrin
            | T_64BIT                                    { $$.token = ASTNodePrint::MOD_64BIT; }
            ;
 
-sleep_stmt : T_SLEEP expression                         { $$.node = make_shared<ASTNodeSleep>( @$, $2.node, false ); }
-           | T_SLEEP T_UNTIL expression                 { $$.node = make_shared<ASTNodeSleep>( @$, $3.node, true ); }
+sleep_stmt : T_SLEEP expression                         { $$.node = make_shared<ASTNodeSleep>( @$, env, $2.node, false ); }
+           | T_SLEEP T_UNTIL expression                 { $$.node = make_shared<ASTNodeSleep>( @$, env, $3.node, true ); }
            ;
 
 
@@ -401,7 +401,7 @@ unary_expr : T_MINUS atomic_expr                        { $$.node = make_shared<
 
 atomic_expr : T_CONSTANT                                { $$.node = make_shared<ASTNodeConstant>( @$, $1.value ); }
             | T_FCONST                                  { $$.node = make_shared<ASTNodeConstant>( @$, $1.value, true ); }
-            | T_NOW                                     { $$.node = make_shared<ASTNodeSleep>( @$ ); }
+            | T_NOW                                     { $$.node = make_shared<ASTNodeSleep>( @$, env ); }
             | var_identifier                            { $$.node = $1.node; }
             | '(' expression ')'                        { $$.node = $2.node; }
             | args_expr                                 { $$.node = $1.node; }
@@ -416,7 +416,7 @@ args_expr : T_ARGS '{' '?' '}'                              { $$.node = make_sha
           | T_ARGS '{' expression '}' '[' expression ']'    { $$.node = make_shared<ASTNodeArg>( @$, env, $3.node, $6.node ); }
           ;
 
-peek_token : T_PEEK                                     { $$.token = Environment::get_default_size(); }
+peek_token : T_PEEK                                     { $$.token = env->get_default_size(); }
            | T_PEEK size_suffix                         { $$.token = $2.token; }
            ;
 

@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -131,9 +131,12 @@ class ASTNodeBlock : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeBlock> ptr;
 
-	ASTNodeBlock( const yylloc_t& yylloc );
+	ASTNodeBlock( const yylloc_t& yylloc, Environment* env );
 
 	uint64_t execute() override;
+
+private:
+	Environment* m_Env;
 };
 
 
@@ -354,9 +357,9 @@ public:
 		MOD_TYPEMASK = 0x0f
 	};
 
-	ASTNodePrint( const yylloc_t& yylloc );
-	ASTNodePrint( const yylloc_t& yylloc, std::string text );
-	ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier );
+	ASTNodePrint( const yylloc_t& yylloc, Environment* env );
+	ASTNodePrint( const yylloc_t& yylloc, Environment* env, std::string text );
+	ASTNodePrint( const yylloc_t& yylloc, Environment* env, ASTNode::ptr expression, int modifier );
 
 	uint64_t execute() override;
 
@@ -367,6 +370,8 @@ private:
 
 	int m_Modifier = MOD_DEC | MOD_32BIT;
 	std::string m_Text = "";
+
+	Environment* m_Env;
 };
 
 
@@ -378,12 +383,14 @@ class ASTNodeSleep : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSleep> ptr;
 
-    ASTNodeSleep( const yylloc_t& yylloc );
-    ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression, bool is_absolute );
+    ASTNodeSleep( const yylloc_t& yylloc, Environment* env );
+    ASTNodeSleep( const yylloc_t& yylloc, Environment* env, ASTNode::ptr expression, bool is_absolute );
 
     uint64_t execute() override;
 
 private:
+    Environment* m_Env;
+
     enum { SLEEP_RELATIVE, SLEEP_ABSOLUTE, RETRIEVE_TIME } m_Mode;
 };
 

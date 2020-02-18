@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,7 @@
 #include <vector>
 #include <utility>
 #include <memory>
+#include <ostream>
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -62,6 +63,10 @@ public:
 
 	std::shared_ptr<ASTNode> parse( const char* str, bool is_file, bool run_once );
     std::shared_ptr<ASTNode> parse( const yylloc_t& location, const char* str, bool is_file, bool run_once );
+
+    void set_stdout( std::ostream& out );
+
+    std::ostream& get_stdout();
 
     bool add_include_path( std::string path );
 
@@ -98,27 +103,28 @@ public:
     bool drop_procedure( std::string name );
     bool drop_function( std::string name );
 
-    static int get_default_size();
-    static bool set_default_size( int size );
-    static void push_default_size();
-    static void pop_default_size();
+    int get_default_size();
+    bool set_default_size( int size );
+    void push_default_size();
+    void pop_default_size();
 
-    static int get_default_modifier();
-    static bool set_default_modifier( int modifier );
-    static void push_default_modifier();
-    static void pop_default_modifier();
+    int get_default_modifier();
+    bool set_default_modifier( int modifier );
+    void push_default_modifier();
+    void pop_default_modifier();
 
-    static size_t get_num_varargs();
-    static uint64_t get_vararg_value( size_t index );
-    static array* get_vararg_array( size_t index );
-    static void append_vararg( uint64_t value );
-    static void append_vararg( array* array );
-    static void push_varargs();
-    static void pop_varargs();
+    size_t get_num_varargs();
+    uint64_t get_vararg_value( size_t index );
+    array* get_vararg_array( size_t index );
+    void append_vararg( uint64_t value );
+    void append_vararg( array* array );
+    void flush_varargs();
+    void push_varargs();
+    void pop_varargs();
 
-    static void set_terminate();
-    static void clear_terminate();
-    static bool is_terminated();
+    void set_terminate();
+    void clear_terminate();
+    bool is_terminated();
 
     static uint64_t parse_int( std::string str );
     static uint64_t parse_int( std::string str, bool& is_ok );
@@ -144,21 +150,33 @@ private:
 	std::vector< std::string > m_IncludePaths;
 	std::set< MD5 > m_ImportedFiles;
 
-	static int s_DefaultSize;
-	static std::stack<int> s_DefaultSizeStack;
+	int m_DefaultSize;
+	std::stack<int> m_DefaultSizeStack;
 
-    static int s_DefaultModifier;
-    static std::stack<int> s_DefaultModifierStack;
+    int m_DefaultModifier;
+    std::stack<int> m_DefaultModifierStack;
 
-    static std::stack< std::vector< std::pair< uint64_t, array* > > > s_ArgStack;
+    std::stack< std::vector< std::pair< uint64_t, array* > > > m_ArgStack;
 
-    static volatile sig_atomic_t s_IsTerminated;
+    volatile sig_atomic_t m_IsTerminated;
+
+    std::ostream* m_Stdout;
 };
 
 
 //////////////////////////////////////////////////////////////////////////////
 // class Environment inline functions
 //////////////////////////////////////////////////////////////////////////////
+
+inline void Environment::set_stdout( std::ostream& out )
+{
+    m_Stdout = &out;
+}
+
+inline std::ostream& Environment::get_stdout()
+{
+    return *m_Stdout;
+}
 
 inline Environment::var* Environment::alloc_def_var( std::string name )
 {
@@ -233,17 +251,17 @@ inline bool Environment::drop_function( std::string name )
 
 inline void Environment::set_terminate()
 {
-    s_IsTerminated = 1;
+    m_IsTerminated = 1;
 }
 
 inline void Environment::clear_terminate()
 {
-    s_IsTerminated = 0;
+    m_IsTerminated = 0;
 }
 
 inline bool Environment::is_terminated()
 {
-    return s_IsTerminated == 1;
+    return m_IsTerminated == 1;
 }
 
 inline uint64_t Environment::parse_int( std::string str )
@@ -260,68 +278,73 @@ inline uint64_t Environment::parse_float( std::string str )
 
 inline int Environment::get_default_size()
 {
-    return s_DefaultSize;
+    return m_DefaultSize;
 }
 
 inline void Environment::push_default_size()
 {
-    s_DefaultSizeStack.push( s_DefaultSize );
+    m_DefaultSizeStack.push( m_DefaultSize );
 }
 
 inline void Environment::pop_default_size()
 {
-    s_DefaultSize = s_DefaultSizeStack.top();
-    s_DefaultSizeStack.pop();
+    m_DefaultSize = m_DefaultSizeStack.top();
+    m_DefaultSizeStack.pop();
 }
 inline int Environment::get_default_modifier()
 {
-    return s_DefaultModifier;
+    return m_DefaultModifier;
 }
 
 inline void Environment::push_default_modifier()
 {
-    s_DefaultModifierStack.push( s_DefaultModifier );
+    m_DefaultModifierStack.push( m_DefaultModifier );
 }
 
 inline void Environment::pop_default_modifier()
 {
-    s_DefaultModifier = s_DefaultModifierStack.top();
-    s_DefaultModifierStack.pop();
+    m_DefaultModifier = m_DefaultModifierStack.top();
+    m_DefaultModifierStack.pop();
 }
 
 inline size_t Environment::get_num_varargs()
 {
-    return s_ArgStack.top().size();
+    return m_ArgStack.top().size();
 }
 
 inline uint64_t Environment::get_vararg_value( size_t index )
 {
-    return s_ArgStack.top()[index].first;
+    return m_ArgStack.top()[index].first;
 }
 
 inline Environment::array* Environment::get_vararg_array( size_t index )
 {
-    return s_ArgStack.top()[index].second;
+    return m_ArgStack.top()[index].second;
 }
 
 inline void Environment::append_vararg( uint64_t value )
 {
-    s_ArgStack.top().push_back( std::make_pair( value, (array*)nullptr ) );
+    m_ArgStack.top().push_back( std::make_pair( value, (array*)nullptr ) );
 }
 
 inline void Environment::append_vararg( array* array )
 {
-    s_ArgStack.top().push_back( std::make_pair( (uint64_t)0, array ) );
+    m_ArgStack.top().push_back( std::make_pair( (uint64_t)0, array ) );
+}
+
+inline void Environment::flush_varargs()
+{
+    m_ArgStack.top().clear();
 }
 
 inline void Environment::push_varargs()
 {
-    s_ArgStack.emplace();
+    m_ArgStack.emplace();
 }
 
 inline void Environment::pop_varargs()
 {
-    s_ArgStack.pop();
+    m_ArgStack.pop();
 }
 
 

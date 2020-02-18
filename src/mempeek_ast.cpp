@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2018, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -112,8 +112,9 @@ uint64_t ASTNodeBreak::execute()
 // class ASTNodeBlock implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeBlock::ASTNodeBlock( const yylloc_t& yylloc )
- : ASTNode( yylloc )
+ASTNodeBlock::ASTNodeBlock( const yylloc_t& yylloc, Environment* env )
+ : ASTNode( yylloc ),
+   m_Env( env )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodeBlock" << endl;
@@ -128,7 +129,7 @@ uint64_t ASTNodeBlock::execute()
 
 	for( ASTNode::ptr node: get_children() ) {
 	    node->execute();
-        if( Environment::is_terminated() ) throw ASTExceptionTerminate();
+        if( m_Env->is_terminated() ) throw ASTExceptionTerminate();
 	}
 
 	return 0;
@@ -526,26 +527,29 @@ void ASTNodePoke::poke()
 // class ASTNodePrint implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc )
+ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, Environment* env )
  : ASTNode( yylloc ),
-   m_Text( "\n" )
+   m_Text( "\n" ),
+   m_Env( env )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint newline" << endl;
 #endif
 }
 
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, std::string text )
+ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, Environment* env, std::string text )
  : ASTNode( yylloc ),
-   m_Text( text )
+   m_Text( text ),
+   m_Env( env )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint text=\"" << text << "\"" << endl;
 #endif
 }
 
-ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int modifier )
- : ASTNode( yylloc )
+ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, Environment* env, ASTNode::ptr expression, int modifier )
+ : ASTNode( yylloc ),
+   m_Env( env )
 {
 #ifdef ASTDEBUG
 	cerr << "AST[" << this << "]: creating ASTNodePrint expression=[" << expression << "] modifier=0x"
@@ -554,7 +558,7 @@ ASTNodePrint::ASTNodePrint( const yylloc_t& yylloc, ASTNode::ptr expression, int
 
 	if( (modifier & MOD_SIZEMASK) == MOD_WORDSIZE ) {
 	    modifier &= ~MOD_SIZEMASK;
-	    modifier |= size_to_mod( Environment::get_default_size() );
+	    modifier |= size_to_mod( env->get_default_size() );
 	}
 
 	add_child( expression );
@@ -567,8 +571,8 @@ uint64_t ASTNodePrint::execute()
 	cerr << "AST[" << this << "]: executing ASTNodePrint" << endl;
 #endif
 
-	for( ASTNode::ptr node: get_children() ) print_value( cout, node->execute() );
-	cout << m_Text << flush;
+	for( ASTNode::ptr node: get_children() ) print_value( m_Env->get_stdout(), node->execute() );
+	m_Env->get_stdout() << m_Text << flush;
 
 	return 0;
 }
@@ -654,8 +658,9 @@ void ASTNodePrint::print_value( std::ostream& out, uint64_t value )
 // class ASTNodeSleep implementation
 //////////////////////////////////////////////////////////////////////////////
 
-ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc )
+ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc, Environment* env )
  : ASTNode( yylloc ),
+   m_Env( env ),
    m_Mode( RETRIEVE_TIME )
 {
 #ifdef ASTDEBUG
@@ -663,8 +668,9 @@ ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc )
 #endif
 }
 
-ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression, bool is_absolute )
+ASTNodeSleep::ASTNodeSleep( const yylloc_t& yylloc, Environment* env, ASTNode::ptr expression, bool is_absolute )
  : ASTNode( yylloc ),
+   m_Env( env ),
    m_Mode( is_absolute ? SLEEP_ABSOLUTE : SLEEP_RELATIVE )
 {
 #ifdef ASTDEBUG
@@ -705,14 +711,8 @@ uint64_t ASTNodeSleep::execute()
     for(;;) {
         int ret = clock_nanosleep( CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr );
         if( ret == 0 ) break;
-        if( ret == EINTR ) {
-            if( Environment::is_terminated() ) break;
-            continue;
-        }
-        else {
-            cerr << "nanosleep failed with errno " << ret << endl;
-            break;
-        }
+        if( ret != EINTR ) break;
+        if( m_Env->is_terminated() ) break;
     }
 
     return 0;

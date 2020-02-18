@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -49,14 +49,16 @@
 using namespace std;
 
 
+Environment* MP_ENV;
+
 static void signal_handler( int )
 {
-    Environment::set_terminate();
+    MP_ENV->set_terminate();
 }
 
 static void parse( Environment* env, const char* str, bool is_file )
 {
-    Environment::clear_terminate();
+    env->clear_terminate();
     signal( SIGABRT, signal_handler );
     signal( SIGINT, signal_handler );
     signal( SIGTERM, signal_handler );
@@ -226,8 +228,8 @@ int main( int argc, char** argv )
     basic_teebuf< char >* cout_buf = nullptr;
     basic_teebuf< char >* cerr_buf = nullptr;
 
-    Environment::push_varargs();
     Environment env;
+    MP_ENV = &env;
 
     try {
         bool is_interactive = false;
@@ -286,7 +288,7 @@ int main( int argc, char** argv )
                     cerr << "could not parse parameter " << argv[i] << endl;
                     throw ASTExceptionQuit();
                 }
-                Environment::append_vararg( value );
+                env.append_vararg( value );
             }
             else if( strcmp( argv[i], "-l" ) == 0 || strcmp( argv[i], "-ll" ) == 0 ) {
                 if( logfile ) {
@@ -341,8 +343,6 @@ int main( int argc, char** argv )
         delete logfile;
         // teebuffers are not deleted because cout/cerr still use them
     }
-
-    Environment::pop_varargs();
 
     return 0;
 }

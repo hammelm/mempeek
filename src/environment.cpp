@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2017, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -31,6 +31,8 @@
 #include "parser.h"
 #include "lexer.h"
 
+#include <iostream>
+
 #include <assert.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -46,18 +48,11 @@ using namespace std;
 // class Environment implementation
 //////////////////////////////////////////////////////////////////////////////
 
-int Environment::s_DefaultSize = (sizeof(void*) == 8) ? T_64BIT : ((sizeof(void*) == 2) ? T_16BIT : T_32BIT);
-std::stack<int> Environment::s_DefaultSizeStack;
-
-int Environment::s_DefaultModifier = ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE;
-std::stack<int> Environment::s_DefaultModifierStack;
-
-std::stack< std::vector< std::pair< uint64_t, Environment::array* > > > Environment::s_ArgStack;
-
-volatile sig_atomic_t Environment::s_IsTerminated = 0;
-
-
 Environment::Environment()
+ : m_DefaultSize( (sizeof(void*) == 8) ? T_64BIT : ((sizeof(void*) == 2) ? T_16BIT : T_32BIT) ),
+   m_DefaultModifier( ASTNodePrint::MOD_HEX | ASTNodePrint::MOD_WORDSIZE ),
+   m_IsTerminated( 0 ),
+   m_Stdout( &std::cout )
 {
     m_GlobalVars = new VarManager;
     m_GlobalArrays = new ArrayManager;
@@ -67,6 +62,8 @@ Environment::Environment()
     m_ProcedureManager = new SubroutineManager( this );
     m_FunctionManager = new SubroutineManager( this );
     m_ArrayfuncManager = new SubroutineManager( this );
+
+    m_ArgStack.emplace();
 }
 
 Environment::~Environment()
@@ -145,7 +142,7 @@ std::shared_ptr<ASTNode> Environment::parse( const yylloc_t& location, const cha
         push_default_modifier();
     }
 
-    auto cleanup = [ lex_buffer, scanner, is_file, file, curdir ] () {
+    auto cleanup = [ this, lex_buffer, scanner, is_file, file, curdir ] () {
         yy_delete_buffer( lex_buffer, scanner );
         yylex_destroy( scanner );
 
@@ -367,7 +364,7 @@ std::shared_ptr<ASTNode> Environment::get_arrayfunc( const yylloc_t& location, s
 		retargs.push_back( arg );
 	}
 
-	std::shared_ptr<ASTNode> block = make_shared<ASTNodeBlock>( location );
+	std::shared_ptr<ASTNode> block = make_shared<ASTNodeBlock>( location, this );
 	std::shared_ptr<ASTNode> zero = make_shared<ASTNodeConstant>( location, 0 );
 
 	if( ret_is_input ) {
@@ -441,18 +438,19 @@ bool Environment::set_default_size( int size )
 {
     switch( size ) {
     case 8:
-        s_DefaultSize = T_8BIT;
+        m_DefaultSize = T_8BIT;
         return true;
 
-    case 16: s_DefaultSize = T_16BIT;
+    case 16:
+        m_DefaultSize = T_16BIT;
         return true;
 
     case 32:
-        s_DefaultSize = T_32BIT;
+        m_DefaultSize = T_32BIT;
         return true;
 
     case 64:
-        s_DefaultSize = T_64BIT;
+        m_DefaultSize = T_64BIT;
         return true;
 
     default:
@@ -465,7 +463,7 @@ bool Environment::set_default_modifier( int modifier )
     switch( modifier & ASTNodePrint::MOD_TYPEMASK ) {
     case ASTNodePrint::MOD_FLOAT:
         if( (modifier & ASTNodePrint::MOD_SIZEMASK) != ASTNodePrint::MOD_64BIT ) return false;
-        s_DefaultModifier = modifier;
+        m_DefaultModifier = modifier;
         return true;
 
     case ASTNodePrint::MOD_BIN:
@@ -478,7 +476,7 @@ bool Environment::set_default_modifier( int modifier )
         case ASTNodePrint::MOD_32BIT:
         case ASTNodePrint::MOD_64BIT:
         case ASTNodePrint::MOD_WORDSIZE:
-            s_DefaultModifier = modifier;
+            m_DefaultModifier = modifier;
             return true;
 
         default:
