@@ -39,6 +39,9 @@ int yylex( yyvalue_t*, YYLTYPE*, yyscan_t );
 
 void yyerror( YYLTYPE* yylloc, yyscan_t, yyenv_t, yynodeptr_t&, const char* ) { throw ASTExceptionSyntaxError( *yylloc ); }
 
+// do not allow the parser stack to grow because the value type has nontrivial construction
+#define yyoverflow( a, b, c, d, e, f, g, h ) yyerror( &yylloc, scanner, env, yyroot, (a) )
+
 %}
 
 %define api.value.type { yyvalue_t }
