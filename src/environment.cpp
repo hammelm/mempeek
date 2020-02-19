@@ -32,6 +32,7 @@
 #include "lexer.h"
 
 #include <iostream>
+#include <algorithm>
 
 #include <assert.h>
 #include <limits.h>
@@ -390,6 +391,8 @@ std::shared_ptr<ASTNode> Environment::get_arrayfunc( const yylloc_t& location, s
 
 uint64_t Environment::parse_int( string str, bool& is_ok )
 {
+    str.erase( std::remove( str.begin(), str.end(), '_' ), str.end() );
+
     uint64_t value = 0;
     is_ok = true;
 
