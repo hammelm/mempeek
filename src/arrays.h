@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016, Martin Hammel
+/*  Copyright (c) 2016-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -113,7 +113,7 @@ protected:
 // class ArrayManager::globalarray
 //////////////////////////////////////////////////////////////////////////////
 
-class ArrayManager::globalarray : public ArrayManager::array {
+class ArrayManager::globalarray final : public ArrayManager::array {
 public:
     ~globalarray();
 
@@ -136,7 +136,7 @@ private:
 // class ArrayManager::localarray
 //////////////////////////////////////////////////////////////////////////////
 
-class ArrayManager::localarray : public ArrayManager::array {
+class ArrayManager::localarray final : public ArrayManager::array {
 public:
     localarray( ArrayManager::arraydata_t*& storage, size_t offset );
 
@@ -162,7 +162,7 @@ private:
 // class ArrayManager::delegatearray
 //////////////////////////////////////////////////////////////////////////////
 
-class ArrayManager::delegatearray : public ArrayManager::array {
+class ArrayManager::delegatearray final : public ArrayManager::array {
 public:
     delegatearray( ArrayManager::array* array );
 
@@ -185,7 +185,7 @@ private:
 // class ArrayManager::refarray
 //////////////////////////////////////////////////////////////////////////////
 
-class ArrayManager::refarray : public ArrayManager::array {
+class ArrayManager::refarray final : public ArrayManager::array {
 public:
     refarray();
 

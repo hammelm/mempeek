@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016, Martin Hammel
+/*  Copyright (c) 2016-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -100,7 +100,7 @@ public:
 // class VarManager::defvar
 //////////////////////////////////////////////////////////////////////////////
 
-class VarManager::defvar : public VarManager::var {
+class VarManager::defvar final : public VarManager::var {
 public:
     bool is_def() const override;
 
@@ -116,7 +116,7 @@ private:
 // class VarManager::structvar
 //////////////////////////////////////////////////////////////////////////////
 
-class VarManager::structvar : public VarManager::var {
+class VarManager::structvar final : public VarManager::var {
 public:
     structvar( const VarManager::var* base );
 
@@ -143,7 +143,7 @@ private:
 // class VarManager::globalvar
 //////////////////////////////////////////////////////////////////////////////
 
-class VarManager::globalvar : public VarManager::var {
+class VarManager::globalvar final : public VarManager::var {
 public:
     uint64_t get() const override;
     void set( uint64_t value ) override;
@@ -157,7 +157,7 @@ private:
 // class VarManager::localvar
 //////////////////////////////////////////////////////////////////////////////
 
-class VarManager::localvar : public VarManager::var {
+class VarManager::localvar final : public VarManager::var {
 public:
     localvar( uint64_t*& storage, size_t offset );
 
@@ -176,7 +176,7 @@ private:
 // class VarManager::delegatevar
 //////////////////////////////////////////////////////////////////////////////
 
-class VarManager::delegatevar : public VarManager::var {
+class VarManager::delegatevar final : public VarManager::var {
 public:
     delegatevar( VarManager::var* var );
 
