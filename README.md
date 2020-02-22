@@ -198,12 +198,14 @@ literals, and string literals. Integer literals are signed or unsigned decimal n
 hexadecimal numbers starting with *0x* or binary numbers starting with *0b*. Integer
 literals can be used in expressions and are transformed to a 64 bit value. Signed decimal
 literals are transformed to the 64 bit value representing the negative number in two's
-complement.
+complement. Integer literals may contain underscores to group digits for readability, e.g
+3\_517\_208 or 0b\_0000\_1101\_0100\_1011. The underscores are ignored when parsing
+the integer. Underscores must not be the first or last characters of an integer literal.
 
 Floating point literals are written as decimal numbers either with a decimal point or as
 numbers in scientific notation using the common *e* notation (e.g. *6.022e-23*). Floating
 point literals can be used in expressions and are transformed to a 64 bit value in IEEE
-754 double precision encoding.
+754 double precision encoding. Underscores are not allowed in floating point literals.
 
 String literals are only allowed in print commands, assignments, and as subroutine
 arguments and consist of printable ASCII characters between two double quotes. The

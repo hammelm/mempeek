@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2018, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -136,9 +136,12 @@ class ASTNodeBlock : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeBlock> ptr;
 
-	ASTNodeBlock( const yylloc_t& yylloc );
+	ASTNodeBlock( const yylloc_t& yylloc, Environment* env );
 
 	uint64_t execute() override;
+
+private:
+	Environment* m_Env;
 };
 
 
@@ -157,6 +160,8 @@ public:
 
 private:
     Environment::array* m_Array;
+
+	Environment* m_Env;
 };
 
 
@@ -410,7 +415,7 @@ public:
 		MOD_TYPESIZEMASK = 0x0ff
 	};
 
-	ASTNodePrint( const yylloc_t& yylloc );
+	ASTNodePrint( const yylloc_t& yylloc, Environment* env );
 
 	void add_arg( ASTNode::ptr node, int modifier );
 	void add_arg( std::string text );
@@ -434,6 +439,8 @@ private:
 	std::vector< arg_t > m_Args;
 
     bool m_PrintEndl = true;
+
+    Environment* m_Env;
 };
 
 
@@ -445,12 +452,14 @@ class ASTNodeSleep : public ASTNode {
 public:
     typedef std::shared_ptr<ASTNodeSleep> ptr;
 
-    ASTNodeSleep( const yylloc_t& yylloc );
-    ASTNodeSleep( const yylloc_t& yylloc, ASTNode::ptr expression, bool is_absolute );
+    ASTNodeSleep( const yylloc_t& yylloc, Environment* env );
+    ASTNodeSleep( const yylloc_t& yylloc, Environment* env, ASTNode::ptr expression, bool is_absolute );
 
     uint64_t execute() override;
 
 private:
+    Environment* m_Env;
+
     enum { SLEEP_RELATIVE, SLEEP_ABSOLUTE, RETRIEVE_TIME } m_Mode;
 };
 

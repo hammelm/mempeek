@@ -1,4 +1,4 @@
-/*  Copyright (c) 2016-2018, Martin Hammel
+/*  Copyright (c) 2016-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -165,13 +165,7 @@ void VarManager::var::set_size( size_t range )
 
 size_t VarManager::var::get_size() const
 {
-    switch( Environment::get_default_size() ) {
-    case T_8BIT: return 1;
-    case T_16BIT: return 2;
-    case T_32BIT: return 4;
-    case T_64BIT: return 8;
-    default: assert(false);
-    }
+    return sizeof(void*);
 }
 
 

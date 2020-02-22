@@ -1,4 +1,4 @@
-/*  Copyright (c) 2015-2018, Martin Hammel
+/*  Copyright (c) 2015-2020, Martin Hammel
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -157,9 +157,9 @@ std::string parse_escape_characters( std::string str );
 
 [a-zA-Z][a-zA-Z0-9_]*   TOKEN( T_IDENTIFIER )
 
-"0x"[0-9a-fA-F]+        TOKEN( T_CONSTANT )
-"0b"[01]+               TOKEN( T_CONSTANT )
-[0-9]+                  TOKEN( T_CONSTANT )
+"0x"[0-9a-fA-F_]*[0-9a-fA-F]        TOKEN( T_CONSTANT )
+"0b"[01_]*[01]                      TOKEN( T_CONSTANT )
+[0-9]([0-9_]*[0-9])?                TOKEN( T_CONSTANT )
 
 [+-]?[0-9]*\.[0-9]+                 TOKEN( T_FCONST )
 [+-]?[0-9]*\.?[0-9]+[eE][+-]?[0-9]+ TOKEN( T_FCONST )
