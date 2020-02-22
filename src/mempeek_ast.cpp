@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <time.h>
+#include <assert.h>
 #include <errno.h>
 
 using namespace std;
@@ -1589,6 +1590,10 @@ uint64_t ASTNodeArg::execute()
             if( array ) return array->get_size();
             else throw ASTExceptionArgTypeMismatch( get_location(), arg, false );
         } break;
+
+        default:
+            // must never happen
+            assert( false );
         }
     }
     else {
