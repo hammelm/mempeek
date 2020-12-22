@@ -52,7 +52,7 @@ MMap* MMap::create( void* phys_addr, size_t size )
 
 MMap* MMap::create( void* phys_addr, size_t size, const char* device )
 {
-    int fd = open( device, O_RDWR );
+    int fd = open( device, O_RDWR | O_SYNC );
     if( fd < 0 ) return nullptr;
 
     MMap* mmap = new MMap;
