@@ -40,7 +40,7 @@ typedef void* yyscan_t;
 
 typedef std::vector< std::pair<yynodeptr_t,std::string> > arglist_t;
 
-typedef struct {
+typedef struct _yyvalue {
     std::string value = "";
     int token = 0;
     yynodeptr_t node = nullptr;

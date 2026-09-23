@@ -70,7 +70,7 @@ private:
 
     std::map< std::string, ArrayManager::array* > m_Arrays;
 
-    typedef struct {
+    typedef struct _arraydata {
         uint64_t size = 0;
         uint64_t* array = nullptr;
     } arraydata_t;

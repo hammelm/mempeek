@@ -75,7 +75,7 @@ public:
 
 
 private:
-    typedef struct {
+    typedef struct _subroutine {
         VarManager* vars;
         ArrayManager* arrays;
         std::vector< param_t > params;
